@@ -1,4 +1,4 @@
-# Android知识点总结
+# Android
 
 ## Android的系统架构是怎么样的？
 
