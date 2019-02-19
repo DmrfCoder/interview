@@ -483,3 +483,724 @@ View的`enable`属性不影响`onTouchEvent`的默认返回值。哪怕一个Vie
 
 ## Binder
 
+### binder是什么
+
+![1](https://ws2.sinaimg.cn/large/006tKfTcly1g0bm56baz1j30yg0i2n0j.jpg)
+
+### 关于Linux的进程通信
+
+一个进程空间分为 用户空间 & 内核空间（`Kernel`），即把进程内 用户 & 内核 隔离开来
+
+二者区别： 
+
+1. 进程间，用户空间的数据不可共享，所以用户空间 = 不可共享空间
+2. 进程间，内核空间的数据可共享，所以内核空间 = 可共享空间 
+
+所有进程共用1个内核空间
+
+进程内 用户空间 & 内核空间 进行交互 需通过 **系统调用**，主要通过函数：
+
+1. copy_from_user（）：将用户空间的数据拷贝到内核空间
+2. copy_to_user（）：将内核空间的数据拷贝到用户空间
+
+示意图如下：
+
+![2](https://ws2.sinaimg.cn/large/006tKfTcly1g0bm7dnms3j30iu09ojrl.jpg)
+
+为了保证 安全性 & 独立性，一个进程 不能直接操作或者访问另一个进程，即`Android`的进程是**相互独立、隔离的**
+
+进程间进行数据交互、通信称为跨进程通信（IPC）
+
+传统跨进程通信的原理是：
+
+- 发送进程通过copy_from_user（）将数据拷贝到Linux进程内核空间的缓冲区中（数据拷贝一次）
+- 内核服务程序唤醒接收进程的接收线程，通过copy_to_user（）将数据发送到接收进程的用户空间中最终完成数据通信（数据拷贝一次）
+
+所以传统的跨进程通信的原理需要拷贝两次数据，这样效率就很低。
+
+还有一个比较大的缺点是接收数据的缓存要由接收方提供，但是接收方提前不知道所要接收数据的大小，不知道开辟多大的缓存才满足需求，这时主要有两种做法：
+
+- 尽量开辟尽可能大的空间
+- 先调用API接收消息头获取消息体大小，再适当开辟空间
+
+第一种方法浪费空间，第二种方法浪费时间，所以传统跨进程通信缺点太多。
+
+ 而`Binder`的作用则是：连接 两个进程，实现了mmap()系统调用，主要负责 **创建数据接收的缓存空间** & **管理数据接收缓存** 
+注：传统的跨进程通信需拷贝数据2次，但`Binder`机制只需1次，主要是使用到了内存映射，具体下面会详细说明。
+
+### binder跨进程通信机制（模型）
+
+`Binder` 跨进程通信机制 模型 基于 `Client - Server` 模式 ：
+
+![3](https://ws3.sinaimg.cn/large/006tKfTcly1g0bmv3otykj30tq0csjro.jpg)
+
+![4](https://ws2.sinaimg.cn/large/006tKfTcly1g0bmvkfldvj30me0ak3yt.jpg)
+
+#### binder驱动
+
+![5](https://ws3.sinaimg.cn/large/006tKfTcly1g0bmx7rhq1j30yg0ftwh9.jpg)
+
+跨进程通信原理图：
+
+![6](https://ws1.sinaimg.cn/large/006tKfTcly1g0bmxshed4j30qo0lh0vy.jpg)
+
+![7](https://ws3.sinaimg.cn/large/006tKfTcly1g0bmzuzi45j30u00ws10t.jpg)
+
+空间原理图：
+
+![8](https://ws4.sinaimg.cn/large/006tKfTcly1g0bn1am09dj30tq0fagm3.jpg)
+
+##### `Binder`驱动 & `Service Manager`进程 属于 `Android`基础架构（即系统已经实现好了）；而`Client` 进程 和 `Server` 进程 属于`Android`应用层（需要开发者自己实现），所以，在进行跨进程通信时，开发者只需自定义`Client` & `Server` 进程 并 显式使用上述3个步骤，最终借助 `Android`的基本架构功能就可完成进程间通信：
+
+![9](https://ws2.sinaimg.cn/large/006tKfTcly1g0bn1upmbdj30tq0jht9n.jpg)
+
+## 性能优化
+
+### ANR
+
+ANR全称`Application Not Responding`，意思就是程序未响应。
+
+#### 出现场景
+
+- 主线程被IO操作（从4.0之后网络IO不允许在主线程中）阻塞。
+- 主线程中存在耗时的计算
+- 主线程中错误的操作，比如Thread.wait或者Thread.sleep等
+
+Android系统会监控程序的响应状况，一旦出现下面两种情况，则弹出ANR对话框
+
+- 应用在5秒内未响应用户的输入事件（如按键或者触摸）
+- BroadcastReceiver未在10秒内完成相关的处理
+
+#### 如何避免
+
+基本的思路就是将IO操作在工作线程来处理，减少其他耗时操作和错误操作
+
+- 使用AsyncTask处理耗时IO操作。
+- 使用Thread或者HandlerThread时，调用`Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)`设置优先级，否则仍然会降低程序响应，因为默认Thread的优先级和主线程相同。
+- 使用Handler处理工作线程结果，而不是使用Thread.wait()或者Thread.sleep()来阻塞主线程。
+- `Activity`的`onCreate`和`onResume`回调中尽量避免耗时的代码
+- `BroadcastReceiver`中`onReceive`代码也要尽量减少耗时，建议使用`IntentService`处理。
+
+#### 如何改善
+
+通常100到200毫秒就会让人察觉程序反应慢，为了更加提升响应，可以使用下面的几种方法
+
+- 如果程序正在后台处理用户的输入，建议使用让用户得知进度，比如使用ProgressBar控件。
+- 程序启动时可以选择加上欢迎界面，避免让用户察觉卡顿。
+- 使用`Systrace`和`TraceView`找出影响响应的问题。
+
+如果开发机器上出现问题，我们可以通过查看`/data/anr/traces.txt`即可，最新的ANR信息在最开始部分。
+
+### OOM（Out Of Memory）
+
+在实践操作当中，可以从四个方面着手减小内存使用：
+
+- 减小对象的内存占用
+- 内存对象的重复利用
+- 避免对象的内存泄露
+- 内存使用策略优化。
+
+#### 减小对象的内存占用
+
+- `使用更加轻量级的数据结构`：例如，我们可以考虑使用`ArrayMap`/`SparseArray`而不是`HashMap`等传统数据结构，相比起Android系统专门为移动操作系统编写的`ArrayMap`容器，在大多数情况下，`HashMap`都显示效率低下，更占内存。另外，`SparseArray`更加高效在于，**避免了对key与value的自动装箱，并且避免了装箱后的解箱**。
+
+- `避免使用Enum`：在Android中应该尽量使用`int`来代替`Enum`，因为使用`Enum`会导致编译后的dex文件大小增大，并且使用`Enum`时，其运行时还会产生额外的内存占用。
+
+- `减小`Bitmap`对象的内存占用`：
+
+  - `inBitmap`：如果设置了这个字段，Bitmap在加载数据时可以复用这个字段所指向的bitmap的内存空间。**但是，内存能够复用也是有条件的。比如，在Android 4.4(API level 19)之前，只有新旧两个Bitmap的尺寸一样才能复用内存空间。Android 4.4开始只要旧 Bitmap 的尺寸大于等于新的 Bitmap 就可以复用了**。
+  - `inSampleSize`：缩放比例，在把图片载入内存之前，我们需要先计算出一个合适的缩放比例，避免不必要的大图载入。
+  - `decode format`：解码格式，选择`ARGB_8888` `RBG_565` `ARGB_4444` `ALPHA_8`，存在很大差异。
+
+  > ARGB_4444：每个像素占四位，即A=4，R=4，G=4，B=4，那么一个像素点占4+4+4+4=16位 ARGB_8888：每个像素占四位，即A=8，R=8，G=8，B=8，那么一个像素点占8+8+8+8=32位 RGB_565：每个像素占四位，即R=5，G=6，B=5，没有透明度，那么一个像素点占5+6+5=16位 ALPHA_8：每个像素占四位，只有透明度，没有颜色。
+
+- `使用更小的图片`：在设计给到资源图片的时候，我们需要特别留意这张图片是否存在可以压缩的空间，是否可以使用一张更小的图片。**尽量使用更小的图片不仅仅可以减少内存的使用，还可以避免出现大量的InflationException**。假设有一张很大的图片被XML文件直接引用，很有可能在初始化视图的时候就会因为内存不足而发生InflationException，这个问题的根本原因其实是发生了OOM。
+
+#### 内存对象的重复使用
+
+大多数对象的复用，最终实施的方案都是利用对象池技术，要么是在编写代码的时候显式的在程序里面去创建对象池，然后处理好复用的实现逻辑，要么就是利用系统框架既有的某些复用特性达到减少对象的重复创建，从而减少内存的分配与回收。
+
+- `复用系统自带资源`：Android系统本身内置了很多的资源，例如字符串/颜色/图片/动画/样式以及简单布局等等，这些资源都可以在应用程序中直接引用。**这样做不仅仅可以减少应用程序的自身负重，减小APK的大小，另外还可以一定程度上减少内存的开销，复用性更好**。但是也有必要留意Android系统的版本差异性，对那些不同系统版本上表现存在很大差异，不符合需求的情况，还是需要应用程序自身内置进去。
+- `ListView ViewHodler`
+- `Bitmap对象的复用`：在ListView与GridView等显示大量图片的控件里面需要使用LRU的机制来缓存处理好的Bitmap。
+- `inBitmap`：**使用inBitmap属性可以告知Bitmap解码器去尝试使用已经存在的内存区域**，新解码的bitmap会尝试去使用之前那张bitmap在heap中所占据的`pixel data`内存区域，而不是去问内存重新申请一块区域来存放bitmap。
+
+> - 使用inBitmap，在4.4之前，只能重用相同大小的bitmap的内存区域，而4.4之后你可以重用任何bitmap的内存区域，只要这块内存比将要分配内存的bitmap大就可以。这里最好的方法就是使用LRUCache来缓存bitmap，后面来了新的bitmap，可以从cache中按照api版本找到最适合重用的bitmap，来重用它的内存区域。
+> - 新申请的bitmap与旧的bitmap必须有相同的解码格式
+
+- 避免在onDraw方法里面执行对象的创建：类似onDraw等频繁调用的方法，一定需要注意避免在这里做创建对象的操作，因为他会迅速增加内存的使用，而且很容易引起频繁的gc，甚至是内存抖动。
+- `StringBuilder`：在有些时候，代码中会需要使用到大量的字符串拼接的操作，这种时候有必要考虑使用StringBuilder来替代频繁的“+”。
+
+#### 避免内存泄漏
+
+- `内部类引用导致Activity的泄漏`：最典型的场景是Handler导致的Activity泄漏，如果Handler中有延迟的任务或者是等待执行的任务队列过长，都有可能因为Handler继续执行而导致Activity发生泄漏。
+- `Activity Context被传递到其他实例中，这可能导致自身被引用而发生泄漏`。
+- 考虑使用Application Context而不是Activity Context
+- 注意临时Bitmap对象的及时回收
+- 注意监听器的注销
+- 注意缓存容器中的对象泄漏：不使用的对象要将引用置空。
+- 注意Cursor对象是否及时关闭
+
+#### 内存优化策略
+
+- 综合考虑设备内存阈值与其他因素设计合适的缓存大小
+- `onLowMemory()`：Android系统提供了一些回调来通知当前应用的内存使用情况，通常来说，当所有的background应用都被kill掉的时候，forground应用会收到onLowMemory()的回调。在这种情况下，需要尽快释放当前应用的非必须的内存资源，从而确保系统能够继续稳定运行。
+- `onTrimMemory()`：Android系统从4.0开始还提供了onTrimMemory()的回调，当系统内存达到某些条件的时候，所有正在运行的应用都会收到这个回调，同时在这个回调里面会传递以下的参数，代表不同的内存使用情况，收到onTrimMemory()回调的时候，需要根据传递的参数类型进行判断，合理的选择释放自身的一些内存占用，一方面可以提高系统的整体运行流畅度，另外也可以避免自己被系统判断为优先需要杀掉的应用
+- 资源文件需要选择合适的文件夹进行存放：例如我们只在`hdpi`的目录下放置了一张100100的图片，那么根据换算关系，`xxhdpi`的手机去引用那张图片就会被拉伸到200200。需要注意到在这种情况下，内存占用是会显著提高的。**对于不希望被拉伸的图片，需要放到assets或者nodpi的目录下**。
+- 谨慎使用static对象
+- 优化布局层次，减少内存消耗
+- 使用FlatBuffer等工具序列化数据
+- 谨慎使用依赖注入框架
+- 使用ProGuard来剔除不需要的代码
+
+### 卡顿优化
+
+导致Android界面滑动卡顿主要有两个原因：
+
+- UI线程（main）有耗时操作
+- 视图渲染时间过长，导致卡顿
+
+众所周知，界面的流畅度主要依赖`FPS`这个值，这个值是通过（1s/渲染1帧所花费的时间）计算所得，FPS值越大视频越流畅，所以就需要渲染1帧的时间能尽量缩短。**正常流畅度的FPS值在60左右，即渲染一帧的时间不应大于16 ms**。
+
+如果想让应用流畅运行 ：
+
+- 不要阻塞UI线程；
+- 不要在UI线程之外操作UI；
+- 减少UI嵌套层级
+
+**针对界面切换卡顿，一般出现在组件初始化的地方。屏幕滑动卡顿，ui嵌套层级，还有图片加载，图片的话，滑动不加载，监听scrollListener**。
+
+## 推送机制
+
+### 轮询
+
+客户端隔一段时间就去服务器上获取一下信息，看是否有更新的信息出现，这就是轮询。我们可以通过`AlarmManager`来管理时间，当然时间的设置策略也是十分重要的，由于每次轮询都需要建立和释放TCP连接，所以在移动网络情况下耗电量相当大。
+
+针对不同应用的需求，有的可以每5分钟查询一次或者每10分钟查询一次，但是这种策略的电量和流量消耗十分严重。我们可以使用退避法（暂时这么说），比如第一次我们每隔2分钟查询一次数据，如果没有数据，就将查询间隔加倍。
+
+同时进程的保活也十分重要，这部分的知识参照进程保活。
+
+### 长连接
+
+客户端主动和服务器建立TCP长连接之后，客户端定期向服务器发送心跳包，有消息的时候，服务器直接通过这个已经建立好的TCP连接通知客户端。
+
+长连接就是 **建立连接之后，不主动断开。双方互相发送数据，发完了也不主动断开连接，之后有需要发送的数据就继续通过这个连接发送**。
+
+### 影响TCP连接寿命的因素
+
+#### NAT超时
+
+因为 IPv4 的 IP 量有限，运营商分配给手机终端的 IP 是运营商内网的 IP，手机要连接 Internet，就需要通过运营商的网关做一个网络地址转换（Network Address Translation，NAT）。简单的说运营商的网关需要维护一个外网 IP、端口到内网 IP、端口的对应关系，以确保内网的手机可以跟 Internet 的服务器通讯。
+
+大部分移动无线网络运营商都在链路一段时间没有数据通讯时，会淘汰 NAT 表中的对应项，造成链路中断。
+
+#### DHCP租期
+
+目前测试发现安卓系统对DHCP的处理有Bug，DHCP租期到了不会主动续约并且会继续使用过期IP，这个问题会造成TCP长连接偶然的断连。
+
+#### 网络状态变化
+
+手机网络和WIFI网络切换、网络断开和连上等情况有网络状态的变化，也会使长连接变为无效连接，需要监听响应的网络状态变化事件，重新建立Push长连接。
+
+#### 心跳包
+
+TCP长连接本质上不需要心跳包来维持，其主要是为了防止上面提到的NAT超时，既然一些`NAT设备`判断是否淘汰`NAT映射`的依据是一定时间没有数据，那么客户端就主动发一个数据，这样就能维持TCP长连接。
+
+当然，如果仅仅是为了防止NAT超时，可以让服务器来发送心跳包给客户端，不过这样做有个弊病就是，万一连接断了，服务器就再也联系不上客户端了。所以心跳包必须由客户端发送，客户端发现连接断了，还可以尝试重连服务器。
+
+#### 时间间隔
+
+发送心跳包势必要先唤醒设备，然后才能发送，如果唤醒设备过于频繁，或者直接导致设备无法休眠，会大量消耗电量，而且移动网络下进行网络通信，比在wifi下耗电得多。所以这个心跳包的时间间隔应该尽量的长，最理想的情况就是根本没有NAT超时，比如刚才我说的两台在同一个wifi下的电脑，完全不需要心跳包。这也就是网上常说的长连接，慢心跳。
+
+现实是残酷的，根据网上的一些说法，中移动2/3G下，NAT超时时间为5分钟，中国电信3G则大于28分钟，理想的情况下，客户端应当以略小于NAT超时时间的间隔来发送心跳包。
+
+#### 心跳包和轮询的区别
+
+- 轮询是为了获取数据，而心跳是为了保活TCP连接。
+- 轮询得越频繁，获取数据就越及时，心跳的频繁与否和数据是否及时没有直接关系。
+- 轮询比心跳能耗更高，因为一次轮询需要经过TCP三次握手，四次挥手，单次心跳不需要建立和拆除TCP连接。
+
+## 进程保活
+
+### 进程生命周期
+
+Android 系统将尽量长时间地保持应用进程，但为了新建进程或运行更重要的进程，最终需要清除旧进程来回收内存。 为了确定保留或终止哪些进程，系统会根据进程中正在运行的组件以及这些组件的状态，将每个进程放入“重要性层次结构”中。 必要时，系统会首先消除重要性最低的进程，然后是重要性略逊的进程，依此类推，以回收系统资源。
+
+重要性层次结构一共有 5 级。以下列表按照重要程度列出了各类进程（第一个进程最重要，将是最后一个被终止的进程）：
+
+- 前台进程：用户当前操作所必需的进程。如果一个进程满足以下任一条件，即视为前台进程：
+
+```
+- 托管用户正在交互的 Activity（已调用 Activity 的 `onResume()` 方法）
+
+- 托管某个 Service，后者绑定到用户正在交互的 Activity
+
+- 托管正在“前台”运行的 Service（服务已调用 `startForeground()`）
+
+- 托管正执行一个生命周期回调的 Service（`onCreate()`、`onStart()` 或 `onDestroy()`）
+
+- 托管正执行其 `onReceive()` 方法的 BroadcastReceiver
+```
+
+通常，在任意给定时间前台进程都为数不多。只有在内在不足以支持它们同时继续运行这一万不得已的情况下，系统才会终止它们。 此时，设备往往已达到内存分页状态，因此需要终止一些前台进程来确保用户界面正常响应。- 
+
+- 可见进程：没有任何前台组件、但仍会影响用户在屏幕上所见内容的进程。 如果一个进程满足以下任一条件，即视为可见进程：
+
+```
+- 托管不在前台、但仍对用户可见的 Activity（已调用其 `onPause()` 方法）。例如，如果前台 Activity 启动了一个对话框，允许在其后显示上一 Activity，则有可能会发生这种情况
+
+- 托管绑定到可见（或前台）Activity 的 Service
+```
+
+可见进程被视为是极其重要的进程，除非为了维持所有前台进程同时运行而必须终止，否则系统不会终止这些进程。
+
+- 服务进程：正在运行已使用 `startService()` 方法启动的服务且不属于上述两个更高类别进程的进程。尽管服务进程与用户所见内容没有直接关联，但是它们通常在执行一些用户关心的操作（例如，在后台播放音乐或从网络下载数据）。因此，除非内存不足以维持所有前台进程和可见进程同时运行，否则系统会让服务进程保持运行状态。
+
+- 后台进程：包含目前对用户不可见的 Activity 的进程（已调用 Activity 的 `onStop()` 方法）。这些进程对用户体验没有直接影响，系统可能随时终止它们，以回收内存供前台进程、可见进程或服务进程使用。 通常会有很多后台进程在运行，因此它们会保存在 LRU （最近最少使用）列表中，以确保包含用户最近查看的 Activity 的进程最后一个被终止。如果某个 Activity 正确实现了生命周期方法，并保存了其当前状态，则终止其进程不会对用户体验产生明显影响，因为当用户导航回该 Activity 时，Activity 会恢复其所有可见状态。
+
+- 空进程：不含任何活动应用组件的进程。保留这种进程的的唯一目的是用作缓存，以缩短下次在其中运行组件所需的启动时间。 为使总体系统资源在进程缓存和底层内核缓存之间保持平衡，系统往往会终止这些进程。
+
+**根据进程中当前活动组件的重要程度，Android 会将进程评定为它可能达到的最高级别**。例如，如果某进程托管着服务和可见 Activity，则会将此进程评定为可见进程，而不是服务进程。
+
+此外，一个进程的级别可能会因其他进程对它的依赖而有所提高，即 **服务于另一进程的进程其级别永远不会低于其所服务的进程**。 例如，如果进程 A 中的内容提供程序为进程 B 中的客户端提供服务，或者如果进程 A 中的服务绑定到进程 B 中的组件，则进程 A 始终被视为至少与进程 B 同样重要。
+
+由于运行服务的进程其级别高于托管后台 Activity 的进程，因此 **启动长时间运行操作的 Activity 最好为该操作启动服务，而不是简单地创建工作线程，当操作有可能比 Activity 更加持久时尤要如此**。例如，正在将图片上传到网站的 Activity 应该启动服务来执行上传，这样一来，即使用户退出 Activity，仍可在后台继续执行上传操作。使用服务可以保证，无论 Activity 发生什么情况，该操作至少具备“服务进程”优先级。 同理，广播接收器也应使用服务，而不是简单地将耗时冗长的操作放入线程中。
+
+### 保活的基本概念
+
+当前Android进程保活手段主要分为 黑、白、灰 三种，其大致的实现思路如下：
+
+- **黑色保活**：不同的app进程，用广播相互唤醒（包括利用系统提供的广播进行唤醒）
+- **白色保活**：启动前台Service
+- **灰色保活**：利用系统的漏洞启动前台Service
+
+> 还有一种就是控制Service.onStartCommand的返回值，使用 `START_STICKY`可以在一定程度上保活。
+
+#### 黑色保活
+
+所谓黑色保活，就是利用不同的app进程使用广播来进行相互唤醒。举个3个比较常见的场景：
+
+- **场景1**：开机，网络切换、拍照、拍视频时候，利用系统产生的广播唤醒app。
+- **场景2**：接入第三方SDK也会唤醒相应的app进程，如微信sdk会唤醒微信，支付宝sdk会唤醒支付宝。由此发散开去，就会直接触发了下面的场景3。
+- **场景3**：假如你手机里装了支付宝、淘宝、天猫、UC等阿里系的app，那么你打开任意一个阿里系的app后，有可能就顺便把其他阿里系的app给唤醒了。
+
+#### 白色保活
+
+白色保活手段非常简单，就是调用系统api启动一个前台的Service进程，这样会在系统的通知栏生成一个Notification，用来让用户知道有这样一个app在运行着，哪怕当前的app退到了后台。如网易云音乐。
+
+#### 灰色保活
+
+它是利用系统的漏洞来启动一个前台的Service进程，与普通的启动方式区别在于，它不会在系统通知栏处出现一个Notification，看起来就如同运行着一个后台Service进程一样。这样做带来的好处就是，用户无法察觉到你运行着一个前台进程（因为看不到Notification）,但你的进程优先级又是高于普通后台进程的。
+
+- `API < 18`，启动前台Service时直接传入new Notification()；
+- `API >= 18`，同时启动两个id相同的前台Service，然后再将后启动的Service做stop处理；
+
+```java
+public class GrayService extends Service {
+
+    private final static int GRAY_SERVICE_ID = 1001;
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (Build.VERSION.SDK_INT < 18) {
+            startForeground(GRAY_SERVICE_ID, new Notification());//API < 18 ，此方法能有效隐藏Notification上的图标
+        } else {
+            Intent innerIntent = new Intent(this, GrayInnerService.class);
+            startService(innerIntent);
+            startForeground(GRAY_SERVICE_ID, new Notification());
+        }
+
+        return super.onStartCommand(intent, flags, startId);
+    }
+
+    ...
+    ...
+
+    /**
+     * 给 API >= 18 的平台上用的灰色保活手段
+     */
+    public static class GrayInnerService extends Service {
+
+        @Override
+        public int onStartCommand(Intent intent, int flags, int startId) {
+            startForeground(GRAY_SERVICE_ID, new Notification());
+            stopForeground(true);
+            stopSelf();
+            return super.onStartCommand(intent, flags, startId);
+        }
+
+    }
+}
+```
+
+
+
+## Activity、View及Window之间关系
+
+### View
+
+View（包括ViewGroup）使用的是组合模式，将View组成成树形结构，以表示“部分-整体”的层次结构，使得用户对单个对象和组合对象的使用具有一致性。View主要是用于绘制我们想要的结果，是一个最基本的UI组件。
+
+### Window
+
+简单地说，`Window`表示一个窗口，一般来说，`Window`大小取值为屏幕大小。但是这不是绝对的，如对话框、Toast等就不是整个屏幕大小。你可以指定`Window`的大小。`Window`包含一个`View tree`和窗口的`layout`参数。
+
+感觉Window的理解比较抽象，Window相当于一个容器，里面“盛放”着很多View，这些View是以树状结构组织起来的。
+
+> 如果还是无法理解的话，就把Window当成是显示器，显示器有大有小（对应Window有大有小），View是显示器里面具体显示的内容。
+
+#### Window对象存在的必要性
+
+`Window`能做的事情，`View`对象基本都能做：像什么触摸事件啊、显示的坐标及大小啊、管理各个子View啊等等。View已经这么强大了，为什么还多此一举，加个`Window`对象。可能有人会说因为`WindowManager`管理的就是`Window`对象呀，那我想问，既然这样，Android系统直接让`WindowManager`去管理`View`不就好了？让View接替`Window`的工作，把`Window`所做的事情都封装到`View`里面不好嘛？。或许又有人说，`View`负责绘制显示内容，`Window`负责管理`View`，各自的工作职责不同。可是我想说，`Window`所做的大部分工作，`View`里面都有同样（或类似）的处理。
+
+关于`Window`存在的必要，我查了国内外各种资料，最后有了我个人的理解。在后面小节里面，我会结合我个人的理解来解释。在解释之前，我们需要了解Window绘制过程。
+
+#### Window绘制过程
+
+在理解`Window`绘制过程之前，首先，我们需要知道`Surface`，在`Window`中持有一个`Surface`，那么什么是`Surface`呢？
+
+`Surface`其实就是一个持有像素点矩阵的对象，这个像素点矩阵是组成显示在屏幕的图像的一部分。**我们看到显示的每个Window（包括对话框、全屏的Activity、状态栏等）都有他自己绘制的Surface**。而最终的显示可能存在`Window`之间遮挡的问题，此时就是通过`Surface Flinger对`象渲染最终的显示，使他们以正确的`Z-order`显示出来。一般`Surface`拥有一个或多个缓存（一般2个），通过双缓存来刷新，这样就可以一边绘制一边加新缓存。
+
+`WindowManager`为每个`Window`创建`Surface`对象，然后应用就可以通过这个`Surface`来绘制任何它想要绘制的东西。而对于`WindowManager`来说，这只不过是一块矩形区域而已。
+
+前面我们说过，`View`是`Window`里面用于交互的UI元素。`Window`只attach一个`View Tree`，当`Window`需要重绘（如，当View调用`invalidate`）时，最终转为`Window`的`Surface`，`Surface`被锁住（locked）并返回Canvas对象，此时View拿到Canvas对象来绘制自己。当所有View绘制完成后，`Surface`解锁（unlock），并且post到绘制缓存用于绘制，通过`Surface Flinger`来组织各个Window，显示最终的整个屏幕。
+
+#### 总结
+
+现在我们知道了`Window`绘制过程，其实，站在系统的角度来考虑，一个Window对象代表一块显示区域，系统不关心Window里面具体的绘制内容，也不管你`Window`怎么去绘制，反正只给你提供可以在这块区域上绘制图形的`Surface`对象，你`Window`对象怎么画是你的事情！
+
+换句话说，站在系统的角度上看，系统是“不知道”有View对象这个说法的！作为系统，我有自己的骄傲，不去管你Window如何搬砖、如何砌墙，只给你地皮。而这时，Window为了绘制出用户想要的组件（按钮、文字、输入框等等），系统又不给我！没事，那我自己定义，于是就定义了View机制，给每个View提供Canvas，让不同的View自己绘制具有自己特色的组件。同时，为了更好的管理View，通过定义ViewGroup，等等。
+
+### Activity
+
+对于开发人员来说，一个`Activity`就“相当于”一个界面（通过`setContentView`指定具体的View）。我们可以直接在Activity里处理事件，如`onKeyEvent`,`onTouchEvent`等。 并可以通过Activity维护应用程序的生命周期。
+
+### Activity和Window
+
+前面我们知道，`Window`已经是系统管理的窗口界面。那么为什么还需要`Activity`呢？我们把`Activity`所做的事情，全部封装到`Window`不就好了？
+
+其实，本质上讲，我们要显示一个窗口出来，的确可以不需要Activity。悬浮窗口中不就是没有使用Activity来显示一个悬浮窗吗？既然如此，Window（以及View）能处理点击事件以及封装各种逻辑，那为啥还需要Activity呢？
+
+`Android`中的应用中，里面对各个窗口的管理相当复杂（任务栈、状态等等），Android系统当然可以不用Activity，让用户自己直接操作Window来开发自己的应用。但是如果让用户自己去管理这些Window，先不说工作量，光让用户自己去实现任务栈这点，有几个人能写的出来。**为了让大家能简单、快速的开发应用，Android通过定义Activity，让Activity帮我们管理好，我们只需简单的去重写几个回调函数，无需直接与Window对象接触**。各种事件也只需重写Activity里面的回调即可。无需关注其他细节，默认都帮我们写好了，针对需要定制的部分我们重写（设计模式为：模板方法模式）。
+
+### EventBus
+
+EventBus是一个Android事件发布/订阅框架，通过解耦发布者和订阅者简化Android事件传递，这里的事件可以理解为消息。事件传递既可以用于Android四大组件间通讯，也可以用于异步线程和主线程间通讯等。
+ 传统的事件传递方式包括：Handler、BroadcastReceiver、Interface回调，相比之下EventBus的优点是代码简洁，使用简单，并将事件发布和 订阅充分解耦。
+
+**事件Event： **又可称为消息，其实就是一个对象，可以是网络请求返回的字符串，也可以是某个开关状态等等。事件类型EventType是指事件所属的Class。
+
+事件分为一般事件和Sticky事件，相对于一般事件，Sticky事件不同之处在于，当事件发布后，再有订阅者开始订阅该类型事件，依然能收到该类型事件的最近一个Sticky事件。
+
+**订阅者Subscriber： **订阅某种事件类型的对象，当有发布者发布这类事件后，EventBus会执行订阅者的onEvent函数，这个函数叫事件响应函数。订阅者通过register接口订阅某个事件类型，unregister接口退订。订阅者存在优先级，优先级高的订阅者可以取消事件继续向优先级低的订阅者分发，默认所有订阅者优先级都为0。
+
+**发布者Publisher： **发布某事件的对象，通过post接口发布事件。
+
+## okHttp
+
+## Intent
+
+### Intent的介绍
+
+Intent的中文意思是“意图，意向”，在Android中提供了Intent机制来协助应用间的交互与通讯，Intent负责对应用中一次操作的动作、动作涉及数据、附加数据进行描述，Android则根据此Intent的描述，负责找到对应的组件，将 Intent传递给调用的组件，并完成组件的调用。Intent不仅可用于应用程序之间，也可用于应用程序内部的Activity/Service之间的交互。因此，可以将Intent理解为不同组件之间通信的“媒介”专门提供组件互相调用的相关信息。
+
+### Intent的七大属性
+
+**第一类：启动，有ComponentName（显式）,Action（隐式），Category（隐式）。**
+ **第二类：传值，有Data（隐式），Type（隐式），Extra（隐式、显式）。**
+ **第三类：启动模式，有Flag。**
+
+#### 1.ComponentName（显式Intent）
+
+下面我们来看一个简单的例子：跳转到另一个Activity
+
+```java
+Intent intent = new Intent();
+                ComponentName componentName = new ComponentName(MainActivity.this,OtherActivity.class);
+                intent.setComponent(componentName);
+                startActivity(intent);
+```
+
+上面等同于下面两个：
+
+```java
+Intent intent = new Intent();
+                intent.setClass(MainActivity.this,OtherActivity.class);
+                startActivity(intent);
+```
+
+一般我们写成：
+
+```java
+ Intent intent = new Intent(MainActivity.this, OtherActivity.class);
+                startActivity(intent);
+```
+
+#### 2.Action跟Category（隐式Intent）
+
+因为在实际开发中，Action大多时候都是和Category一起使用的，所以这里我们将这两个放在一起来讲解。Intent中的Action我们在使用广播的时候用的比较多，在Activity中，我们可以通过设置Action来隐式的启动一个Activity，比如我们有一个ThirdActivity，我们在清单文件中做如下配置：
+
+```java
+<activity android:name=".ThirdActivity">
+            <intent-filter>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <action android:name="com.yjn.ThirdActivity"/>
+            </intent-filter>
+        </activity>
+```
+
+然后响应：
+
+```java
+Intent intent = new Intent();
+                intent.setAction("com.yjn.ThirdActivity");
+                startActivity(intent);
+```
+
+当然可以写简单一点
+
+```java
+ Intent intent = new Intent("com.yjn.ThirdActivity");
+                startActivity(intent);
+```
+
+通过这中方式我们也可以启动一个Activity，那么大家可能也注意到了，我们的清单文件中有一个category的节点，那么没有这个节点可以吗？不可以！！当我们使用这种隐式启动的方式来启动一个Activity的时候，必须要action和category都匹配上了，该Activity才会成功启动。如果我们没有定义category，那么可以暂时先使用系统默认的category，总之，category不能没有。这个时候我们可能会有疑问了，如果我有多个Activity都配置了相同的action，那么会启动哪个？看下面一张图片:
+
+![image-20190219135823814](https://ws4.sinaimg.cn/large/006tKfTcly1g0bozmdarrj30re16o77x.jpg)
+
+
+
+当我们有多个Activity配置了相同的action的时候，那么系统会弹出来一个选择框，让我们自己选择要启动那个Activity。
+action我们只能添加一个，但是category却可以添加多个（至少有一个，没有就要设置为DEFAULT），如下：
+
+```java
+<activity android:name=".ThirdActivity">
+            <intent-filter>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="mycategory"/>
+                <action android:name="com.yjn.ThirdActivity"/>
+            </intent-filter>
+        </activity>
+```
+
+相应的代码如下：
+
+```java
+Intent intent = new Intent("com.yjn.ThirdActivity");
+                intent.addCategory("mycategory");
+                startActivity(intent);
+```
+
+#### 3.Data
+
+通过设置data，我们可以执行打电话，发短信，开发网页等等操作。究竟做哪种操作，要看我们的数据格式：
+
+```java
+// 打开网页  
+intent = new Intent(Intent.ACTION_VIEW);  
+intent.setData(Uri.parse("http://www.baidu.com"));  
+startActivity(intent);  
+// 打电话  
+intent = new Intent(Intent.ACTION_VIEW);  
+intent.setData(Uri.parse("tel:18565554482"));  
+startActivity(intent);  
+```
+
+当我们的data是一个http协议的时候，系统会自动去查找可以打开http协议的Activity，这个时候如果手机安装了多个浏览器，那么系统会弹出多个浏览器供我们选择。这是我们通过设置Data来启动一个Activity，同时，我们也可以通过设置一个Data属性来将我们的Activity发布出去供别人调用，怎么发布呢？
+
+```java
+<activity android:name=".HttpActivity" >
+            <intent-filter>
+                <category android:name="android.intent.category.DEFAULT"/>
+
+                <action android:name="ANDROID.INTENT.ACTION.VIEW"/>
+                <data android:scheme="http"/>
+            </intent-filter>
+        </activity>
+```
+
+在data节点中我们设置我们这个Activity可以打开的协议，我们这里设置为http协议，那么以后要打开一个http请求的时候，系统都会让我们选择是否用这个Activity打开。当然，我们也可以自己定义一个协议（自己定义的协议，由于别人不知道，所以只能由我们自己的程序打开）。比如下面这样：
+
+```java
+<activity  
+    android:name=".HttpActivity"  
+    android:label="@string/title_activity_http" >  
+    <intent-filter>  
+        <action android:name="android.intent.action.VIEW" />  
+  
+        <category android:name="android.intent.category.DEFAULT" />  
+  
+        <data  
+            android:scheme="myhttp" />  
+    </intent-filter>  
+</activity>  
+```
+
+那么我们怎么打开自己的Activity呢？
+
+```java
+intent = new Intent();  
+            intent.setData(Uri.parse("myhttp://www.baidu.com"));  
+            startActivity(intent);  
+```
+
+这个例子没有什么实际意义，我只是举一个自定义协议的栗子。
+ 其实，说到这里，大家应该明白了为什么我们说data是隐式传值，比如我们打开一个网页，http协议后面跟的就是网页地址，我们不用再单独指定要打开哪个网页。
+
+#### 4.Type
+
+type的存在，主要是为了对data的类型做进一步的说明，但是一般情况下，只有data属性为null的时候，type属性才有效，如果data属性不为null，系统会自动根据data中的协议来分析data的数据类型，而不会去管type。当我们设置data的时候，系统会默认将type设置为null，当我们设置type的时候，系统会默认将data设置为null.也就是说，一般情况下，data和type我们只需要设置一个就行了，如果我们既想要设置data又想要设置type，那么可以使用
+
+```java
+setDataAndType(Uri data, String type)  
+```
+
+#### 5.Flag
+
+通过设置Flag，我们可以设定一个Activity的启动模式，这个和launchMode基本上是一样的，所以我也不再细说。
+
+#### 6.Extras
+
+这个参数不参与匹配activity，而仅作为额外数据传送到另一个activity中，接收的activity可以将其取出来。这些信息并不是激活这个activity所必须的。也就是说激活某个activity与否只上action、data、catagory有关，与extras无关。而extras用来传递附加信息，诸如用户名，用户密码什么的。
+ 可通过putXX()和getXX()方法存取信息；也可以通过创建Bundle对象，再通过putExtras()和getExtras()方法来存取。
+
+通过bundle对象传递
+
+- 发送方
+
+```java
+Intent intent = new Intent("com.scott.intent.action.TARGET");    
+Bundle bundle = new Bundle();    
+bundle.putInt("id", 0);    
+bundle.putString("name", "scott");    
+intent.putExtras(bundle);    
+startActivity(intent);    
+```
+
+- 接收方
+
+```java
+Bundle bundle = intent.getExtras();  
+int id = bundle.getInt("id");  
+String name = bundle.getString("name");  
+```
+
+### 附Intent调用常见系统组件方法
+
+```java
+// 调用浏览器  
+Uri webViewUri = Uri.parse("http://blog.csdn.net/zuolongsnail");  
+Intent intent = new Intent(Intent.ACTION_VIEW, webViewUri);  
+  
+// 调用地图  
+Uri mapUri = Uri.parse("geo:100,100");  
+Intent intent = new Intent(Intent.ACTION_VIEW, mapUri);  
+  
+// 播放mp3  
+Uri playUri = Uri.parse("file:///sdcard/test.mp3");  
+Intent intent = new Intent(Intent.ACTION_VIEW, playUri);  
+intent.setDataAndType(playUri, "audio/mp3");  
+  
+// 调用拨打电话  
+Uri dialUri = Uri.parse("tel:10086");  
+Intent intent = new Intent(Intent.ACTION_DIAL, dialUri);  
+// 直接拨打电话，需要加上权限<uses-permission id="android.permission.CALL_PHONE" />  
+Uri callUri = Uri.parse("tel:10086");  
+Intent intent = new Intent(Intent.ACTION_CALL, callUri);  
+  
+// 调用发邮件（这里要事先配置好的系统Email，否则是调不出发邮件界面的）  
+Uri emailUri = Uri.parse("mailto:zuolongsnail@163.com");  
+Intent intent = new Intent(Intent.ACTION_SENDTO, emailUri);  
+// 直接发邮件  
+Intent intent = new Intent(Intent.ACTION_SEND);  
+String[] tos = { "zuolongsnail@gmail.com" };  
+String[] ccs = { "zuolongsnail@163.com" };  
+intent.putExtra(Intent.EXTRA_EMAIL, tos);  
+intent.putExtra(Intent.EXTRA_CC, ccs);  
+intent.putExtra(Intent.EXTRA_TEXT, "the email text");  
+intent.putExtra(Intent.EXTRA_SUBJECT, "subject");  
+intent.setType("text/plain");  
+Intent.createChooser(intent, "Choose Email Client");  
+  
+// 发短信  
+Intent intent = new Intent(Intent.ACTION_VIEW);  
+intent.putExtra("sms_body", "the sms text");  
+intent.setType("vnd.android-dir/mms-sms");  
+// 直接发短信  
+Uri smsToUri = Uri.parse("smsto:10086");  
+Intent intent = new Intent(Intent.ACTION_SENDTO, smsToUri);  
+intent.putExtra("sms_body", "the sms text");  
+// 发彩信  
+Uri mmsUri = Uri.parse("content://media/external/images/media/23");  
+Intent intent = new Intent(Intent.ACTION_SEND);  
+intent.putExtra("sms_body", "the sms text");  
+intent.putExtra(Intent.EXTRA_STREAM, mmsUri);  
+intent.setType("image/png");  
+  
+// 卸载应用  
+Uri uninstallUri = Uri.fromParts("package", "com.app.test", null);  
+Intent intent = new Intent(Intent.ACTION_DELETE, uninstallUri);  
+// 安装应用  
+Intent intent = new Intent(Intent.ACTION_VIEW);  
+intent.setDataAndType(Uri.fromFile(new File("/sdcard/test.apk"), "application/vnd.android.package-archive");  
+  
+// 在Android Market中查找应用  
+Uri uri = Uri.parse("market://search?q=愤怒的小鸟");           
+Intent intent = new Intent(Intent.ACTION_VIEW, uri); 
+```
+
+
+
+## 版本问题
+
+### CompileSdkVersion
+
+`compileSdkVersion` 告诉 Gradle 用哪个 Android SDK 版本编译你的应用。使用任何新添加的 API 就需要使用对应 Level 的 Android SDK。
+
+需要强调的是修改 `compileSdkVersion` 不会改变运行时的行为。当你修改了 `compileSdkVersion` 的时候，可能会出现新的编译警告、编译错误，但新的 `compileSdkVersion` 不会被包含到 APK 中：它纯粹只是在编译的时候使用。（你真的应该修复这些警告，他们的出现一定是有原因的）
+
+因此我们强烈推荐总是使用最新的 SDK 进行编译。在现有代码上使用新的编译检查可以获得很多好处，避免新弃用的 API ，并且为使用新的 API 做好准备。
+
+注意，如果使用 `Support Library` ，那么使用最新发布的 `Support Library` 就需要使用最新的 SDK 编译。例如，要使用 23.1.1 版本的 `Support Library` ，`compileSdkVersion` 就必需至少是 23 （大版本号要一致！）。通常，新版的 `Support Library` 随着新的系统版本而发布，它为系统新增加的 API 和新特性提供兼容性支持。
+
+### MinSdkVersion
+
+如果 `compileSdkVersion` 设置为可用的最新 API，那么 `minSdkVersion` 则是应用可以运行的最低要求。`minSdkVersion` 是 Google Play 商店用来判断用户设备是否可以安装某个应用的标志之一。
+
+在开发时 `minSdkVersion` 也起到一个重要角色：`lint` 默认会在项目中运行，它在你使用了高于 `minSdkVersion` 的 API 时会警告你，帮你避免调用不存在的 API 的运行时问题。如果只在较高版本的系统上才使用某些 API，通常使用运行时检查系统版本的方式解决。
+
+请记住，你所使用的库，如 `Support Library` 或 `Google Play services`，可能有他们自己的 `minSdkVersio`n 。你的应用设置的 `minSdkVersion` 必需大于等于这些库的 `minSdkVersion` 。
+
+当你决定使用什么 `minSdkVersion` 时候，你应该参考当前的 Android 分布统计，它显示了最近 7 天所有访问 Google Play 的设备信息。他们就是你把应用发布到 Google Play 时的潜在用户。最终这是一个商业决策问题，取决于为了支持额外 3% 的设备，确保最佳体验而付出的开发和测试成本是否值得。
+
+当然，如果某个新的 API 是你整个应用的关键，那么确定 `minSdkVersion` 的值就比较容易了。不过要记得 14 亿设备中的 0.7％ 也是个不小的数字。
+
+### TargetSdkVersion
+
+三个版本号中最有趣的就是 `targetSdkVersion` 了。 `targetSdkVersion` 是 Android 提供向前兼容的主要依据，在应用的 `targetSdkVersion` 没有更新之前系统不会应用最新的行为变化。这允许你在适应新的行为变化之前就可以使用新的 API （因为你已经更新了 `compileSdkVersion` 不是吗？）。
+
+`targetSdkVersion` 所暗示的许多行为变化都记录在 VERSION_CODES 文档中了，但是所有恐怖的细节也都列在每次发布的平台亮点中了，在这个 API Level 表中可以方便地找到相应的链接。
+
+例如，Android 6.0 变化文档中谈了 target 为 API 23 时会如何把你的应用转换到运行时权限模型上，Android 4.4 行为变化阐述了 target 为 API 19 及以上时使用 `set()` 和 `setRepeating()` 设置 alarm 会有怎样的行为变化。
+
+由于某些行为的变化对用户是非常明显的（弃用的 menu 按钮，运行时权限等），所以将 target 更新为最新的 SDK 是所有应用都应该优先处理的事情。但这不意味着你一定要使用所有新引入的功能，也不意味着你可以不做任何测试就盲目地更新 `targetSdkVersion` ，请一定在更新 `targetSdkVersion` 之前做测试！你的用户会感谢你的。
+
+### 综合来看
+
+如果你按照上面示例那样配置，你会发现这三个值的关系是：
+
+```
+minSdkVersion <= targetSdkVersion <= compileSdkVersion
+```
+
+这种直觉是合理的，如果 `compileSdkVersion` 是你的最大值，`minSdkVersion` 是最小值，那么最大值必需至少和最小值一样大且 target 必需在二者之间。
+
+理想上，在稳定状态下三者的关系应该更像这样：
+
+```
+minSdkVersion (lowest possible) <=
+    targetSdkVersion == compileSdkVersion (latest SDK)
+```
+
+用较低的 `minSdkVersion` 来覆盖最大的人群，用最新的 SDK 设置 target 和 compile 来获得最好的外观和行为。
+
