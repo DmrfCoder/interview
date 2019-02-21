@@ -2,7 +2,59 @@
 
 ## Android的系统架构是怎么样的？
 
-Android从底层到顶层依次是：Linux内核（Linux kernel）、HAL（硬件抽象层）、系统运行库与Android运行环境、应用程序框架(Application Frameworks)、应用程序(Applications)
+总的来说，Android的系统体系结构分为**四层**，自顶向下分别是：
+
+- 应用程序(Applications)
+- 应用程序框架(Application Frameworks)
+- 系统运行库与Android运行环境(Libraris & Android Runtime)
+- Linux内核(Linux Kernel)
+
+*安卓系统结构示意图:*
+![2](https://ws2.sinaimg.cn/large/006tKfTcly1g0dzkgl481j30i20czta7.jpg)
+
+下面对每层进行详细说明
+
+### 1. 应用程序(Applications)
+
+Android会同一系列核心应用程序包一起发布，该应用程序包包括email客户端，SMS短消息程序，日历，地图，浏览器，联系人管理程序等。所有的应用程序都是使用JAVA语言编写的。通常开发人员就处在这一层。
+
+### 2. 应用程序框架(Application Frameworks)
+
+提供应用程序开发的各种API进行快速开发，也即隐藏在每个应用后面的是一系列的服务和系统，大部分使用Java编写，所谓官方源码很多也就是看这里，其中包括：
+
+- 丰富而又可扩展的视图（Views），可以用来构建应用程序， 它包括列表（lists），网格（grids），文本框（text boxes），按钮（buttons）， 甚至可嵌入的web浏览器。
+- 内容提供器（Content Providers）使得应用程序可以访问另一个应用程序的数据（如联系人数据库）， 或者共享它们自己的数据
+- 资源管理器（Resource Manager）提供 非代码资源的访问，如本地字符串，图形，和布局文件（ layout files ）。
+- 通知管理器 （Notification Manager） 使得应用程序可以在状态栏中显示自定义的提示信息。
+- 活动管理器（ Activity Manager） 用来管理应用程序生命周期并提供常用的导航回退功能。
+
+### 3. 系统运行库与Android运行环境(Libraris & Android Runtime)
+
+#### 1) 系统运行库
+
+Android 包含一些C/C++库，这些库能被Android系统中不同的组件使用。它们通过 Android 应用程序框架为开发者提供服务。以下是一些核心库：
+
+- **Bionic系统 C 库** - 一个从 BSD 继承来的标准 C 系统函数库（ libc ）， 它是专门为基于 embedded linux 的设备定制的。
+- **媒体库** - 基于 PacketVideo OpenCORE；该库支持多种常用的音频、视频格式回放和录制，同时支持静态图像文件。编码格式包括MPEG4, H.264, MP3, AAC, AMR, JPG, PNG 。
+- **Surface Manager** - 对显示子系统的管理，并且为多个应用程序提 供了2D和3D图层的无缝融合。这部分代码
+- **Webkit,LibWebCore** - 一个最新的web浏览器引擎用，支持Android浏览器和一个可嵌入的web视图。鼎鼎大名的 Apple Safari背后的引擎就是Webkit
+- **SGL** - 底层的2D图形引擎
+- **3D libraries** - 基于OpenGL ES 1.0 APIs实现；该库可以使用硬件 3D加速（如果可用）或者使用高度优化的3D软加速。
+- **FreeType** -位图（bitmap）和矢量（vector）字体显示。
+- **SQLite** - 一个对于所有应用程序可用，功能强劲的轻型关系型数据库引擎。
+- 还有部分上面没有显示出来的就是硬件抽象层。其实Android并非讲所有的设备驱动都放在linux内核里面，而是实现在userspace空间，这么做的主要原因是GPL协议，Linux是遵循该 协议来发布的，也就意味着对 linux内核的任何修改，都必须发布其源代码。而现在这么做就可以避开而无需发布其源代码，毕竟它是用来赚钱的。 而 在linux内核中为这些userspace驱动代码开一个后门，就可以让本来userspace驱动不可以直接控制的硬件可以被访问。而只需要公布这个 后门代码即可。一般情况下如果要将Android移植到其他硬件去运行，只需要实现这部分代码即可。包括：显示器驱动，声音，相机，GPS,GSM等等
+
+#### 2) Android运行环境
+
+该核心库提供了JAVA编程语言核心库的大多数功能。
+每一个Android应用程序都在它自己的进程中运 行，都拥有一个独立的Dalvik虚拟 机实例。Dalvik被设计成一个设备可以同时高效地运行多个虚拟系统。 Dalvik虚拟机执行（.dex）的Dalvik可执行文件，该格式文件针对小内存使用做了 优化。同时虚拟机是基于寄存器的，所有的类都经由JAVA编译器编译，然后通过SDK中 的 "dx" 工具转化成.dex格式由虚拟机执行。
+
+### 4. Linux内核(Linux Kernel)
+
+Android的核心系统服务依赖于Linux 2.6 内核，如安全性，内存管理，进程管理， 网络协议栈和驱动模型。 Linux 内核也同时作为硬件和软件栈之间的抽象层。其外还对其做了部分修改，主要涉及两部分修改：
+
+1. Binder (IPC)：提供有效的进程间通信，虽然linux内核本身已经提供了这些功能，但Android系统很多服务都需要用到该功能，为了某种原因其实现了自己的一套。
+2. 电源管理：主要是为了省电，毕竟是手持设备嘛，低耗电才是我们的追求。
 
 
 
@@ -287,7 +339,7 @@ Handler的send方法被调用时，它会调用MessageQueue的enqueueMessage方�
 
 ThreadLocal是Java提供的用于保存同一进程中不同线程数据的一种机制。
 
-ThreadLocal是一个线程内部的数据存储类，通过它可以在指定线程中存储数据，数据存储以后，只有在指定的线程中获取到存储数据，对于其他线程来说则无法获取到数据。
+ThreadLocal是一个线程内部的数据存储类，通过它可以在指定线程中存储数据，数据存储以后，只有在指定的线程中获取到存储数据，对于其他线程来说则无法获取到数据，即通过ThreadLocal，每个线程都能获取自己线程内部的私有变量。
 
 示例代码：
 
@@ -301,6 +353,17 @@ ThreadLocal是一个线程内部的数据存储类，通过它可以在指定线
 主线程设置的是true，所以获取到的是true 
 第一个子线程设置的是false，所以获取到的是false 
 第二个子线程没有设置，所以获取到的是null
+
+![1](https://ws4.sinaimg.cn/large/006tKfTcly1g0dwfti2lyj31dk0towgy.jpg)
+
+在上图中我们可以发现，整个ThreadLocal的使用都涉及到线程中ThreadLocalMap,虽然我们在外部调用的是ThreadLocal.set(value)方法，但本质是通过线程中的ThreadLocalMap中的set(key,value)方法，其中key为当前ThreadLocal对象，value为当前赋的值，那么通过该情况我们大致也能猜出get方法也是通过ThreadLocalMap。那么接下来我们一起来看看ThreadLocal中set与get方法的具体实现与ThreadLocalMap的具体结构。
+
+- ThreadLocal本质是操作线程中ThreadLocalMap来实现本地线程变量的存储的
+- ThreadLocalMap是采用数组的方式来存储数据，其中key(弱引用)指向当前ThreadLocal对象，value为设的值
+- ThreadLocal为内存泄漏采取了处理措施，在调用ThreadLocal的get(),set(),remove()方法的时候都会清除线程ThreadLocalMap里所有key为null的Entry
+- 在使用ThreadLocal的时候，我们仍然需要注意，避免使用static的ThreadLocal，分配使用了ThreadLocal后，一定要根据当前线程的生命周期来判断是否需要手动的去清理ThreadLocalMap中清key==null的Entry。
+
+
 
 #### 消息队列MessageQueue的工作原理
 
@@ -652,6 +715,133 @@ Android系统会监控程序的响应状况，一旦出现下面两种情况，�
 - 使用FlatBuffer等工具序列化数据
 - 谨慎使用依赖注入框架
 - 使用ProGuard来剔除不需要的代码
+
+#### Bitmap与OOM
+
+图片是一个很耗内存的资源，因此经常会遇到OOM。比如从本地文件中读取图片，然后在GridView中显示出来，如果不做处理，OOM就极有可能发生。
+
+##### Bitmap引起OOM的原因
+
+1. 图片使用完成后，没有及时的释放，导致Bitmap占用的内存越来越大，而安卓提供给Bitmap的内存是有一定限制的，当超出该内存时，自然就发生了OOM
+2. 图片过大
+
+这里的图片过大是指加载到内存时所占用的内存，并不是图片自身的大小。而图片加载到内存中时所占用的内存是根据图片的分辨率以及它的配置（ARGB值）计算的。举个例子：
+
+假如有一张分辨率为2048x1536的图片，它的配置为ARGB_8888，那么它加载到内存时的大小就是2048x1526x4/1024/1024=12M.，因此当将这张图片设置到ImageView上时，将可能出现OOM。
+
+ARGB表示图片的配置，分表代表：透明度、红色、绿色和蓝色。这几个参数的值越高代表图像的质量越好，那么也就越占内存。就拿ARGB_8888来说，A、R、G、B这几个参数分别占8位，那么总共占32位，代表一个像素点占32位大小即4个字节，那么一个100x100分辨率的图片就占了100x100x4/1024/1024=0.04M的大小的空间。
+
+##### 高效加载Bitmap
+
+当将一个图片加载到内存，在UI上呈现时，需要考虑一下几个因素:
+
+1. 预计加载完整张图片所需要的内存空间
+2. 呈现这张图片时控件的大小
+3. 屏幕大小与屏幕像素密度
+
+如果我们要加载的图片的分辨率比较大，而呈现它的控件（比如ImageView）比较小，那我们如果直接将这张图片加载到这个控件上显然是不合适的，因此我们需要对图片的分辨率就行压缩。如何去进行图片的压缩呢？
+
+BitmapFactory提供了四种解码（decode）的方法（decodeByteArray(), decodeFile(), decodeResource()，decodeStream()),每一种方法都可以通过BitmapFactory.Options设置一些附加的标记，以此来指定解码选项。
+
+Options有一个inJustDecodeBunds属性，当我们将其设置为true时，表示此时并不加载Bitmap到内存中，而是返回一个null，但是此时我们可以通过options获取到当前bitmap的宽和高，根据这个宽和高，我们再根据目标宽和高计算出一个合适的采样率采样率inSampleSize ，然后将其赋值给Options.inSampleSize属性，这样在加载图片的时候，将会得到一个压缩的图片到内存中。以下是示例代码:
+
+```java
+public static Bitmap decodeSampledBitmapFromResource(Resources res, int resId,
+   int reqWidth, int reqHeight) {
+
+// 第一次加载时 将inJustDecodeBounds设置为true 表示不真正加载图片到内存 
+final BitmapFactory.Options options = new BitmapFactory.Options();
+options.inJustDecodeBounds = true;
+BitmapFactory.decodeResource(res, resId, options);
+
+// 根据目标宽和高 以及当前图片的大小 计算出压缩比率 
+options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight);
+
+// 将inJustDecodeBounds设置为false 真正加载图片 然后根据压缩比率压缩图片 再去解码
+options.inJustDecodeBounds = false;
+return BitmapFactory.decodeResource(res, resId, options);
+}
+
+//计算压缩比率 android官方提供的算法
+public static int calculateInSampleSize(
+       BitmapFactory.Options options, int reqWidth, int reqHeight) {
+// Raw height and width of image
+final int height = options.outHeight;
+final int width = options.outWidth;
+int inSampleSize = 1;
+
+if (height > reqHeight || width > reqWidth) {
+   //将当前宽和高 分别减小一半
+   final int halfHeight = height / 2;
+   final int halfWidth = width / 2;
+
+   // Calculate the largest inSampleSize value that is a power of 2 and keeps both
+   // height and width larger than the requested height and width.
+   while ((halfHeight / inSampleSize) > reqHeight
+           && (halfWidth / inSampleSize) > reqWidth) {
+       inSampleSize *= 2;
+   }
+}
+
+return inSampleSize;
+}
+```
+
+采样率与图片分辨率压缩大小的关系是这样的：
+
+1. 如果inSample=1则表明与原图一样
+2. 如果inSample=2则表示宽和高均缩小为1/2
+3. nSample的值一般为2的幂次方
+
+假如 一个分辨率为2048x1536的图片，如果设置 inSampleSize 为4，那么会产出一个大约512x384大小的Bitmap。加载这张缩小的图片仅仅使用大概0.75MB的内存，如果是加载完整尺寸的图片，那么大概需要花费12MB（前提都是Bitmap的配置是 ARGB_8888.
+
+##### 缓存Bitmap
+
+当需要加载大量的图片时，图片的缓存机制就特别重要。因为在移动端，用户大多都是使用的移动流量，如果每次都从网络获取图片，一是会耗费大量的流量，二是在网络不佳的时候加载会非常的慢，用户体验均不好。因此需要定义一种缓存策略可以应对上述问题。关于图片的缓存通常有两种：
+
+1. 内存缓存，对应的缓存算法是LruCache<k,v>（近期最少使用算法）,Android提供了该算法。
+
+LruCache是一个泛型类，它的内部采用一个LinkedHashMap以强引用的方式存储外界的缓存对象，其提供了get和put方法来完成缓存的获取和添加操作，当缓存满时，LruCache会移除较早使用的缓存对象，然后再添加新的缓存对象。
+
+补充：之所以使用LinkedHashMap来实现LruCache是因为LinkedHashMap内部采用了双向链表的方式，它可以以访问顺序进行元素的排序。比如通过get方法获取了一个元素，那么就将这个元素放到链表的尾部，通过不断的get操作就得到了一个访问顺序的链表，这样位于链表头部的就是较早的元素。因此非常适合于LruCache算法的思想，在缓存满时，将链表头部的对象移除即可。LruCache经典使用方式:
+
+```java
+//app最大可用内存
+   int maxMemory = (int) (Runtime.getRuntime().maxMemory()/1024);
+   //缓存大小
+   int cacheSize = maxMemory/8;
+   mMemoryCache = new LruCache<String,Bitmap>(cacheSize) {
+       //计算缓存对象的大小
+       @Override
+       protected int sizeOf(String key, Bitmap value) {
+           return value.getRowBytes()*value.getHeight()/1024;
+       }
+   };
+   
+   //获取缓存对象
+   mMemoryCache.get(key);
+   //添加缓存对象
+   mMemoryCache.put(key,bitmap);
+```
+
+2. 磁盘缓存，对应的缓存算法是DiskLruCache,虽然不是官方提供的，但得到官方的认可。
+
+##### 使用Bitmap时的一些优化方法
+
+1. 对图片采用软引用,调用recycle，及时的回收Bitmap所占用的内存。比如：View如果使用了bitmap,就应该在这个View不再绘制了的时候回收；如果Activity使用了bitmap,就可以在onStop或者onDestroy方法中回收。
+2. 对高分辨率图片进行压缩,详情参见高效加载Bitmap部分
+3. 关于ListView和GridView加载大量图片时的优化 :
+
+- 不要在getView方法中执行耗时操作，比如加载Bitmap，应将加载动作放到一个异步任务中，比如AsyncTask
+- 在快速滑动列表的时候，停止加载Bitmap，当用户停止滑动时再去加载。因为当用户快速上下滑动时，如果去加载Bitmap的话可能会产生大量的异步任务，会造成线程池的拥堵以及大量的更新UI操作，因此会造成卡顿。
+- 对当前的Activity开启硬件加速。
+- 为防止因异步下载图片而造成错位问题，对ImageView设置Tag，将图片的Url作为tag的标记，当设置图片时，去判断当前ImageView的tag是否等于当前的图片的url，如果相当则显示否则的话不予加载。
+
+
+
+在追求效率的情况下大家一般用Glide框架比较多，Glide不仅可以加载显示图片还可以加载显示视频，但是只能够显示手机本地的视频，如果需要显示网络上的视频的话需要另寻他法。
+
+
 
 ### 卡顿优化
 
@@ -1204,3 +1394,184 @@ minSdkVersion (lowest possible) <=
 
 用较低的 `minSdkVersion` 来覆盖最大的人群，用最新的 SDK 设置 target 和 compile 来获得最好的外观和行为。
 
+
+
+
+
+## Android中的动画
+
+### 综述
+
+Android中的动画分为补间动画(Tweened Animation)和逐帧动画(Frame-by-Frame Animation)。没有意外的，补间动画是在几个关键的节点对对象进行描述又系统进行填充。而逐帧动画是在固定的时间点以一定速率播放一系列的drawable资源。下面对两种动画进行分别简要说明。
+
+### 补间动画
+
+补间动画分为如下种
+
+- Alpha 淡入淡出
+- Scale 缩放
+- Rotate 旋转
+- Translate 平移
+
+这些动画是可以同时进行和顺次进行的。需要用到AnimationSet来实现。调用AnimationSet.addAnimation()即可。 实现方法举例:
+
+```java
+(Button)btn = (Button)findViewById(...);
+AnimationSet as = new AnimationSet(false);//新建AnimationSet实例
+TranslateAnimation ta = new TranslateAnimation(//新建平移动画实例，在构造函数中传入平移的始末位置
+        Animation.RELATIVE_TO_SELF, 0f,
+        Animation.RELATIVE_TO_SELF, 0.3f,
+        Animation.RELATIVE_TO_SELF, 0f,
+        Animation.RELATIVE_TO_SELF, 0.3f);
+ta.setStartOffset(0);//AnimationSet被触发后立刻执行
+ta.setInterpolator(new AccelerateDecelerateInterpolator());//加入一个加速减速插值器
+ta.setFillAfter(true);//动画结束后保持该状态
+ta.setDuration(700);//设置动画时长
+
+ScaleAnimation sa = new ScaleAnimation(1f, 0.1f, 1f, 0.1f,//构造一个缩放动画实例，构造函数参数传入百分比和缩放中心
+        ScaleAnimation.RELATIVE_TO_SELF, 0.5f, 
+        ScaleAnimation.RELATIVE_TO_SELF, 0.5f);
+sa.setInterpolator(new AccelerateDecelerateInterpolator());//加入一个加速减速插值器
+sa.setDuration(700);//设置时长
+sa.setFillAfter(true);//动画结束后保持该状态
+sa.setStartOffset(650);//AnimationSet触发后650ms启动动画
+
+AlphaAnimation aa = new AlphaAnimation(1f, 0f);//构造一个淡出动画，从100%变为0%
+aa.setDuration(700);//设置时长
+aa.setStartOffset(650);//AnimationSet触发后650ms启动动画
+aa.setFillAfter(true);//动画结束后保持该状态
+
+as.addAnimation(ta);
+as.addAnimation(sa);
+as.addAnimation(aa);//将动画放入AnimationSet中
+
+btn.setOnClickListener(new OnClickListener(){
+  public void onClick(View view){
+    btn.startAnimation(as);//触发动画
+  }
+}
+```
+
+该段代码实现了先平移，然后边缩小边淡出。
+
+具体的代码实现需要注意各个参数所代表的含义，比较琐碎，建议阅读文档熟悉。在这里不做过多讲解，文档说的已经很清楚了。
+文档链接<http://developer.android.com/reference/android/view/animation/Animation.html>
+
+### 逐帧动画
+
+这一部分只涉及非常基础的知识。逐帧动画适用于更高级的动画效果，原因可想而知。我们可以将每帧图片资源放到drawable下然后代码中canvas.drawBitmap(Bitmap, Matrix, Paint)进行动画播放，但这样就将动画资源与代码耦合，如果哪天美工说我要换一下效果就呵呵了。因此我们要做的是将资源等信息放入配置文件然后教会美工怎么改配置文件，这样才有时间去刷知乎而不被打扰^_^。 大致分为两种方法：
+
+- 每一帧是一张png图片中
+- 所有动画帧都存在一张png图片中
+
+当然还有的专门的游戏公司有自己的动画编辑器，这里不加说明。
+
+#### 每一帧是一张png
+
+说的就是这个效果：
+![每一帧是一张png例图](https://github.com/HIT-Alibaba/interview/blob/master/img/android-animation-eachpng.jpg?raw=true)
+
+在animation1.xml文件中进行如下配置：
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<animation-list
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  android:oneshot="true"<!-- true表示只播放一次，false表示循环播放 -->
+  >
+    <item android:drawable="@drawable/hero_down_a" android:duration="70"></item>
+    <item android:drawable="@drawable/hero_down_b" android:duration="70"></item>
+    <item android:drawable="@drawable/hero_down_c" android:duration="70"></item>
+    <item android:drawable="@drawable/hero_down_d" android:duration="70"></item>
+</animation-list>
+```
+
+在JAVA文件中我们进行如下加载：
+
+```java
+ImageView animationIV;
+AnimationDrawable animationDrawable;
+
+animationIV.setImageResource(R.drawable.animation1);
+animationDrawable = (AnimationDrawable) animationIV.getDrawable();
+animationDrawable.start();
+```
+
+注意动画的播放是按照xml文件中的顺序顺次播放，如果要考虑到循环播放的时候应该写两个xml一个正向一个反向才能很好地循环播放。
+
+#### 所有动画在一张png中
+
+说的就是这个效果：
+![所有动画放在一张png中](https://github.com/HIT-Alibaba/interview/blob/master/img/android-animation-onepng.jpg?raw=true) animation.xml的配置：
+
+```xml
+<key>010001.png</key>
+<dict>
+    <key>frame</key>
+    <string>{{378, 438}, {374, 144}}</string>
+    <key>offset</key>
+    <string>{-2, 7}</string>
+    <key>sourceColorRect</key>
+    <string>{{61, 51}, {374, 144}}</string>
+    <key>sourceSize</key>
+    <string>{500, 260}</string>
+</dict>
+<key>010002.png</key>
+<dict>
+    <key>frame</key>
+    <string>{{384, 294}, {380, 142}}</string>
+    <key>offset</key>
+    <string>{1, 7}</string>
+    <key>sourceColorRect</key>
+    <key>rotate</key>
+    <false/>
+    <string>{{61, 52}, {380, 142}}</string>
+    <key>sourceSize</key>
+    <string>{500, 260}</string>
+</dict>
+…
+```
+
+其中：
+
+- frame 指定在原图中截取的框大小；
+- offeset 指定原图中心与截图中心偏移的向量；
+- rotate若为true顺时针旋转90°；
+- sourceColorRect 截取原图透明部分的大小
+- sourceSize 原图大小
+
+JAVA的加载方式与第一种方法相同。
+
+在使用过程中一定要注意内存资源的回收和drawable的压缩，一不小心可能爆掉。
+
+## 面试
+
+1. 什么是ANR，如何避免
+2. [[ListView原理与优化|ListView-Optimize]]
+3. ContentProvider实现原理
+4. 介绍Binder机制
+5. 匿名共享内存，使用场景
+6. 如何自定义View，如果要实现一个转盘圆形的View，需要重写View中的哪些方法？(onLayout,onMeasure,onDraw)
+7. Android事件分发机制
+8. Socket和LocalSocket
+9. [[如何加载大图片|Android-Large-Image]]
+10. HttpClient和URLConnection的区别，怎么使用https
+11. Parcelable和Serializable区别
+12. Android里跨进程传递数据的几种方案。(Binder,文件[面试官说这个不算],Socket,匿名共享内存（Anonymous Shared Memory))
+13. 布局文件中，layout_gravity 和 gravity 以及 weight的作用。
+14. ListView里的ViewType机制
+15. TextView怎么改变局部颜色(SpannableString或者HTML)
+16. Activity A 跳转到 Activity B，生命周期的执行过程是啥？(此处有坑 ActivityA的OnPause和ActivityB的onResume谁先执行)
+17. Android中Handler声明非静态对象会发出警告，为什么，非得是静态的？(Memory Leak)
+18. ListView使用过程中是否可以调用addView(不能，话说这题考来干啥。。。)
+19. [[Android中的Thread, Looper和Handler机制(附带HandlerThread与AsyncTask)|Android-handler-thread-looper]]
+20. Application类的作用
+21. View的绘制过程
+22. 广播注册后不解除注册会有什么问题？(内存泄露)
+23. 属性动画(Property Animation)和补间动画(Tween Animation)的区别，为什么在3.0之后引入属性动画([官方解释：调用简单](http://android-developers.blogspot.com/2011/05/introducing-viewpropertyanimator.html))
+24. 有没有使用过EventBus或者Otto框架，主要用来解决什么问题，内部原理
+25. 设计一个网络请求框架(可以参考Volley框架)
+26. 网络图片加载框架(可以参考BitmapFun)
+27. Android里的LRU算法原理
+28. BrocastReceive里面可不可以执行耗时操作?
+29. Service onBindService 和startService 启动的区别
