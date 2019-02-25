@@ -1549,3 +1549,16 @@ animationDrawable.start();
 JAVA的加载方式与第一种方法相同。
 
 在使用过程中一定要注意内存资源的回收和drawable的压缩，一不小心可能爆掉。
+
+## HandlerThread和Tread的区别
+
+## IntentService是什么
+
+## 线程池和AsyncTask
+
+## MemoryCache
+
+## AIDL
+
+## 对象池
+
