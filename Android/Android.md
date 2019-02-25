@@ -278,7 +278,7 @@ MVVM 模式将 Presenter 改名为 ViewModel，基本上与 MVP 模式完全一�
 
 ListView的实现离不开Adapter。可以这么理解：ListView中给出了数据来的时候，如何实现View的具体方式，相当于MVC中的V；而Adapter相当于MVC中的C，指挥了ListView的数据加载等行为。
 
-提一个问题：假设ListView中有10W个条项，那内存中会缓存10W个吗？答案当然是否定的。那么是如何实现的呢？下面这张图可以清晰地解释其中的原理:
+提一个问题：假设ListView中有10W个条项，那内存中会缓存10W个吗？答案当然是否定的。那么是如何实现的呢？下面这张图可以清晰地解释其中的原理:z
 
 ![5](https://ws2.sinaimg.cn/large/006tKfTcly1g0aj18qi2dj30xz0n879d.jpg)
 
@@ -440,7 +440,7 @@ viewGroup能操作自己也可以操作孩子（通过`viewGroup.getChildAt(i).g
         throw new RuntimeException("Stub!");
     }
 
-    public View(Context context, @RecentlyNullable AttributeSet attrs) {
+    public View(Context context, @RecentlyNullable cy attrs) {
         throw new RuntimeException("Stub!");
     }
 
@@ -548,6 +548,12 @@ View的`enable`属性不影响`onTouchEvent`的默认返回值。哪怕一个Vie
 
 ### binder是什么
 
+Binder承担了绝大部分Android进程通信的职责，可以看做是Android的血管系统，负责不同服务模块进程间的通信。
+
+Binder往小了说可总结成一句话：
+
+**一种IPC进程间通信方式，负责进程A的数据，发送到进程B。**
+
 ![1](https://ws2.sinaimg.cn/large/006tKfTcly1g0bm56baz1j30yg0i2n0j.jpg)
 
 ### 关于Linux的进程通信
@@ -613,7 +619,7 @@ View的`enable`属性不影响`onTouchEvent`的默认返回值。哪怕一个Vie
 
 ![8](https://ws4.sinaimg.cn/large/006tKfTcly1g0bn1am09dj30tq0fagm3.jpg)
 
-##### `Binder`驱动 & `Service Manager`进程 属于 `Android`基础架构（即系统已经实现好了）；而`Client` 进程 和 `Server` 进程 属于`Android`应用层（需要开发者自己实现），所以，在进行跨进程通信时，开发者只需自定义`Client` & `Server` 进程 并 显式使用上述3个步骤，最终借助 `Android`的基本架构功能就可完成进程间通信：
+`Binder`驱动 & `Service Manager`进程 属于 `Android`基础架构（即系统已经实现好了）；而`Client` 进程 和 `Server` 进程 属于`Android`应用层（需要开发者自己实现），所以，在进行跨进程通信时，开发者只需自定义`Client` & `Server` 进程 并 显式使用上述3个步骤，最终借助 `Android`的基本架构功能就可完成进程间通信：
 
 ![9](https://ws2.sinaimg.cn/large/006tKfTcly1g0bn1upmbdj30tq0jht9n.jpg)
 
@@ -632,7 +638,7 @@ ANR全称`Application Not Responding`，意思就是程序未响应。
 Android系统会监控程序的响应状况，一旦出现下面两种情况，则弹出ANR对话框
 
 - 应用在5秒内未响应用户的输入事件（如按键或者触摸）
-- BroadcastReceiver未在10秒内完成相关的处理
+- wBroadcastReceiver未在10秒内完成相关的处理
 
 #### 如何避免
 
@@ -640,7 +646,7 @@ Android系统会监控程序的响应状况，一旦出现下面两种情况，�
 
 - 使用AsyncTask处理耗时IO操作。
 - 使用Thread或者HandlerThread时，调用`Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)`设置优先级，否则仍然会降低程序响应，因为默认Thread的优先级和主线程相同。
-- 使用Handler处理工作线程结果，而不是使用Thread.wait()或者Thread.sleep()来阻塞主线程。
+- ji使用Handler处理工作线程结果，而不是使用Thread.wait()或者Thread.sleep()来阻塞主线程。
 - `Activity`的`onCreate`和`onResume`回调中尽量避免耗时的代码
 - `BroadcastReceiver`中`onReceive`代码也要尽量减少耗时，建议使用`IntentService`处理。
 
@@ -1073,7 +1079,7 @@ View（包括ViewGroup）使用的是组合模式，将View组成成树形结构
 
 `Android`中的应用中，里面对各个窗口的管理相当复杂（任务栈、状态等等），Android系统当然可以不用Activity，让用户自己直接操作Window来开发自己的应用。但是如果让用户自己去管理这些Window，先不说工作量，光让用户自己去实现任务栈这点，有几个人能写的出来。**为了让大家能简单、快速的开发应用，Android通过定义Activity，让Activity帮我们管理好，我们只需简单的去重写几个回调函数，无需直接与Window对象接触**。各种事件也只需重写Activity里面的回调即可。无需关注其他细节，默认都帮我们写好了，针对需要定制的部分我们重写（设计模式为：模板方法模式）。
 
-### EventBus
+## EventBus
 
 EventBus是一个Android事件发布/订阅框架，通过解耦发布者和订阅者简化Android事件传递，这里的事件可以理解为消息。事件传递既可以用于Android四大组件间通讯，也可以用于异步线程和主线程间通讯等。
  传统的事件传递方式包括：Handler、BroadcastReceiver、Interface回调，相比之下EventBus的优点是代码简洁，使用简单，并将事件发布和 订阅充分解耦。
@@ -1543,35 +1549,3 @@ animationDrawable.start();
 JAVA的加载方式与第一种方法相同。
 
 在使用过程中一定要注意内存资源的回收和drawable的压缩，一不小心可能爆掉。
-
-## 面试
-
-1. 什么是ANR，如何避免
-2. [[ListView原理与优化|ListView-Optimize]]
-3. ContentProvider实现原理
-4. 介绍Binder机制
-5. 匿名共享内存，使用场景
-6. 如何自定义View，如果要实现一个转盘圆形的View，需要重写View中的哪些方法？(onLayout,onMeasure,onDraw)
-7. Android事件分发机制
-8. Socket和LocalSocket
-9. [[如何加载大图片|Android-Large-Image]]
-10. HttpClient和URLConnection的区别，怎么使用https
-11. Parcelable和Serializable区别
-12. Android里跨进程传递数据的几种方案。(Binder,文件[面试官说这个不算],Socket,匿名共享内存（Anonymous Shared Memory))
-13. 布局文件中，layout_gravity 和 gravity 以及 weight的作用。
-14. ListView里的ViewType机制
-15. TextView怎么改变局部颜色(SpannableString或者HTML)
-16. Activity A 跳转到 Activity B，生命周期的执行过程是啥？(此处有坑 ActivityA的OnPause和ActivityB的onResume谁先执行)
-17. Android中Handler声明非静态对象会发出警告，为什么，非得是静态的？(Memory Leak)
-18. ListView使用过程中是否可以调用addView(不能，话说这题考来干啥。。。)
-19. [[Android中的Thread, Looper和Handler机制(附带HandlerThread与AsyncTask)|Android-handler-thread-looper]]
-20. Application类的作用
-21. View的绘制过程
-22. 广播注册后不解除注册会有什么问题？(内存泄露)
-23. 属性动画(Property Animation)和补间动画(Tween Animation)的区别，为什么在3.0之后引入属性动画([官方解释：调用简单](http://android-developers.blogspot.com/2011/05/introducing-viewpropertyanimator.html))
-24. 有没有使用过EventBus或者Otto框架，主要用来解决什么问题，内部原理
-25. 设计一个网络请求框架(可以参考Volley框架)
-26. 网络图片加载框架(可以参考BitmapFun)
-27. Android里的LRU算法原理
-28. BrocastReceive里面可不可以执行耗时操作?
-29. Service onBindService 和startService 启动的区别
