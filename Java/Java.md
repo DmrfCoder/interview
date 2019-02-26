@@ -431,8 +431,8 @@ Java虚拟机通过装载、连接和初始化一个类型，使该类型可以�
 1. 装载：把二进制形式的Java类型读入Java虚拟机中。
 2. 连接：把装载的二进制形式的类型数据合并到虚拟机的运行时状态中去。
      	 1. 验证：确保Java类型数据格式正确并且适合于Java虚拟机使用。
-     	 2. 准备：负责为该类型分配它所需内存。
-     	 3. 解析：把常量池中的符号引用转换为直接引用。(可推迟到运行中的程序真正使用某个符号引用时再解析)
+       	 2. 准备：负责为该类型分配它所需内存。
+         	 3. 解析：把常量池中的符号引用转换为直接引用。(可推迟到运行中的程序真正使用某个符号引用时再解析)
 3. 初始化：为类变量赋适当的初始值
 
 所有Java虚拟机实现必须在每个类或接口**首次主动使用**时初始化。以下六种情况符合主动使用的要求：
@@ -529,16 +529,40 @@ Java虚拟机的根对象集合根据实现不同而不同，但是总会包含�
 持久代(Permanent Generation)。（包含应用的类/方法信息, 以及JRE库的类和方法信息.和垃圾回收基本无关）   
 
 - 创建新对象，一般将直接放入新生代Eden区域，大对象将直接放入年老代。
-
 - 当Eden区域内存分配完毕，小Gc触发，根达性分析的可达对象将进入Survivor区域-s0，并清空Eden区域。不可达对象将直接删除。 
-
 - 当Eden区域再次内存分配完毕时候，小gc触发，根达性分析的可达对象将进入Survivor-s1区域，同时，Survivor-s0区域触发小gc，其中可达对象移动到Survivor-s1区域，企鹅年龄+1，并清空Survivor-s0,。 
-
 - Eden又填满之后，Survivor-s0与Survivor-s1，互换标签，Eden区域可达对象进入Survivor-s0,Survivor-s1触发小gc，可达对象进入Survivor-s0，并且年龄+1. 
-
 - 重复上述过程，达到一定时候，进入年老代。
 
-## [Volatile原理](http://www.cnblogs.com/dolphin0520/p/3920373.html)
+## 锁
+
+### 锁的概念
+
+#### **可重入锁**
+
+如果锁具备可重入性，则称作为可重入锁。像synchronized和ReentrantLock都是可重入锁，可重入性在我看来实际上表明了锁的分配机制：基于线程的分配，而不是基于方法调用的分配。举个简单的例子，当一个线程执行到某个synchronized方法时，比如说method1，而在method1中会调用另外一个synchronized方法method2，此时线程不必重新去申请锁，而是可以直接执行方法method2。
+
+#### **可中断锁**
+
+可中断锁：顾名思义，就是可以相应中断的锁。
+
+在Java中，synchronized就不是可中断锁，而Lock是可中断锁。
+
+如果某一线程A正在执行锁中的代码，另一线程B正在等待获取该锁，可能由于等待时间过长，线程B不想等待了，想先处理其他事情，我们可以让它中断自己或者在别的线程中中断它，这种就是可中断锁。
+
+在前面演示lockInterruptibly()的用法时已经体现了Lock的可中断性。
+
+#### **公平锁**
+
+公平锁即尽量以请求锁的顺序来获取锁。比如同是有多个线程在等待一个锁，当这个锁被释放时，等待时间最久的线程（最先请求的线程）会获得该所，这种就是公平锁。
+
+非公平锁即无法保证锁的获取是按照请求锁的顺序进行的。这样就可能导致某个或者一些线程永远获取不到锁。
+
+在Java中，synchronized就是非公平锁，它无法保证等待的线程获取锁的顺序。
+
+而对于ReentrantLock和ReentrantReadWriteLock，它默认情况下是非公平锁，但是可以设置为公平锁。
+
+### [Volatile原理](http://www.cnblogs.com/dolphin0520/p/3920373.html)
 
 ### 计算机内存模型
 
@@ -647,6 +671,8 @@ x = x + 1;     //语句4
 第四条规则实际上就是体现`happens-before`原则具备传递性。
 
 ### 深入剖析Volatile关键字
+
+**volatile可以保证可见性和有序性,不能保证原子性**
 
 #### Volatile的语义
 
@@ -772,3 +798,134 @@ lock前缀指令实际上相当于一个 **内存屏障**（也成内存栅栏�
   - 它 **确保指令重排序时不会把其后面的指令排到内存屏障之前的位置，也不会把前面的指令排到内存屏障的后面**；即在执行到内存屏障这句指令时，在它前面的操作已经全部完成；
   - 它会 **强制将对缓存的修改操作立即写入主存**；
   - **如果是写操作，它会导致其他CPU中对应的缓存行无效**。
+
+### ReentrantLock 、synchronized
+
+**可保证原子性,可见性**
+
+ReentrantLock 、synchronized都可以实现多线程编程的安全性.
+ **相同点:**
+ 这两种同步方式有很多相似之处，它们都是加锁方式同步，而且都是阻塞式的同步，也就是说当如果一个线程获得了对象锁，进入了同步块，其他访问该同步块的线程都必须阻塞在同步块外面等待，而进行线程阻塞和唤醒的代价是比较高的
+ **不同点:**
+ 这两种方式最大区别就是对于Synchronized来说，它是java语言的关键字，是原生语法层面的互斥，需要jvm实现。而ReentrantLock它是JDK 1.5之后提供的API层面的互斥锁，需要lock()和unlock()方法配合try/finally语句块来完成。
+
+ReentrantLock相比synchronized的高级功能:
+
+- 等待可中断，持有锁的线程长期不释放的时候，正在等待的线程可以选择放弃等待，这相当于Synchronized来说可以避免出现死锁的情况。
+- 公平锁，多个线程等待同一个锁时，必须按照申请锁的时间顺序获得锁，Synchronized锁非公平锁，ReentrantLock默认的构造函数是创建的非公平锁，可以通过参数true设为公平锁，但公平锁表现的性能不是很好。
+- 锁绑定多个条件，一个ReentrantLock对象可以同时绑定对个对象。
+- 在资源竞争不是很激烈的情况下，Synchronized的性能要优于ReetrantLock，但是在资源竞争很激烈的情况下，Synchronized的性能会下降几十倍，但是ReetrantLock的性能能维持常态；
+
+#### **synchronized**
+
+静态：锁定的是类
+
+非静态：锁定的是对象
+
+有一点要注意：对于synchronized方法或者synchronized代码块，当出现异常时，**JVM会自动释放当前线程占用的锁，因此不会由于异常导致出现死锁现象。**
+
+#### Lock
+
+1）Lock是一个接口，而synchronized是Java中的关键字，synchronized是内置的语言实现；
+
+2）synchronized在发生异常时，**会自动释放线程占有的锁，因此不会导致死锁现象发生；**而Lock在发生异常时，如果没有主动通过unLock()去释放锁，则很可能造成死锁现象，因此使用Lock时需要在finally块中释放锁；
+
+3）**Lock**可以让等待锁的线程**响应中断**，而synchronized却不行，使用**synchronized**时，等待的线程会一直等待下去，**不能够响应中断**；
+
+4）通过**Lock**可以知道**有没有成功获取锁**，而synchronized却无法办到。
+
+5）**Lock**可以提高多个线程进行**读操作的效率**。
+
+## HashMap&HashTable
+
+### HashMap原理
+
+#### HashMap特性？
+
+HashMap的特性：HashMap存储键值对，实现快速存取数据；允许null键/值；**非同步**；不保证有序(比如插入的顺序)。实现map接口。
+
+#### HashMap的原理，内部数据结构？
+
+HashMap 是一个散列表，它存储的内容是键值对(key-value)映射。 HashMap 继承于AbstractMap，实现了Map、Cloneable、java.io.Serializable接口。 HashMap 的实现不是同步的，这意味着它不是线程安全的,但可以用 Collections的synchronizedMap方法使HashMap具有线程安全的能力。**它的key、value都可以为null**。此外，HashMap中的映射不是有序的。 HashMap 的实例有两个参数影响其性能：“初始容量” 和 “加载因子”。**初始容量默认是16。默认加载因子是 0.75,** 这是在时间和空间成本上寻求一种折衷。加载因子过高虽然减少了空间开销，但同时也增加了查询成本. HashMap是数组+链表+红黑树（JDK1.8增加了红黑树部分）实现的,当链表长度太长（默认超过8）时，链表就转换为红黑树.
+
+　　HashMap是基于hashing的原理，底层使用哈希表（数组 + 链表）实现。里边最重要的两个方法put、get，使用put(key, value)存储对象到HashMap中，使用get(key)从HashMap中获取对象。 
+　　存储对象时，我们将K/V传给put方法时，它调用hashCode计算hash从而得到bucket位置，进一步存储，HashMap会根据当前bucket的占用情况自动调整容量(超过Load Facotr则resize为原来的2倍)。获取对象时，我们将K传给get，它调用hashCode计算hash从而得到bucket位置，并进一步调用equals()方法确定键值对。如果发生碰撞的时候，Hashmap通过链表将产生碰撞冲突的元素组织起来，在Java 8中，如果一个bucket中碰撞冲突的元素超过某个限制(默认是8)，则使用**红黑树**来替换链表，从而提高速度。
+
+#### 1.3 HashMap 中 put 方法过程？
+
+1.对key的hashCode做hash操作，然后再计算在bucket中的index（1.5 HashMap的哈希函数）； 
+2.如果没碰撞直接放到bucket里； 
+3.如果碰撞了，以链表的形式存在buckets后； 
+4.如果节点已经存在就替换old value(保证key的唯一性) 
+5.如果bucket满了(超过阈值，阈值=loadfactor*current capacity，load factor默认0.75)，就要resize。
+
+#### get()方法的工作原理？
+
+　　通过对key的hashCode()进行hashing，并计算下标( n-1 & hash)，从而获得buckets的位置。如果产生碰撞，则利用key.equals()方法去链表中查找对应的节点。
+
+#### HashMap中hash函数怎么是是实现的？还有哪些 hash 的实现方式？
+
+  　　1. 对key的hashCode做hash操作（高16bit不变，低16bit和高16bit做了一个异或）； 
+  　　2. h & (length-1); //通过位操作得到下标index。
+
+　　还有数字分析法、平方取中法、分段叠加法、 除留余数法、 伪随机数法。
+
+#### 1.6 HashMap 怎样解决冲突？
+
+　　HashMap中处理冲突的方法实际就是链地址法，内部数据结构是数组+单链表。
+
+ 扩展问题1：当两个对象的hashcode相同会发生什么？
+　　因为两个对象的Hashcode相同，所以它们的bucket位置相同，会发生“碰撞”。HashMap使用链表存储对象，这个Entry(包含有键值对的Map.Entry对象)会存储在链表中。
+
+扩展问题2：抛开 HashMap，hash 冲突有那些解决办法？
+　　开放定址法、链地址法、再哈希法。
+
+#### 如果两个键的hashcode相同，你如何获取值对象？
+
+　　重点在于理解hashCode()与equals()。 
+　　通过对key的hashCode()进行hashing，并计算下标( n-1 & hash)，从而获得buckets的位置。两个键的hashcode相同会产生碰撞，则利用key.equals()方法去链表或树（java1.8）中去查找对应的节点。
+
+#### 针对 HashMap 中某个 Entry 链太长，查找的时间复杂度可能达到 O(n)，怎么优化？
+
+　　将链表转为红黑树，实现 O(logn) 时间复杂度内查找。JDK1.8 已经实现了。
+
+#### 如果HashMap的大小超过了负载因子(load factor)定义的容量，怎么办？
+
+#### 　　扩容。这个过程也叫作rehashing，因为它重建内部数据结构，并调用hash方法找到新的bucket位置。 
+
+　　大致分两步： 
+　　1.扩容：容量扩充为原来的两倍（2 * table.length）； 
+　　2.移动：对每个节点重新计算哈希值，重新计算每个元素在数组中的位置，将原来的元素移动到新的哈希表中。 
+　　 
+补充： 
+loadFactor：加载因子。默认值DEFAULT_LOAD_FACTOR = 0.75f； 
+capacity：容量； 
+threshold：阈值=capacity*loadFactor。当HashMap中存储数据的数量达到threshold时，就需要将HashMap的容量加倍（capacity*2）； 
+size：HashMap的大小，它是HashMap保存的键值对的数量。
+
+#### 为什么String, Interger这样的类适合作为键？
+
+　　String, Interger这样的类作为HashMap的键是再适合不过了，而且String最为常用。 
+　　因为String对象是不可变的，而且已经重写了equals()和hashCode()方法了。 
+　　1.不可变性是必要的，因为为了要计算hashCode()，就要防止键值改变，如果键值在放入时和获取时返回不同的hashcode的话，那么就不能从HashMap中找到你想要的对象。不可变性还有其他的优点如线程安全。 
+　　注：String的不可变性可以看这篇文章《【java基础】浅析String》。 
+　　2.因为获取对象的时候要用到equals()和hashCode()方法，那么键对象正确的重写这两个方法是非常重要的。如果两个不相等的对象返回不同的hashcode的话，那么碰撞的几率就会小些，这样就能提高HashMap的性能。
+
+### HashMap与HashTable区别
+
+　　Hashtable可以看做是线程安全版的HashMap，两者几乎“等价”（当然还是有很多不同）。Hashtable几乎在每个方法上都加上synchronized（同步锁），实现线程安全。
+
+#### 2.1 区别
+
+　　1.HashMap继承于AbstractMap，而Hashtable继承于Dictionary； 
+　　2.线程安全不同。Hashtable的几乎所有函数都是同步的，即它是线程安全的，支持多线程。而HashMap的函数则是非同步的，它不是线程安全的。若要在多线程中使用HashMap，需要我们额外的进行同步处理； 
+　　3.null值。HashMap的key、value都可以为null。Hashtable的key、value都不可以为null； 
+　　4.迭代器(Iterator)。HashMap的迭代器(Iterator)是fail-fast迭代器，而Hashtable的enumerator迭代器不是fail-fast的。所以当有其它线程改变了HashMap的结构（增加或者移除元素），将会抛出ConcurrentModificationException。 
+　　5.容量的初始值和增加方式都不一样：HashMap默认的容量大小是16；增加容量时，每次将容量变为“原始容量x2”。Hashtable默认的容量大小是11；增加容量时，每次将容量变为“原始容量x2 + 1”； 
+　　6.添加key-value时的hash值算法不同：HashMap添加元素时，是使用自定义的哈希算法。Hashtable没有自定义哈希算法，而直接采用的key的hashCode()。 
+　　7.速度。由于Hashtable是线程安全的也是synchronized，所以在单线程环境下它比HashMap要慢。如果你不需要同步，只需要单一线程，那么使用HashMap性能要好过Hashtable。
+
+####  能否让HashMap同步？
+
+HashMap可以通过下面的语句进行同步：Map m = Collections.synchronizeMap(hashMap);
+

@@ -993,10 +993,6 @@ android中图片的使用是非常占用内存资源的。
 
 
 
-
-
-
-
 ## ReentrantLock 、synchronized和volatile（n面）
 
 ## HashMap

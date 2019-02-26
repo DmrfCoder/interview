@@ -196,19 +196,19 @@ public class OuterClass{
 ## Lock 和 Synchronized 有什么区别？
 
     1. 使用方法的区别
-
+    
     - **Synchronized**：在需要同步的对象中加入此控制，`synchronized`可以加在方法上，也可以加在特定代码块中，括号中表示需要锁的对象。
     
     - **Lock**：需要显示指定起始位置和终止位置。一般使用`ReentrantLock`类做为锁，多个线程中必须要使用一个`ReentrantLock`类做为对象才能保证锁的生效。且在加锁和解锁处需要通过`lock()`和`unlock()`显示指出。所以一般会在`finally`块中写`unlock()`以防死锁。
-
+    
     2. 性能的区别
-
+    
     `synchronized`是托管给JVM执行的，而`lock`是java写的控制锁的代码。在Java1.5中，`synchronize`是性能低效的。因为这是一个重量级操作，需要调用操作接口，导致有可能加锁消耗的系统时间比加锁以外的操作还多。相比之下使用Java提供的Lock对象，性能更高一些。但是到了Java1.6，发生了变化。`synchronize`在语义上很清晰，可以进行很多优化，有适应自旋，锁消除，锁粗化，轻量级锁，偏向锁等等。导致在Java1.6上`synchronize`的性能并不比Lock差。
     
       - **Synchronized**：采用的是CPU悲观锁机制，即线程获得的是独占锁。独占锁意味着 **其他线程只能依靠阻塞来等待线程释放锁**。而在CPU转换线程阻塞时会引起线程上下文切换，当有很多线程竞争锁的时候，会引起CPU频繁的上下文切换导致效率很低。
     
       - **Lock**：用的是乐观锁方式。所谓乐观锁就是，**每次不加锁而是假设没有冲突而去完成某项操作，如果因为冲突失败就重试，直到成功为止**。乐观锁实现的机制就是`CAS`操作。我们可以进一步研究`ReentrantLock`的源代码，会发现其中比较重要的获得锁的一个方法是`compareAndSetState`。这里其实就是调用的CPU提供的特殊指令。
-
+    
     3. `ReentrantLock`：具有更好的可伸缩性：比如时间锁等候、可中断锁等候、无块结构锁、多个条件变量或者锁投票。
 
 ***
@@ -367,3 +367,171 @@ sleep()和yield()都会释放CPU。
 sleep()使当前线程进入停滞状态，所以执行sleep()的线程在指定的时间内肯定不会执行；yield()只是使当前线程重新回到可执行状态，所以执行yield()的线程有可能在进入到可执行状态后马上又被执行。
 
 sleep()可使优先级低的线程得到执行的机会，当然也可以让同优先级和高优先级的线程有执行的机会；yield()只能使同优先级的线程有执行的机会。
+
+##  arraylist 和 linkedlist 的区别？
+
+ArrayList和LinkedList两者都实现了List接口，但是它们之间有些不同。 
+
+（1）ArrayList是由Array所支持的基于一个索引的数据结构，所以它提供对元素的随机访问 
+
+（2）与ArrayList相比，在LinkedList中插入、添加和删除一个元素会更快 
+
+（3）LinkedList比ArrayList消耗更多的内存，因为LinkedList中的每个节点存储了前后节点的引用
+
+## 你用过哪些集合类？
+
+> ArrayList、HashMap、TreeMap和HashTable类提供对元素的随机访问。
+
+**线程安全**
+
+> Vector HashTable(不允许插空值)
+
+**非线程安全**
+
+> ArrayList LinkedList HashMap(允许插入空值) HashSet TreeSet TreeMap(基于红黑树的Map实现)
+
+### 
+
+## concurrentMap 和 HashMap 区别
+
+1.**hashMap可以有null的键**，concurrentMap不可以有
+
+ 2.hashMap是线程不安全的，在多线程的时候需要Collections.synchronizedMap(hashMap),ConcurrentMap使用了重入锁保证线程安全。
+
+ 3.在删除元素时候，两者的算法不一样。 `ConcurrentHashMap`和`Hashtable`主要区别就是围绕着锁的粒度以及如何锁,可以简单理解成把一个大的HashTable分解成多个，形成了锁分离。
+
+## Java中HashMap的key值要是为类对象则该类需要满足什么条件？
+
+需要同时重写该类的hashCode()方法和它的equals()方法。
+
+> 当程序试图将一个 key-value 对放入 HashMap 中时，程序首先根据该 key 的 hashCode() 返回值决定该 Entry 的存储位置：如果两个 Entry 的 key 的 hashCode() 返回值相同，那它们的存储位置相同。如果这两个 Entry 的 key 通过 equals 比较返回 true，新添加 Entry 的 value 将覆盖集合中原有 Entry 的 value，但 key 不会覆盖。如果这两个 Entry 的 key 通过 equals 比较返回 false，新添加的 Entry 将与集合中原有 Entry 形成 Entry 链，而且新添加的 Entry 位于 Entry 链的头部——具体说明继续看 addEntry() 方法的说明。
+
+## 关于抽象类和接口的关系
+
+简言之抽象类是一种功能不全的类，接口只是一个抽象方法声明和静态不能被修改的数据的集合，两者都不能被实例化。 从某种意义上说，接口是一种特殊形式的抽象类，在java语言中抽象类表示的是一种继承关系，一个类只能继承继承一个抽象类，而一个类却可以实现多个接口。在许多情况下，接口确实可以代替抽象类，如果你不需要刻意表达属性上的继承的话。
+
+## 堆内存和栈内存的区别
+
+**寄存器**：JVM内部虚拟寄存器，存取速度非常快，程序不可控制。
+
+ **栈**：保存局部变量的值包括：1.保存基本数据类型的值；2.保存引用变量，即堆区对象的引用(指针)。也可以用来保存加载方法时的帧。
+
+ **堆**：用来存放动态产生的数据，比如new出来的对象。注意创建出来的对象只包含属于各自的成员变量，并不包括成员方法。因为同一个类的对象拥有各自的成员变量，存储在各自的堆中，但是他们共享该类的方法，并不是每创建一个对象就把成员方法复制一次。
+
+ **常量池**：JVM为每个已加载的类型维护一个常量池，常量池就是这个类型用到的常量的一个有序集合。包括直接常量(基本类型，String)和对其他类型、方法、字段的符号引用(1)。池中的数据和数组一样通过索引访问。由于常量池包含了一个类型所有的对其他类型、方法、字段的符号引用，所以常量池在Java的动态链接中起了核心作用。常量池存在于堆中。
+
+ **代码段**：用来存放从硬盘上读取的源程序代码。 
+
+**数据段**：用来存放static修饰的静态成员（在java中static的作用就是说明该变量，方法，代码块是属于类的还是属于实例的）。
+
+![image-20190226202415923](https://ws1.sinaimg.cn/large/006tKfTcgy1g0k3h9cahzj30zg0j644a.jpg)
+
+## 关于重载和重写的区别
+
+重载是overload，是一个类中同方法名的不同具体实现。然后重写是override，是子类重写父类中的方法。
+
+## String、StringBuffer与StringBuilder之间区别
+
+三者在执行速度方面的比较：StringBuilder >  StringBuffer  >  String
+
+String：字符串常量
+
+StringBuffer：字符串变量 
+
+StringBuilder：字符串变量
+
+StringBuilder：线程非安全的
+
+StringBuffer：线程安全的
+
+ **对于三者使用的总结： ** 
+
+1.如果要操作少量的数据用 = String
+
+2.单线程操作字符串缓冲区 下操作大量数据 = StringBuilder 
+
+3.多线程操作字符串缓冲区 下操作大量数据 = StringBuffer
+
+## java运行时异常与一般异常有何异同？
+
+运行时异常：由java虚拟机抛出的异常。用户不必处理。
+
+一般异常:用户可以抛出的异常，如果抛出调用必须进行处理。
+
+运行时异常表示虚拟机的通常操作中可能遇到的异常，是一种常见运行错误。java编译器要求方法必须声明抛出可能发生的非运行时异常，但是并不要求必须声明抛出未被捕获的运行时异常。
+
+从机制角度来讲:
+
+**Runtime exceptions:**
+
+　　在定义方法时不需要声明会抛出runtime exception;在调用这个方法时不需要捕获这个runtime exception;runtime exception是从java.lang.RuntimeException或java.lang.Error类衍生出来的。
+
+**Checked exceptions:**
+
+　定义方法时必须声明所有可能会抛出的checked exception; 
+在调用这个方法时，必须捕获它的checked exception，不然就得把它的exception传递下去;checked exception是java.lang.Exception类衍生出来的。
+
+从逻辑的角度来说， checked exceptions和runtime exception是有不同的使用目的的。checked exception用来指示一种调用方能够直接处理的异常情况。而runtime exception则用来指示一种调用方本身无法处理或恢复的程序错误。
+
+## error和exception有什么区别? 
+
+error 表示恢复不是不可能但很困难的情况下的一种严重问题。比如说内存溢出。不可能指望程序能处理这样的情况。 exception表示一种设计或实现问题。也就是说，它表示如果程序运行正常，从不会发生的情况。
+
+## java中有几种方法可以实现一个线程?
+
+- class ThreadA extends Thread{},然后重写run方法 
+- class ThreadB implements Runnable{},然后重写run方法 
+- class ThreadC implements Callable{},然后new FutureTask(threadC),再用new Thread(future)封装。
+
+## java在处理线程同步时，常用方法有?
+
+1、synchronized关键字。
+
+2、Lock显示加锁。 
+
+3、信号量Semaphore。 
+
+4、CAS算法 
+
+5、concurrent包
+
+## 进程与线程的区别，及其通信方式
+
+区别 
+
+1.一个程序至少有一个进程,一个进程至少有一个线程. 
+
+2.进程在执行过程中拥有独立的内存单元，而多个线程共享内存 
+
+3.线程是进程的一个实体,是CPU调度和分派的基本单位
+
+进程间通信
+
+```
+1.管道（Pipe）及有名管道（named pipe）
+2.信号（Signal）
+3.消息队列（Message）
+4.共享内存
+5.信号量（semaphore）
+6.套接口（Socket）
+```
+
+## 线程池用过吗？
+
+线程池（Thread Pool）对于限制应用程序中同一时刻运行的线程数很有用。因为每启动一个新线程都会有相应的性能开销，每个线程都需要给栈分配一些内存等等。
+
+我们可以把并发执行的任务传递给一个线程池，来替代为每个并发执行的任务都启动一个新的线程。只要池里有空闲的线程，任务就会分配给一个线程执行。在线程池的内部，任务被插入一个阻塞队列（Blocking Queue ），线程池里的线程会去取这个队列里的任务。当一个新任务插入队列时，一个空闲线程就会成功的从队列中取出任务并且执行它。
+
+## int与Integer的区别，分别什么场合使用
+
+```
+1、Integer是int提供的封装类，而int是Java的基本数据类型
+2、Integer默认值是null，而int默认值是0；
+3、声明为Integer的变量需要实例化，而声明为int的变量不需要实例化；
+4、Integer是对象，用一个引用指向这个对象，而int是基本类型，直接存储数值。
+
+复制代码
+```
+
+`int`是基本数据类型，`Integer`是包装类，类似HashMap这样的结构必须使用包装类，因为包装类继承自Object,都需要实现HashCode，所以可以使用在HashMap这类数据结构中。
+
