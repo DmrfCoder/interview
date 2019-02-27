@@ -30,7 +30,7 @@
 注意：
 
 - 不能重写static静态方法。(形式上可以写，但本质上不是重写，属于下面要讲的隐藏)
-- 重写方法可以改变其它的方法修饰符，如`final`,`synchronized`,`native`。不管被重写方法中有无final修饰的参数，重写方法都可以增加、保留、去掉这个参数的 final 修饰符(**参数修饰符不属于方法签名**)。
+- 重写方法可以改变它的方法修饰符，如`final`,`synchronized`,`native`。不管被重写方法中有无final修饰的参数，重写方法都可以增加、保留、去掉这个参数的 final 修饰符(**参数修饰符不属于方法签名**)。
 
 #### 重载
 
@@ -59,6 +59,64 @@ Java中方法是可以和类名同名的，和构造方法唯一的区别就是�
 超类 Parent 有静态方法 A ，子类 Child 定义了与 A *相同签名和子集返回类型* 的静态方法 B ，子类对象 ChildObj 调用的是自己的静态方法 B 。如果把子类对象 ChildObj 转换为超类对象 ParentObj ，ParentObj 调用的是超类的静态方法 A ！
 
 > 隐藏后的方法必须仍为静态方法
+
+
+
+## Java虚函数、抽象函数、抽象类、接口
+
+### Java虚函数
+
+虚函数的存在是为了多态。
+
+它虚就虚在所谓“推迟联编”或者“动态联编”上，一个类函数的调用并不是在编译时刻被确定的，而是在运行时刻被确定的。由于编写代码的时候并不能确定被调用的是基类的函数还是哪个派生类的函数，所以被成为“虚”函数。
+
+C++中普通成员函数加上virtual关键字就成为虚函数
+
+Java中其实没有虚函数的概念，它的普通函数就相当于C++的虚函数，动态绑定是Java的默认行为。如果Java中不希望某个函数具有虚函数特性，可以加上final关键字变成非虚函数
+
+PS: 其实C++和Java在虚函数的观点大同小异，异曲同工罢了。
+
+### Java抽象函数(纯虚函数)
+
+抽象函数或者说是纯虚函数的存在是为了定义接口。
+
+C++中纯虚函数形式为：virtual void print() = 0;
+
+Java中纯虚函数形式为：abstract void print();
+
+PS: 在抽象函数方面C++和Java还是换汤不换药。
+
+###  Java抽象类
+
+抽象类的存在是因为父类中既包括子类共性函数的具体定义，也包括需要子类各自实现的函数接口。抽象类中可以有数据成员和非抽象方法。
+
+C++中抽象类只需要包括纯虚函数，既是一个抽象类。如果仅仅包括虚函数，不能定义为抽象类，因为类中其实没有抽象的概念。
+
+Java抽象类是用abstract修饰声明的类。
+
+PS: 抽象类其实是一个半虚半实的东西，可以全部为虚，这时候变成接口。
+
+### Java接口
+
+接口的存在是为了形成一种规约。接口中不能有普通成员变量，也不能具有非纯虚函数。
+
+C++中接口其实就是**全虚基类**。
+
+Java中接口是用interface修饰的类。
+
+PS: 接口就是虚到极点的抽象类。
+
+###  小结
+
+C++虚函数    ==  Java普通函数
+
+C++纯虚函数  ==  Java抽象函数
+
+C++抽象类    ==  Java抽象类
+
+C++虚基类    ==  Java接口
+
+
 
 ## 运算符优先级
 
@@ -186,7 +244,7 @@ Exception：
 Error：
 
 - 总是不可控制的(unchecked)。
-- 经常用来用于表示系统错误或低层资源的错误。
+- 经常用于表示系统错误或低层资源的错误。
 - 如何可能的话，应该在系统级被捕捉。
 
 ### 异常的分类
@@ -197,11 +255,48 @@ Error：
 ## 常见设计模式
 
 - 观察者模式
+
+  观察者模式用一句话描述就是当一个类的对象（被观察者）的状态发生改变时同时其他依赖于它的对象（观察者）的状态也做相应的改变（做相应的动作）。
+
+  具体实现流程：
+
+  - 定义观察者抽象类，该抽象类中有一个被观察者的成员变量，还有一个update方法用于在被观察者发生改变时通知观察者类，实例化观察者类时将被观察者实例传递进来，这样当被观察者调用观察者的update方法后观察者就可以通过自己的被观察者成员变量访问到被观察者改变之后的状态
+  - 定义被观察者，其含有一个list，用来存储若干个观察者的实例，暴露出增加、删除编辑观察者的方法，当其状态发生改变时遍历调用list中观察者对象的update方法通知观察者们
+
+  
+
+  java在java.util库里面，提供了一个Observable类和一个Observer接口，在Observer接口中只提供了一个update方法，被观察者通过调用该方法通知观察者自己的状态发生了改变。Observable类我们提供了对于观察者添加，删除，通知观察者改变等方法。当我们的需要通知观察者并且需要调用观察者update方法，我们需要调用setChanged方法。
+
+  在Android中对于观察者模式使用的场景有很多。例如BroadcastReceiver，Eventbus，RxJava等等都采用了观察者模式。
+
 - 适配器模式
+
+  作为两个不兼容的接口之间的桥梁，它结合了两个独立接口的功能。
+  这种模式涉及到一个单一的类，该类负责加入独立的或不兼容的接口功能。
+  注意，要点是要在原来类的基础上使原本不兼容的功能变得兼容。
+  Adapter类一般是用来实现与原有类不兼容的功能，比如demo中的MediaAdapter实现了MediaPlayer没有的特殊功能，用户只要调用AudioPlayer中的play方法，AudioPlayer会自动根据音频的类型选择不同的play方式，当音频类型不符合传统player的能力时AudioPlayer会使用adapter去调用之前不兼容的方法（功能），这样就实现了所谓的适配。
+
 - 代理模式
-- 工厂模式
+
+  具先实现其实也很简单，就是一个代理类将别代理类包裹起来，只对外界暴露调用被代理类方法的方法，从而实现代理模式，需要特别注意的是代理模式和适配器模式的区别：
+  **适配器模式主要改变所考虑对象的接口，而代理模式不能改变所代理类的接口** ，和装饰器模式的区别：
+  **装饰器模式为了增强功能，而代理模式是为了加以控制** 。
+
+- 工厂方法模式
+
+  工厂方法模式其实就是当一个类的实例化依赖于不同场景时需要使用的，比如上面demo，根据不同的形状，实例化的Shape对象内部的实现逻辑不一样，这时候就可以使用工厂方法模式，将类内部的实现细节隐藏起来，用户只需要告诉工厂类自己需要什么情况下的产品，工厂就可以自动调用自己内部对应场景的代码从而返回一个用户需要的“产品”。
+
+- 抽象工厂模式
+
+  对比工厂方法模式，因为一个工厂只能生产一个产品，比如一个ShapeFactory只能根据不同情况实例化不同的Shape，那么当我们需要一整套的产品（比如形状和颜色形成了一套产品）时使用工厂方法显然就不能解决了，所以就需要抽象工厂模式，抽象工厂模式实际上是工厂的工厂，即其作用的目的是为了实例化不同的工厂，用户再通过不同的工厂实例化不同场景下成套的产品。
+
 - 单例模式
+
+  单例模式通俗来讲就是让一个类在整个程序中只有一个对象。
+
 - 命令模式
+
+  命令模式实质上就是将命令抽象到一个具体的类中，即这个类是专门去执行某个命令的，比如demo中，SellStock就是专门执行sell这个命令的，当用户需要sell的时候只要实例化SellStock然后excute就可以完成sell，还有一个比较常用的例子是GUI开发中按钮（button）的作用，每一个按钮都是一个对象，当用户点击某个按钮后就会触发一个相应的命令，用户看到的是点击按钮产生效果，而代码层面上是实例化的按钮对象执行类似于demo中的excute方法完成自己的“命令”。
 
 ## Java泛型
 
@@ -231,7 +326,7 @@ class MyString implements Comparable<String> {
 
 ### 通配符
 
-在使用泛型类的时候，既可以指定一个具体的类型，如`List<String>`就声明了具体的类型是`String`；也可以用通配符`?`来表示未知类型，如`List<?>`就声明了`List`中包含的元素类型是未知的。 通配符所代表的其实是一组类型，但具体的类型是未知的。`List<?>`所声明的就是所有类型都是可以的。**但是List<?>并不等同于List<Object>。List<Object>实际上确定了List中包含的是Object及其子类，在使用的时候都可以通过Object来进行引用。而List<?>则其中所包含的元素类型是不确定**。其中可能包含的是`String`，也可能是 `Integer`。如果它包含了`String`的话，往里面添加`Integer`类型的元素就是错误的。**正因为类型未知，就不能通过new ArrayList()的方法来创建一个新的ArrayList对象。因为编译器无法知道具体的类型是什么。但是对于 List中的元素确总是可以用Object来引用的，因为虽然类型未知，但肯定是Object及其子类**。考虑下面的代码：
+在使用泛型类的时候，既可以指定一个具体的类型，如`List<String>`就声明了具体的类型是`String`；也可以用通配符`?`来表示未知类型，如`List<?>`就声明了`List`中包含的元素类型是未知的。 通配符所代表的其实是一组类型，但具体的类型是未知的。`List<?>`所声明的就是所有类型都是可以的。但是List<?>并不等同于List<Object>。List<Object>实际上确定了List中包含的是Object及其子类，在使用的时候都可以通过Object来进行引用。而List<?>则其中所包含的元素类型是不确定**。其中可能包含的是`String`，也可能是 `Integer`。如果它包含了`String`的话，往里面添加`Integer`类型的元素就是错误的。**正因为类型未知，就不能通过new ArrayList()的方法来创建一个新的ArrayList对象。因为编译器无法知道具体的类型是什么。但是对于 List中的元素确总是可以用Object来引用的，因为虽然类型未知，但肯定是Object及其子类。考虑下面的代码：
 
 ```
 public void wildcard(List<?> list) {
@@ -247,8 +342,6 @@ public void wildcard(List<?> list) {
 
 在Java中，大家比较熟悉的是通过继承机制而产生的类型体系结构。比如`String`继承自`Object`。根据`Liskov替换原则`，子类是可以替换父类的。当需要`Object`类的引用的时候，如果传入一个`String`对象是没有任何问题的。但是反过来的话，即用父类的引用替换子类引用的时候，就需要进行强制类型转换。编译器并不能保证运行时刻这种转换一定是合法的。**这种自动的子类替换父类的类型转换机制，对于数组也是适用的。 String[]可以替换Object[]**。但是泛型的引入，对于这个类型系统产生了一定的影响。**正如前面提到的List是不能替换掉List的。**
 
-
-
 引入泛型之后的类型系统增加了两个维度：**一个是类型参数自身的继承体系结构，另外一个是泛型类或接口自身的继承体系结构**。第一个指的是对于 `List<String>`和`List<Object>`这样的情况，类型参数`String`是继承自`Object`的。而第二种指的是 `List`接口继承自`Collection`接口。对于这个类型系统，有如下的一些规则：
 
 - **相同类型参数的泛型类的关系取决于泛型类自身的继承体系结构**。即`List<String>`是`Collection<String>` 的子类型，`List<String>`可以替换`Collection<String>`。这种情况也适用于带有上下界的类型声明。
@@ -257,9 +350,803 @@ public void wildcard(List<?> list) {
 
 ## Java线程
 
+Java 给多线程编程提供了内置的支持。 一条线程指的是进程中一个单一顺序的控制流，一个进程中可以并发多个线程，每条线程并行执行不同的任务。
+
+多线程是多任务的一种特别的形式，但多线程使用了更小的资源开销。
+
+这里定义和线程相关的另一个术语 - 进程：一个进程包括由操作系统分配的内存空间，包含一个或多个线程。一个线程不能独立的存在，它必须是进程的一部分。一个进程一直运行，直到所有的非守护线程都结束运行后才能结束。
+
+多线程能满足程序员编写高效率的程序来达到充分利用 CPU 的目的。
+
+### 一个线程的生命周期
+
+线程是一个动态执行的过程，它也有一个从产生到死亡的过程。
+
+下图显示了一个线程完整的生命周期。
+
+![3](https://ws2.sinaimg.cn/large/006tKfTcgy1g0l0sb64doj30y80nyt9i.jpg)
+
+- 新建状态:
+
+  使用 **new** 关键字和 **Thread** 类或其子类建立一个线程对象后，该线程对象就处于新建状态。它保持这个状态直到程序 **start()** 这个线程。
+
+- 就绪状态:
+
+  当线程对象调用了start()方法之后，该线程就进入就绪状态。就绪状态的线程处于就绪队列中，要等待JVM里线程调度器的调度。
+
+- 运行状态:
+
+  如果就绪状态的线程获取 CPU 资源，就可以执行 **run()**，此时线程便处于运行状态。处于运行状态的线程最为复杂，它可以变为阻塞状态、就绪状态和死亡状态。
+
+- 阻塞状态:
+
+  如果一个线程执行了sleep（睡眠）、suspend（挂起）等方法，失去所占用资源之后，该线程就从运行状态进入阻塞状态。在睡眠时间已到或获得设备资源后可以重新进入就绪状态。可以分为三种：
+
+  - 等待阻塞：运行状态中的线程执行 wait() 方法，使线程进入到等待阻塞状态。
+  - 同步阻塞：线程在获取 synchronized 同步锁失败(因为同步锁被其他线程占用)。
+  - 其他阻塞：通过调用线程的 sleep() 或 join() 发出了 I/O 请求时，线程就会进入到阻塞状态。当sleep() 状态超时，join() 等待线程终止或超时，或者 I/O 处理完毕，线程重新转入就绪状态。
+
+- 死亡状态:
+
+  一个运行状态的线程完成任务或者其他终止条件发生时，该线程就切换到终止状态。
+
+Thread.run()和Thread.start()的区别：
+
+- start（）方法来启动线程，真正实现了多线程运行。这时无需等待run方法体代码执行完毕，可以直接继续执行下面的代码；通过调用Thread类的start()方法来启动一个线程， 这时此线程是处于就绪状态， 并没有运行。 然后通过此Thread类调用方法run()来完成其运行操作的， 这里方法run()称为线程体，它包含了要执行的这个线程的内容， Run方法运行结束， 此线程终止。然后CPU再调度其它线程。
+
+- run（）方法当作普通方法的方式调用。程序还是要顺序执行，要等待run方法体执行完毕后，才可继续执行下面的代码； 程序中只有主线程这一个线程， 其程序执行路径还是只有一条， 这样就没有达到写线程的目的。
+
+### 线程的优先级
+
+每一个 Java 线程都有一个优先级，这样有助于操作系统确定线程的调度顺序。
+
+Java 线程的优先级是一个整数，其取值范围是 1 （Thread.MIN_PRIORITY ） - 10 （Thread.MAX_PRIORITY ）。
+
+默认情况下，每一个线程都会分配一个优先级 NORM_PRIORITY（5）。
+
+具有较高优先级的线程对程序更重要，并且应该在低优先级的线程之前分配处理器资源。但是，线程优先级不能保证线程执行的顺序，而且非常依赖于平台。
+
+### 创建一个线程
+
+Java 提供了三种创建线程的方法：
+
+- 通过实现 Runnable 接口；
+- 通过继承 Thread 类本身；
+- 通过 Callable 和 Future 创建线程。
+
+#### 通过实现 Runnable 接口
+
+```java
+class RunnableDemo implements Runnable {
+   private Thread t;
+   private String threadName;
+   
+   RunnableDemo( String name) {
+      threadName = name;
+      System.out.println("Creating " +  threadName );
+   }
+   
+   public void run() {
+      System.out.println("Running " +  threadName );
+      try {
+         for(int i = 4; i > 0; i--) {
+            System.out.println("Thread: " + threadName + ", " + i);
+            // 让线程睡眠一会
+            Thread.sleep(50);
+         }
+      }catch (InterruptedException e) {
+         System.out.println("Thread " +  threadName + " interrupted.");
+      }
+      System.out.println("Thread " +  threadName + " exiting.");
+   }
+   
+   public void start () {
+      System.out.println("Starting " +  threadName );
+      if (t == null) {
+         t = new Thread (this, threadName);
+         t.start ();
+      }
+   }
+}
+ 
+public class TestThread {
+ 
+   public static void main(String args[]) {
+      RunnableDemo R1 = new RunnableDemo( "Thread-1");
+      R1.start();
+      
+      RunnableDemo R2 = new RunnableDemo( "Thread-2");
+      R2.start();
+   }   
+}
+```
+
+#### 通过继承 Thread 类本身
+
+```java
+class ThreadDemo extends Thread {
+   private Thread t;
+   private String threadName;
+   
+   ThreadDemo( String name) {
+      threadName = name;
+      System.out.println("Creating " +  threadName );
+   }
+   
+   public void run() {
+      System.out.println("Running " +  threadName );
+      try {
+         for(int i = 4; i > 0; i--) {
+            System.out.println("Thread: " + threadName + ", " + i);
+            // 让线程睡眠一会
+            Thread.sleep(50);
+         }
+      }catch (InterruptedException e) {
+         System.out.println("Thread " +  threadName + " interrupted.");
+      }
+      System.out.println("Thread " +  threadName + " exiting.");
+   }
+   
+   public void start () {
+      System.out.println("Starting " +  threadName );
+      if (t == null) {
+         t = new Thread (this, threadName);
+         t.start ();
+      }
+   }
+}
+ 
+public class TestThread {
+ 
+   public static void main(String args[]) {
+      ThreadDemo T1 = new ThreadDemo( "Thread-1");
+      T1.start();
+      
+      ThreadDemo T2 = new ThreadDemo( "Thread-2");
+      T2.start();
+   }   
+}
+```
+
+#### 通过 Callable 和 Future 创建线程
+
+- 创建 Callable 接口的实现类，并实现 call() 方法，该 call() 方法将作为线程执行体，并且有返回值。
+- 创建 Callable 实现类的实例，使用 FutureTask 类来包装 Callable 对象，该 FutureTask 对象封装了该 Callable 对象的 call() 方法的返回值。
+- 使用 FutureTask 对象作为 Thread 对象的 target 创建并启动新线程。
+- 调用 FutureTask 对象的 get() 方法来获得子线程执行结束后的返回值。
+
+```java
+public class CallableThreadTest implements Callable<Integer> {
+    public static void main(String[] args)  
+    {  
+        CallableThreadTest ctt = new CallableThreadTest();  
+        FutureTask<Integer> ft = new FutureTask<>(ctt);  
+        for(int i = 0;i < 100;i++)  
+        {  
+            System.out.println(Thread.currentThread().getName()+" 的循环变量i的值"+i);  
+            if(i==20)  
+            {  
+                new Thread(ft,"有返回值的线程").start();  
+            }  
+        }  
+        try  
+        {  
+            System.out.println("子线程的返回值："+ft.get());  
+        } catch (InterruptedException e)  
+        {  
+            e.printStackTrace();  
+        } catch (ExecutionException e)  
+        {  
+            e.printStackTrace();  
+        }  
+  
+    }
+    @Override  
+    public Integer call() throws Exception  
+    {  
+        int i = 0;  
+        for(;i<100;i++)  
+        {  
+            System.out.println(Thread.currentThread().getName()+" "+i);  
+        }  
+        return i;  
+    }  
+}
+```
+
+#### 创建线程的三种方式的对比
+
+- 采用实现 Runnable、Callable 接口的方式创建多线程时，线程类只是实现了 Runnable 接口或 Callable 接口，还可以继承其他类。
+- 使用继承 Thread 类的方式创建多线程时，编写简单，如果需要访问当前线程，则无需使用 Thread.currentThread() 方法，直接使用 this 即可获得当前线程。
+
+------
+
+### 线程的几个主要概念
+
+在多线程编程时，你需要了解以下几个概念：
+
+- 线程同步
+- 线程间通信
+- 线程死锁
+- 线程控制：挂起、停止和恢复
+
+------
+
+### 多线程的使用
+
+有效利用多线程的关键是理解程序是并发执行而不是串行执行的。例如：程序中有两个子系统需要并发执行，这时候就需要利用多线程编程。
+
+通过对多线程的使用，可以编写出非常高效的程序。不过请注意，如果你创建太多的线程，程序执行的效率实际上是降低了，而不是提升了。
+
+请记住，上下文的切换开销也很重要，如果你创建了太多的线程，CPU 花费在上下文的切换的时间将多于执行程序的时间！
+
+## Java线程池
+
+线程池的基本思想是一种对象池，在程序启动时就开辟一块内存空间，里面存放了众多(未死亡)的线程，池中线程执行调度由池管理器来处理。当有线程任务时，从池中取一个，执行完成后线程对象归池，这样可以避免反复创建线程对象所带来的性能开销，节省了系统的资源。
+
+### 使用线程池的好处
+
+- 减少了创建和销毁线程的次数，每个工作线程都可以被重复利用，可执行多个任务。
+
+- 运用线程池能有效的控制线程最大并发数，可以根据系统的承受能力，调整线程池中工作线线程的数目，防止因为消耗过多的内存，而把服务器累趴下(每个线程需要大约1MB内存，线程开的越多，消耗的内存也就越大，最后死机)。
+
+- 对线程进行一些简单的管理，比如：延时执行、定时循环执行的策略等，运用线程池都能进行很好的实现
+
+一个线程池包括以下四个基本组成部分：
+
+1. 线程池管理器（ThreadPool）：用于创建并管理线程池，包括 创建线程池，销毁线程池，添加新任务；
+2. 工作线程（WorkThread）：线程池中线程，在没有任务时处于等待状态，可以循环的执行任务；
+3. 任务接口（Task）：每个任务必须实现的接口，以供工作线程调度任务的执行，它主要规定了任务的入口，任务执行完后的收尾工作，任务的执行状态等；
+4. 任务队列（taskQueue）：用于存放没有处理的任务。提供一种缓冲机制。
+
+### ThreadPoolExecutor类
+
+讲到线程池，要重点介绍java.uitl.concurrent.ThreadPoolExecutor类，ThreadPoolExecutor是线程池中最核心的一个类。
+
+我们可以通过ThreadPoolExecutor来创建一个线程池
+
+
+
+```
+new ThreadPoolExecutor(corePoolSize, maximumPoolSize,keepAliveTime, 
+milliseconds,runnableTaskQueue, threadFactory,handler);
+```
+
+- **corePoolSize（线程池的基本大小）**：当提交一个任务到线程池时，线程池会创建一个线程来执行任务，即使其他空闲的基本线程能够执行新任务也会创建线程，等到需要执行的任务数大于线程池基本大小时就不再创建。如果调用了线程池的prestartAllCoreThreads方法，线程池会提前创建并启动所有基本线程。
+
+- **maximumPoolSize（线程池最大大小）**：线程池允许创建的最大线程数。如果队列满了，并且已创建的线程数小于最大线程数，则线程池会再创建新的线程执行任务。值得注意的是如果使用了无界的任务队列这个参数就没什么效果。
+
+- **runnableTaskQueue（任务队列）**：用于保存等待执行的任务的阻塞队列。
+
+- **ThreadFactory**：用于设置创建线程的工厂，可以通过线程工厂给每个创建出来的线程设置更有意义的名字，Debug和定位问题时非常又帮助。
+
+- **RejectedExecutionHandler（拒绝策略）**：当队列和线程池都满了，说明线程池处于饱和状态，那么必须采取一种策略处理提交的新任务。这个策略默认情况下是AbortPolicy，表示无法处理新任务时抛出异常。以下是JDK1.5提供的四种策略。n  AbortPolicy：直接抛出异常。
+
+- **keepAliveTime（线程活动保持时间）**：线程池的工作线程空闲后，保持存活的时间。所以如果任务很多，并且每个任务执行的时间比较短，可以调大这个时间，提高线程的利用率。
+
+- **TimeUnit（线程活动保持时间的单位）**：可选的单位有天（DAYS），小时（HOURS），分钟（MINUTES），毫秒(MILLISECONDS)，微秒(MICROSECONDS, 千分之一毫秒)和毫微秒(NANOSECONDS, 千分之一微秒)。
+
+#### 向线程池提交任务
+
+我们可以通过execute()或submit()两个方法向线程池提交任务，不过它们有所不同
+
+ 
+
+- execute()方法没有返回值，所以无法判断任务知否被线程池执行成功
+
+```
+threadsPool.execute(new Runnable() {
+    @Override
+    public void run() {
+    // TODO Auto-generated method stub
+   }
+});
+```
+
+- submit()方法返回一个future,那么我们可以通过这个future来判断任务是否执行成功，通过future的get方法来获取返回值
+
+```
+try {
+     Object s = future.get();
+   } catch (InterruptedException e) {
+   // 处理中断异常
+   } catch (ExecutionException e) {
+   // 处理无法执行任务异常
+   } finally {
+   // 关闭线程池
+   executor.shutdown();
+}
+```
+
+#### 线程池的关闭
+
+我们可以通过shutdown()或shutdownNow()方法来关闭线程池，不过它们也有所不同
+
+- shutdown的原理是只是将线程池的状态设置成SHUTDOWN状态，然后中断所有没有正在执行任务的线程。
+- shutdownNow的原理是遍历线程池中的工作线程，然后逐个调用线程的interrupt方法来中断线程，所以无法响应中断的任务可能永远无法终止。shutdownNow会首先将线程池的状态设置成STOP，然后尝试停止所有的正在执行或暂停任务的线程，并返回等待执行任务的列表。
+
+#### ThreadPoolExecutor执行的策略
+
+![1](https://ws4.sinaimg.cn/large/006tKfTcgy1g0l2awri9rj30dw0850tb.jpg)
+
+线程数量未达到corePoolSize，则新建一个线程(核心线程)执行任务
+
+线程数量达到了corePools，则将任务移入队列等待
+
+队列已满，新建线程(非核心线程)执行任务
+
+队列已满，总线程数又达到了maximumPoolSize，就会由(RejectedExecutionHandler)抛出异常
+
+#### 四种拒绝策略
+
+1. AbortPolicy：不执行新任务，直接抛出异常，提示线程池已满，线程池默认策略
+2. DiscardPolicy：不执行新任务，也不抛出异常，基本上为静默模式。
+3. DisCardOldSetPolicy：将消息队列中的第一个任务替换为当前新进来的任务执行
+4. CallerRunPolicy：拒绝新任务进入，如果该线程池还没有被关闭，那么这个新的任务在执行线程中被调用）
+
+### Java通过Executors提供四种线程池
+
+- CachedThreadPool()：可缓存线程池。
+  - 线程数无限制
+  - 有空闲线程则复用空闲线程，若无空闲线程则新建线程 一定程序减少频繁创建/销毁线程，减少系统开销
+
+  CachedThreadPool创建一个可缓存线程池，如果线程池长度超过处理需要，可灵活回收空闲线程，若无可回收，则新建线程
+
+- FixedThreadPool()：定长线程池。
+  - 可控制线程最大并发数（同时执行的线程数）
+  - 超出的线程会在队列中等待
+
+- ScheduledThreadPool()：
+  - 定时线程池。
+  - 支持定时及周期性任务执行。
+
+  newscheduledThreadPool创建一个定长线程池，支持定时及周期性任务执行。延迟执行示例代码如下.表示延迟1秒后每3秒执行一次
+
+  ```
+  public class ThreadPoolExecutorTest3 {
+  	public static void main(String[] args) {
+  		ScheduledExecutorService scheduledThreadPool = Executors.newScheduledThreadPool(5);
+  		scheduledThreadPool.scheduleAtFixedRate(new Runnable() {
+  			public void run() {
+  				System.out.println(Thread.currentThread().getName() + ": delay 1 seconds, and excute every 3 seconds");
+  			}
+  		}, 1, 3, TimeUnit.SECONDS);// 表示延迟1秒后每3秒执行一次
+  	}
+  }
+  
+  ```
+
+- SingleThreadExecutor()：单线程化的线程池。
+  - 有且仅有一个工作线程执行任务
+  - 所有任务按照指定顺序执行，即遵循队列的入队出队规则
+
+  newSingleThreadExecutor创建一个单线程化的线程池，它只会用唯一的工作线程来执行任务，保证所有任务按照指定顺序(FIFO, LIFO, 优先级)执行
+
+
+
 ## Jvm架构
 
+### 什么是JVM
+
+JVM是Java Virtual Machine（Java虚拟机）的缩写，JVM是一种用于计算设备的规范，它是一个虚构出来的计算机，是通过在实际的计算机上仿真模拟各种计算机功能来实现的。Java虚拟机包括**一套字节码指令集**、**一组寄存器**、**一个栈**、**一个垃圾回收堆**和一**个存储方法域**。 JVM**屏蔽了与具体操作系统平台相关的信息**，使Java程序只需生成在Java虚拟机上运行的目标代码（字节码）,就可以在多种平台上不加修改地运行。JVM在执行字节码时，实际上最终还是把字节码解释成具体平台上的机器指令执行。
+
+### JRE/JDK/JVM是什么关系
+
+JRE(Java Runtime Environment，Java运行环境)，也就是Java平台。所有的Java 程序都要在JRE下才能运行。普通用户只需要运行已开发好的java程序，安装JRE即可。
+
+JDK(Java Development Kit)是程序开发者用来来编译、调试java程序用的开发工具包。JDK的工具也是Java程序，也需要JRE才能运行。为了保持JDK的独立性和完整性，在JDK的安装过程中，JRE也是 安装的一部分。所以，在JDK的安装目录下有一个名为jre的目录，用于存放JRE文件。
+
+JVM(Java Virtual Machine，Java虚拟机)是JRE的一部分。它是一个虚构出来的计算机，是通过在实际的计算机上仿真模拟各种计算机功能来实现的。JVM有自己完善的硬件架构，如处理器、堆栈、寄存器等，还具有相应的指令系统。Java语言最重要的特点就是跨平台运行。使用JVM就是为了支持与操作系统无关，实现跨平台。
+
+### JVM原理
+
+JVM是java的核心和基础，在java编译器和os平台之间的虚拟处理器。它是一种利用软件方法实现的抽象的计算机基于下层的操作系统和硬件平台，可以在上面执行java的字节码程序。
+
+![image-20190227170231506](https://ws1.sinaimg.cn/large/006tKfTcgy1g0l39o1ujzj31940ryafz.jpg)
+
+java编译器只要面向JVM，生成JVM能理解的代码或字节码文件。Java源文件经编译成字节码程序，通过JVM将每一条指令翻译成不同平台机器码，通过特定平台运行。
+
+### JVM体系结构
+
+![5](https://ws2.sinaimg.cn/large/006tKfTcgy1g0l3g10y3tj30uf0u0443.jpg)
+
+**JVM被分为三个主要的子系统：**
+
+**（1）类加载器子系统（2）**运行时数据区**（3）**执行引擎
+
+#### 类加载器子系统
+
+Java的动态类加载功能是由类加载器子系统处理。当它在运行时（不是编译时）首次引用一个类时，它加载、链接并初始化该类文件。
+
+##### 加载
+
+类由此组件加载。启动类加载器 (BootStrap class Loader)、扩展类加载器(Extension class Loader)和应用程序类加载器(Application class Loader) 这三种类加载器帮助完成类的加载。
+
+1.  启动类加载器 – 负责从启动类路径中加载类，无非就是rt.jar。这个加载器会被赋予最高优先级。
+
+2.  扩展类加载器 – 负责加载ext 目录(jre\lib)内的类.
+
+3.  应用程序类加载器 – 负责加载应用程序级别类路径，涉及到路径的环境变量等etc.
+
+上述的类加载器会遵循委托层次算法（Delegation Hierarchy Algorithm）加载类文件。
+
+##### 链接
+
+1.  校验 – 字节码校验器会校验生成的字节码是否正确，如果校验失败，我们会得到校验错误。
+
+2.  准备 – 分配内存并初始化默认值给所有的静态变量。
+
+3.  解析 – 所有符号内存引用被方法区(Method Area)的原始引用所替代。
+
+##### 初始化
+
+这是类加载的最后阶段，这里所有的静态变量会被赋初始值, 并且静态块将被执行。
+
+#### 运行时数据区（Runtime Data Area）
+
+运行时数据区域被划分为5个主要组件：
+
+##### 方法区（Method Area）
+
+所有**类级别数据**将被存储在这里，包括**静态变量**。每个JVM只有一个方法区，它是一个共享的资源。
+
+##### 堆区（Heap Area）
+
+所有的**对象**和它们**相应的实例变量**以及**数组**将被存储在这里。每个JVM同样只有一个堆区。由于方法区和堆区的内存由多个线程共享，所以存储的数据不是线程安全的。
+
+##### 栈区（Stack Area）
+
+对每个线程会单独创建一个运行时栈。对每个函数呼叫会在栈内存生成一个栈帧(Stack Frame)。所有的**局部变量**将在栈内存中创建。栈区是线程安全的，因为它不是一个共享资源。栈帧被分为三个子实体：
+
+a 局部变量数组 – 包含多个与方法相关的局部变量并且相应的值将被存储在这里。
+
+b 操作数栈 – 如果需要执行任何中间操作，操作数栈作为运行时工作区去执行指令。
+
+c 帧数据 – 方法的所有符号都保存在这里。在任意异常的情况下，catch块的信息将会被保存在帧数据里面。
+
+##### PC寄存器
+
+每个线程都有一个单独的PC寄存器来保存**当前执行指令的地址**，一旦该指令被执行，pc寄存器会被更新至下条指令的地址。
+
+##### 本地方法栈
+
+本地方法栈保存**本地方法信息**。对**每一个线程，将创建一个单独的本地方法栈**。
+
+#### 执行引擎
+
+分配给运行时数据区的字节码将由执行引擎执行。执行引擎读取字节码并逐段执行。
+
+##### 解释器
+
+ 解释器能快速的**解释字节码**，但执行却很慢。 解释器的缺点就是,当一个方法被调用多次，每次都需要重新解释。
+
+##### JIT编译器
+
+JIT编译器消除了解释器的缺点。执行引擎利用解释器转换字节码，但如果是重复的代码则使用JIT编译器将全部字节码编译成本机代码。本机代码将直接用于重复的方法调用，这提高了系统的性能。
+
+a. 中间代码生成器 – 生成中间代码
+
+b. 代码优化器 – 负责优化上面生成的中间代码
+
+c. 目标代码生成器 – 负责生成机器代码或本机代码
+
+d.  探测器(Profiler) – 一个特殊的组件，负责**寻找被多次调用的方法**。
+
+##### 垃圾回收器:
+
+收集并删除未引用的对象。可以通过调用"System.gc()"来触发垃圾回收，但并不保证会确实进行垃圾回收。JVM的垃圾回收只收集哪些由new关键字创建的对象。所以，如果不是用new创建的对象，你可以使用finalize函数来执行清理。
+
+Java本地接口 (JNI): JNI 会与本地方法库进行交互并提供执行引擎所需的本地库。
+
+本地方法库:它是一个执行引擎所需的本地库的集合。
+
+![20180617161343935](https://ws2.sinaimg.cn/large/006tKfTcgy1g0l3tcquztj31v60ow1kx.jpg)
+
+
+
+## java中的类加载模型（class loader）
+
+### 什么是classLoader
+
+当我们写好一个[Java](http://lib.csdn.net/base/17)程序之后，都是由若干个.class文件组织而成的一个完整的Java应用程序，当程序在运行时，即会调用该程序的一个入口函数来调用系统的相关功能，而这些功能都被封装在不同的class文件当中，所以经常要从这个class文件中要调用另外一个class文件中的方法，如果另外一个文件不存在的，则会引发系统异常。而程序在启动的时候，并不会一次性加载程序所要用的所有class文件，而是根据程序的需要，通过Java的类加载机制（ClassLoader）来动态加载某个class文件到内存当中的，从而只有class文件被载入到了内存之后，才能被其它class所引用。所以ClassLoader就是用来动态加载class文件到内存当中用的。
+
+### Java中默认提供的三个ClassLoader
+
+- **BootStrap ClassLoader**：称为启动类加载器，是Java类加载层次中最顶层的类加载器，**负责加载JDK中的核心类库，如：rt.jar、resources.jar、charsets.jar等**
+- **Extension ClassLoader**：称为扩展类加载器，负责加载Java的扩展类库，默认加载JAVA_HOME/jre/lib/ext/目下的所有jar。
+- **App ClassLoader**：称为系统类加载器，负责加载应用程序classpath目录下的所有jar和class文件。
+
+除了Java默认提供的三个ClassLoader之外，用户还可以根据需要定义自已的ClassLoader，而这些自定义的ClassLoader都必须继承自java.lang.ClassLoader类，也包括Java提供的另外二个ClassLoader（Extension ClassLoader和App ClassLoader）在内，但是Bootstrap ClassLoader不继承自ClassLoader，因为它不是一个普通的Java类，底层由C++编写，已嵌入到了JVM内核当中，当JVM启动后，Bootstrap ClassLoader也随着启动，负责加载完核心类库后，并构造Extension ClassLoader和App ClassLoader类加载器。
+
+### classLoader原理
+
+ClassLoader使用的是**双亲委托模型**来搜索类的，每个ClassLoader实例都有一个父类加载器的引用（不是继承的关系，是一个包含的关系），虚拟机内置的类加载器（Bootstrap ClassLoader）本身没有父类加载器，但可以用作其它ClassLoader实例的的父类加载器。当一个ClassLoader实例需要加载某个类时，它会试图亲自搜索某个类之前，先把这个任务委托给它的父类加载器，这个过程是由上至下依次检查的，首先由最顶层的类加载器Bootstrap ClassLoader试图加载，如果没加载到，则把任务转交给Extension ClassLoader试图加载，如果也没加载到，则转交给App ClassLoader 进行加载，如果它也没有加载得到的话，则返回给委托的发起者，由它到指定的文件系统或网络等URL中加载该类。如果它们都没有加载到这个类时，则抛出ClassNotFoundException异常。否则将这个找到的类生成一个类的定义，并将它加载到内存当中，最后返回这个类在内存中的Class实例对象。
+
+#### 为什么要使用双亲委托模型？
+
+因为这样可以避免重复加载，当父亲已经加载了该类的时候，就没有必要子ClassLoader再加载一次。考虑到安全因素，我们试想一下，如果不使用这种委托模式，那我们就可以随时使用自定义的String来动态替代java核心api中定义的类型，这样会存在非常大的安全隐患，而双亲委托的方式，就可以避免这种情况，因为String已经在启动时就被引导类加载器（Bootstrcp ClassLoader）加载，所以用户自定义的ClassLoader永远也无法加载一个自己写的String，除非你改变JDK中ClassLoader搜索类的默认算法。
+
+#### JVM在搜索类的时候，又是如何判定两个class是相同的呢？
+
+JVM在判定两个class是否相同时，不仅要判断两个**类名**是否相同，而且要判断**是否由同一个类加载器实例加载**的。只有两者同时满足的情况下，JVM才认为这两个class是相同的。就算两个class是同一份class字节码，如果被两个不同的ClassLoader实例所加载，JVM也会认为它们是两个不同class。比如网络上的一个Java类org.classloader.simple.NetClassLoaderSimple，javac编译之后生成字节码文件NetClassLoaderSimple.class，ClassLoaderA和ClassLoaderB这两个类加载器并读取了NetClassLoaderSimple.class文件，并分别定义出了java.lang.Class实例来表示这个类，对于JVM来说，它们是两个不同的实例对象，但它们确实是同一份字节码文件，如果试图将这个Class实例生成具体的对象进行转换时，就会抛运行时异常java.lang.ClassCaseException，提示这是两个不同的类型。
+
+### classLoader的体系结构
+
+![image-20190225155430824](https://ws3.sinaimg.cn/large/006tKfTcgy1g0iq2ab0l8j316v0u01kx.jpg)
+
+### 定义自己的classLoader
+
+***既然JVM已经提供了默认的类加载器，为什么还要定义自已的类加载器呢？***
+
+​      因为Java中提供的默认ClassLoader，只加载指定目录下的jar和class，如果我们想加载其它位置的类或jar时，比如：我要加载网络上的一个class文件，通过动态加载到内存之后，要调用这个类中的方法实现我的业务逻辑。在这样的情况下，默认的ClassLoader就不能满足我们的需求了，所以需要定义自己的ClassLoader。
+
+***定义自已的类加载器分为两步：***
+
+1、继承java.lang.ClassLoader
+
+2、重写父类的findClass方法
+
+读者可能在这里有疑问，父类有那么多方法，为什么偏偏只重写findClass方法？
+
+​      因为JDK已经在loadClass方法中帮我们实现了ClassLoader搜索类的算法，当在loadClass方法中搜索不到类时，loadClass方法就会调用findClass方法来搜索类，所以我们只需重写该方法即可。如没有特殊的要求，一般不建议重写loadClass搜索类的算法。
+
+### Java类加载的步骤
+
+Java虚拟机通过装载、连接和初始化一个类型，使该类型可以被正在运行的Java程序使用。
+
+1. 装载：把二进制形式的Java类型读入Java虚拟机中。
+2. 连接：把装载的二进制形式的类型数据合并到虚拟机的运行时状态中去。
+        	 1. 验证：确保Java类型数据格式正确并且适合于Java虚拟机使用。
+       	 2. 准备：负责为该类型分配它所需内存。
+        	 3. 解析：把常量池中的符号引用转换为**直接引用**。(可推迟到运行中的程序真正使用某个符号引用时再解析)
+3. 初始化：为类变量赋适当的初始值
+
+所有Java虚拟机实现必须在每个类或接口**首次主动使用**时初始化。以下六种情况符合主动使用的要求：
+
+- 当创建某个类的新实例时(new、反射、克隆、序列化)
+- 调用某个类的静态方法
+- 使用某个类或接口的静态字段，或对该字段赋值(用final修饰的静态字段除外，它被初始化为一个编译时常量表达式)
+- 当调用Java API的某些反射方法时。
+- 初始化某个类的子类时。
+- 当虚拟机启动时被标明为启动类的类。
+
+除以上六种情况，所有其他使用Java类型的方式都是被动的，它们不会导致Java类型的初始化。
+
+> 对于接口来说，只有在某个接口声明的非常量字段被使用时，该接口才会初始化，而不会因为事先这个接口的子接口或类要初始化而被初始化。
+
+**父类需要在子类初始化之前被初始化，所以这些类应该被装载了。当实现了接口的类被初始化的时候，不需要初始化父接口。然而，当实现了父接口的子类(或者是扩展了父接口的子接口)被装载时，父接口也要被装载。(只是被装载，没有初始化)**
+
+## Java垃圾回收机制（garbage collection-GC）
+
+Java堆中存放着大量的Java对象实例，在垃圾收集器回收内存前，第一件事情就是确定哪些对象是“活着的”，哪些是可以回收的。
+
+[**Java**](http://lib.csdn.net/base/javase)中Stop-The-World机制简称STW，是在执行垃圾收集[**算法**](http://lib.csdn.net/base/datastructure)时，Java应用程序的其他所有线程都被挂起（除了垃圾收集帮助器之外）。Java中一种全局暂停现象，全局停顿，所有Java代码停止，native代码可以执行，但不能与JVM交互；这些现象多半是由于gc引起。
+
+### 判断对象是否存活的算法
+
+#### 引用计数算法（基本弃用）
+
+引用计数算法是判断对象是否存活的基本算法：给每个对象添加一个引用计数器，没当一个地方引用它的时候，计数器值加1；当引用失效后，计数器值减1。但是这种方法有一个致命的缺陷，**当两个对象相互引用时会导致这两个都无法被回收**。
+
+#### 根搜索算法（目前使用中）
+
+在主流的商用语言中（Java、C#...）都是使用根搜索算法来判断对象是否存活。对于程序来说，根对象总是可以访问的。*从这些根对象开始，任何可以被触及的对象都被认为是"活着的"的对象。无法触及的对象被认为是垃圾，需要被回收*。
+
+Java虚拟机的根对象集合根据实现不同而不同，但是总会包含以下几个方面：
+
+- 虚拟机栈（栈帧中的本地变量表）中引用的对象。
+- 方法区中的类静态属性引用的变量。
+- 方法区中的常量引用的变量。
+- 本地方法JNI的引用对象。
+
+**区分活动对象和垃圾的两个基本方法是引用计数和根搜索。** 引用计数是通过为堆中每个对象保存一个计数来区分活动对象和垃圾。根搜索算法实际上是追踪从根结点开始的引用图。
+
+**在主流的商用程序语言（如我们的Java）的主流实现中，都是通过可达性分析算法来判定对象是否存活的。**
+
+### 垃圾收集算法
+
+#### 标记-清除算法
+
+分标记和清除两个阶段：首先标记处所需要回收的对象，在标记完成后统一回收所有被标记的对象。
+
+![6](https://ws4.sinaimg.cn/large/006tKfTcgy1g0l7i4uiewj30ag08zdg9.jpg)
+
+它有两点不足：一个效率问题，标记和清除过程都效率不高；一个是空间问题，标记清除之后会产生大量不连续的内存碎片（类似于我们电脑的磁盘碎片），空间碎片太多导致需要分配大对象时无法找到足够的连续内存而不得不提前触发另一次垃圾回收动作。
+
+#### 复制算法
+
+为了解决效率问题，出现了“复制”算法，他将可用内存按容量划分为大小相等的两块，每次只需要使用其中一块。当一块内存用完了，将还存活的对象复制到另一块上面，然后再把刚刚用完的内存空间一次清理掉。这样就解决了内存碎片问题，但是代价就是可以用内容就缩小为原来的一半。
+
+![7](https://ws3.sinaimg.cn/large/006tKfTcgy1g0l7ixtv9rj30cd0a30t5.jpg)
+
+#### 标记-整理算法
+
+复制算法在对象存活率较高时就会进行频繁的复制操作，效率将降低。因此又有了标记-整理算法，标记过程同标记-清除算法，但是在后续步骤不是直接对对象进行清理，而是让所有存活的对象都向一侧移动，然后直接清理掉端边界以外的内存。
+
+![8](https://ws4.sinaimg.cn/large/006tKfTcgy1g0l7jwzdegj30bm097dg9.jpg)
+
+#### 分代收集法
+
+当前商业虚拟机的GC都是采用分代收集算法
+
+为了增大垃圾收集的效率，所以JVM将堆进行分代，分为不同的部分，一般有三部分，新生代，老年代和永久代（在新的版本中已经将永久代废弃，引入了元空间的概念，永久代使用的是JVM内存而元空间直接使用物理内存）：
+
+![8](https://ws3.sinaimg.cn/large/006tKfTcgy1g0irckny0aj30qo0k0t8m.jpg)
+
+- 新生代（对应minor GC）
+
+  所有新new出来的对象都会最先出现在新生代中，当新生代这部分内存满了之后，就会发起一次垃圾收集事件，这种发生在新生代的垃圾收集称为Minor collections。这种收集通常比较快，因为新生代的大部分对象都是需要回收的，那些暂时无法回收的就会被移动到老年代。
+
+- 老年代（对应Full GC）
+
+  老年代用来存储那些存活时间较长的对象。一般来说，我们会给新生代的对象限定一个存活的时间，当达到这个时间还没有被收集的时候就会被移动到老年代中。
+
+- 永久代
+
+  用于存放静态文件，如Java类、方法等。持久代对垃圾回收没有显著影响，但是有些应用可能动态生成或者调用一些class，例如Hibernate 等，在这种时候需要设置一个比较大的持久代空间来存放这些运行过程中新增的类。
+
+**程序中主动调用System.gc()强制执行的GC为Full GC。**
+
+大概流程：
+
+内存分区：
+
+年轻代(Young Generation)（Eden,Survivor-s0,Survivor-s1，大小比例默认为8:1:1） 
+
+年老代(Old Generation) 
+
+永久代代(Permanent Generation)。（包含应用的类/方法信息, 以及JRE库的类和方法信息.和垃圾回收基本无关）   
+
+
+
+新生代中的对象“朝生夕死”，每次GC时都会有大量对象死去，少量存活，使用复制算法。新生代又分为Eden区和Survivor区（Survivor from、Survivor to），大小比例默认为8:1:1。
+
+老年代中的对象因为对象存活率高、没有额外空间进行分配担保，就使用标记-清除或标记-整理算法。
+
+新产生的对象优先进去Eden区，当Eden区满了之后再使用Survivor from，当Survivor from 也满了之后就进行Minor GC（新生代GC），将Eden和Survivor from中存活的对象copy进入Survivor to，然后清空Eden和Survivor from，这个时候原来的Survivor from成了新的Survivor to，原来的Survivor to成了新的Survivor from。复制的时候，如果Survivor to 无法容纳全部存活的对象，则根据老年代的分配担保（类似于银行的贷款担保）将对象copy进去老年代，如果老年代也无法容纳，则进行Full GC（老年代GC）。
+
+大对象直接进入老年代：JVM中有个参数配置-XX:PretenureSizeThreshold，令大于这个设置值的对象直接进入老年代，目的是为了避免在Eden和Survivor区之间发生大量的内存复制。
+
+长期存活的对象进入老年代：JVM给每个对象定义一个对象年龄计数器，如果对象在Eden出生并经过第一次Minor GC后仍然存活，并且能被Survivor容纳，将被移入Survivor并且年龄设定为1。没熬过一次Minor GC，年龄就加1，当他的年龄到一定程度（默认为15岁，可以通过XX:MaxTenuringThreshold来设定），就会移入老年代。但是JVM并不是永远要求年龄必须达到最大年龄才会晋升老年代，如果Survivor 空间中相同年龄（如年龄为x）所有对象大小的总和大于Survivor的一半，年龄大于等于x的所有对象直接进入老年代，无需等到最大年龄要求。
+
+### 垃圾收集器
+
+垃圾回收算法是方法论，垃圾回收器是实现。
+
+![image-20190227195802636](https://ws2.sinaimg.cn/large/006tKfTcgy1g0l8ci31b5j314o0howhg.jpg)
+
+- Serial收集器，串行收集器是最古老，最稳定以及效率高的收集器，可能会产生较长的停顿，只使用一个线程去回收。（STW）它是虚拟机运行在client模式下的默认新生代收集器：简单而高效（与其他收集器的单个线程相比，因为没有线程切换的开销等）。
+
+- ParNew收集器，ParNew收集器其实就是Serial收集器的多线程版本。（STW）是许多运行在Server模式下的JVM中首选的新生代收集器，其中一个很重还要的原因就是除了Serial之外，只有他能和老年代的CMS收集器配合工作。
+
+- Parallel Scavenge收集器，Parallel Scavenge收集器类似ParNew收集器，Parallel收集器更关注系统的吞吐量（就是CPU运行用户代码的时间与CPU总消耗时间的比值，即 吞吐量=运行用户代码的时间/[运行用户代码的时间+垃圾收集时间]）。
+
+- CMS收集器，CMS（Concurrent Mark Sweep）收集器是一种以获取最短回收停顿时间为目标的收集器。，停顿时间短，用户体验就好。
+
+  基于“标记清除”算法，并发收集、低停顿，运作过程复杂，分4步：
+
+  1)初始标记：仅仅标记GC Roots能直接关联到的对象，速度快，但是需要“Stop The World”
+
+  2)并发标记：就是进行追踪引用链的过程，可以和用户线程并发执行。
+
+  3)重新标记：修正并发标记阶段因用户线程继续运行而导致标记发生变化的那部分对象的标记记录，比初始标记时间长但远比并发标记时间短，需要“Stop The World”
+
+  4)并发清除：清除标记为可以回收对象，可以和用户线程并发执行
+
+  由于整个过程耗时最长的并发标记和并发清除都可以和用户线程一起工作，所以总体上来看，CMS收集器的内存回收过程和用户线程是并发执行的。
+
+  CSM收集器有3个缺点：
+
+  1)对CPU资源非常敏感
+
+  并发收集虽然不会暂停用户线程，但因为占用一部分CPU资源，还是会导致应用程序变慢，总吞吐量降低。
+
+  CMS的默认收集线程数量是=(CPU数量+3)/4；当CPU数量多于4个，收集线程占用的CPU资源多于25%，对用户程序影响可能较大；不足4个时，影响更大，可能无法接受。
+
+  2)无法处理浮动垃圾（在并发清除时，用户线程新产生的垃圾叫浮动垃圾）,可能出现"Concurrent Mode Failure"失败。
+
+  并发清除时需要预留一定的内存空间，不能像其他收集器在老年代几乎填满再进行收集；如果CMS预留内存空间无法满足程序需要，就会出现一次"Concurrent Mode Failure"失败；这时JVM启用后备预案：临时启用Serail Old收集器，而导致另一次Full GC的产生；
+
+  3)产生大量内存碎片：CMS基于"标记-清除"算法，清除后不进行压缩操作产生大量不连续的内存碎片，这样会导致分配大内存对象时，无法找到足够的连续内存，从而需要提前触发另一次Full GC动作。
+
+- Serial Old收集器，Serial 收集器的老年代版本，单线程，“标记整理”算法，主要是给Client模式下的虚拟机使用。可以作为CMS的后背方案，在CMS发生Concurrent Mode Failure是使用
+
+- Parallel Old 收集器，Parallel Scavenge的老年代版本，多线程，“标记整理”算法，JDK 1.6才出现。在此之前Parallel Scavenge只能同Serial Old搭配使用，由于Serial Old的性能较差导致Parallel Scavenge的优势发挥不出来，Parallel Old收集器的出现，使“吞吐量优先”收集器终于有了名副其实的组合。在吞吐量和CPU敏感的场合，都可以使用Parallel Scavenge/Parallel Old组合。
+
+- G1收集器，G1 (Garbage-First)是一款面向服务器的垃圾收集器,主要针对配备多颗处理器及大容量内存的机器. 以极高概率满足GC停顿时间要求的同时,还具备高吞吐量性能特征。G1是面向服务端应用的垃圾收集器。它的使命是未来可以替换掉CMS收集器。
+
+### 垃圾回收过程
+
+-  Marking 标记
+
+  垃圾收集器会找出那些需要回收的对象所在的内存和不需要回收的对象所在的内存，并把它们标记出来，简单的说，也就是先找出垃圾在哪。
+
+  所有堆中的对象都会被扫描一遍，以此来确定回收的对象，所以这通常会是一个相对比较耗时的过程
+
+  ![7](https://ws4.sinaimg.cn/large/006tKfTcgy1g0ir1du1lij30qo0k0q2t.jpg)
+
+- Normal Deletion 清除
+
+  垃圾收集器会清除掉上一步标记出来的那些需要回收的对象区域。
+
+  存在的问题就是碎片问题：
+  标记清除之后会产生大量不连续的内存碎片，空间碎片太多可能会导致以后在程序运行过程中需要分配较大对象时，无法找到足够的连续内存而不得不提前触发另一次垃圾收集动作。
+
+  ![6](https://ws3.sinaimg.cn/large/006tKfTcgy1g0ir1mb8rsj30qo0k0jrb.jpg)
+
+  
+
+- Deletion with Compacting 压缩
+
+  由于简单的清除可能会存在碎片的问题，所以又出现了压缩清除的方法，也就是先清除需要回收的对象，然后再对内存进行压缩操作，将内存分成可用和不可用两大部分：
+
+  ![5](https://ws3.sinaimg.cn/large/006tKfTcgy1g0ir10bu2xj30qo0k0t8n.jpg)
+
+## jvm内存结构、java内存模型、java对象模型的区别
+
+### java内存结构
+
+我们都知道，Java代码是要运行在虚拟机上的，而虚拟机在执行Java程序的过程中会把所管理的内存划分为若干个不同的数据区域，这些区域都有各自的用途。其中有些区域随着虚拟机进程的启动而存在，而有些区域则依赖用户线程的启动和结束而建立和销毁。在《[Java虚拟机规范（Java SE 8）](https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-2.html#jvms-2.5.4)》中描述了JVM运行时内存区域结构如下：
+
+![9](https://ws1.sinaimg.cn/large/006tKfTcgy1g0l93hspouj30ir09qdid.jpg)
+
+各个区域的功能不是本文重点，就不在这里详细介绍了。这里简单提几个需要特别注意的点：
+
+1、以上是Java虚拟机规范，不同的虚拟机实现会各有不同，但是一般会遵守规范。
+
+2、规范中定义的方法区，只是一种概念上的区域，并说明了其应该具有什么功能。但是并没有规定这个区域到底应该处于何处。所以，对于不同的虚拟机实现来说，是由一定的自由度的。
+
+3、不同版本的方法区所处位置不同，上图中划分的是逻辑区域，并不是绝对意义上的物理区域。因为某些版本的JDK中方法区其实是在堆中实现的。
+
+4、运行时常量池用于存放编译期生成的各种字面量和符号应用。但是，Java语言并不要求常量只有在编译期才能产生。比如在运行期，String.intern也会把新的常量放入池中。
+
+5、除了以上介绍的JVM运行时内存外，还有一块内存区域可供使用，那就是直接内存。Java虚拟机规范并没有定义这块内存区域，所以他并不由JVM管理，是利用本地方法库直接在堆外申请的内存区域。
+
+6、堆和栈的数据划分也不是绝对的，如HotSpot的JIT会针对对象分配做相应的优化。
+
+如上，做个总结，JVM内存结构，由Java虚拟机规范定义。描述的是Java程序执行过程中，由JVM管理的不同数据区域。各个区域有其特定的功能。
+
+### java内存模型
+
+Java内存模型看上去和Java内存结构（JVM内存结构）差不多，很多人会误以为两者是一回事儿，这也就导致面试过程中经常答非所为。
+
+在前面的关于JVM的内存结构的图中，我们可以看到，其中Java堆和方法区的区域是多个线程共享的数据区域。也就是说，多个线程可能可以操作保存在堆或者方法区中的同一个数据。这也就是我们常说的“Java的线程间通过共享内存进行通信”。
+
+Java内存模型是根据英文Java Memory Model（JMM）翻译过来的。其实JMM并不像JVM内存结构一样是真实存在的。他只是一个抽象的概念。[JSR-133: Java Memory Model and Thread Specification](http://www.cs.umd.edu/~pugh/java/memoryModel/jsr133.pdf)中描述了，JMM是和多线程相关的，他描述了一组规则或规范，这个规范定义了一个线程对共享变量的写入时对另一个线程是可见的。
+
+那么，简单总结下，Java的多线程之间是通过共享内存进行通信的，而由于采用共享内存进行通信，在通信过程中会存在一系列如可见性、原子性、顺序性等问题，而JMM就是围绕着多线程通信以及与其相关的一系列特性而建立的模型。JMM定义了一些语法集，这些语法集映射到Java语言中就是volatile、synchronized等关键字。
+
+![10](https://ws4.sinaimg.cn/large/006tKfTcgy1g0l949rhmxj30br0ah0st.jpg)
+
+在Java中，JMM是一个非常重要的概念，正是由于有了JMM，Java的并发编程才能避免很多问题。
+
+### java对象模型
+
+Java是一种面向对象的语言，而Java对象在JVM中的存储也是有一定的结构的。而这个关于Java对象自身的存储模型称之为Java对象模型。
+
+HotSpot虚拟机中，设计了一个OOP-Klass Model。OOP（Ordinary Object Pointer）指的是普通对象指针，而Klass用来描述对象实例的具体类型。
+
+每一个Java类，在被JVM加载的时候，JVM会给这个类创建一个`instanceKlass`，保存在方法区，用来在JVM层表示该Java类。当我们在Java代码中，使用new创建一个对象的时候，JVM会创建一个`instanceOopDesc`对象，这个对象中包含了对象头以及实例数据。
+
+![11](https://ws2.sinaimg.cn/large/006tKfTcgy1g0l94t3ke6j31840js429.jpg)
+
+这就是一个简单的Java对象的OOP-Klass模型，即Java对象模型。
+
+### 总结
+
+我们再来区分下JVM内存结构、 Java内存模型 以及 Java对象模型 三个概念。
+
+JVM内存结构，和Java虚拟机的运行时区域有关。 Java内存模型，和Java的并发编程有关。 Java对象模型，和Java对象在虚拟机中的表现形式有关。
+
 ## Java中的强引用、弱引用、软引用、虚引用
+
+（1）强引用：默认情况下，对象采用的均为强引用（这个对象的实例没有其他对象引用，GC时才会被回收）
+
+（2）软引用：软引用是Java中提供的一种比较适合于缓存场景的应用（只有在内存不够用的情况下才会被GC）
+
+（3）弱引用：在GC时一定会被GC回收
+
+（4）虚引用：由于虚引用只是用来得知对象是否被GC
 
 ### 强引用(StrongReference)
 
@@ -377,162 +1264,6 @@ Threadlocal中的`ThreadLocalMap`的成员变量，`ThreadLocalMap `内部采用
 ```
 
 程序可以通过判断引用**队列**中是否已经加入了**虚引用**，来了解被引用的对象是否将要进行**垃圾回收**。如果程序发现某个虚引用已经被加入到引用队列，那么就可以在所引用的对象的**内存被回收之前**采取必要的行动。
-
-## java中的类加载模型（class loader）
-
-### 什么是classLoader
-
-当我们写好一个[Java](http://lib.csdn.net/base/17)程序之后，都是由若干个.class文件组织而成的一个完整的Java应用程序，当程序在运行时，即会调用该程序的一个入口函数来调用系统的相关功能，而这些功能都被封装在不同的class文件当中，所以经常要从这个class文件中要调用另外一个class文件中的方法，如果另外一个文件不存在的，则会引发系统异常。而程序在启动的时候，并不会一次性加载程序所要用的所有class文件，而是根据程序的需要，通过Java的类加载机制（ClassLoader）来动态加载某个class文件到内存当中的，从而只有class文件被载入到了内存之后，才能被其它class所引用。所以ClassLoader就是用来动态加载class文件到内存当中用的。
-
-### Java中默认提供的三个ClassLoader
-
-- **BootStrap ClassLoader**：称为启动类加载器，是Java类加载层次中最顶层的类加载器，**负责加载JDK中的核心类库，如：rt.jar、resources.jar、charsets.jar等**
-- **Extension ClassLoader**：称为扩展类加载器，负责加载Java的扩展类库，默认加载JAVA_HOME/jre/lib/ext/目下的所有jar。
-- **App ClassLoader**：称为系统类加载器，负责加载应用程序classpath目录下的所有jar和class文件。
-
-除了Java默认提供的三个ClassLoader之外，用户还可以根据需要定义自已的ClassLoader，而这些自定义的ClassLoader都必须继承自java.lang.ClassLoader类，也包括Java提供的另外二个ClassLoader（Extension ClassLoader和App ClassLoader）在内，但是Bootstrap ClassLoader不继承自ClassLoader，因为它不是一个普通的Java类，底层由C++编写，已嵌入到了JVM内核当中，当JVM启动后，Bootstrap ClassLoader也随着启动，负责加载完核心类库后，并构造Extension ClassLoader和App ClassLoader类加载器。
-
-## classLoader原理
-
-ClassLoader使用的是**双亲委托模型**来搜索类的，每个ClassLoader实例都有一个父类加载器的引用（不是继承的关系，是一个包含的关系），虚拟机内置的类加载器（Bootstrap ClassLoader）本身没有父类加载器，但可以用作其它ClassLoader实例的的父类加载器。当一个ClassLoader实例需要加载某个类时，它会试图亲自搜索某个类之前，先把这个任务委托给它的父类加载器，这个过程是由上至下依次检查的，首先由最顶层的类加载器Bootstrap ClassLoader试图加载，如果没加载到，则把任务转交给Extension ClassLoader试图加载，如果也没加载到，则转交给App ClassLoader 进行加载，如果它也没有加载得到的话，则返回给委托的发起者，由它到指定的文件系统或网络等URL中加载该类。如果它们都没有加载到这个类时，则抛出ClassNotFoundException异常。否则将这个找到的类生成一个类的定义，并将它加载到内存当中，最后返回这个类在内存中的Class实例对象。
-
-#### 为什么要使用双亲委托模型？
-
-因为这样可以避免重复加载，当父亲已经加载了该类的时候，就没有必要子ClassLoader再加载一次。考虑到安全因素，我们试想一下，如果不使用这种委托模式，那我们就可以随时使用自定义的String来动态替代java核心api中定义的类型，这样会存在非常大的安全隐患，而双亲委托的方式，就可以避免这种情况，因为String已经在启动时就被引导类加载器（Bootstrcp ClassLoader）加载，所以用户自定义的ClassLoader永远也无法加载一个自己写的String，除非你改变JDK中ClassLoader搜索类的默认算法。
-
-#### JVM在搜索类的时候，又是如何判定两个class是相同的呢？
-
-JVM在判定两个class是否相同时，不仅要判断两个类名是否相同，而且要判断是否由同一个类加载器实例加载的。只有两者同时满足的情况下，JVM才认为这两个class是相同的。就算两个class是同一份class字节码，如果被两个不同的ClassLoader实例所加载，JVM也会认为它们是两个不同class。比如网络上的一个Java类org.classloader.simple.NetClassLoaderSimple，javac编译之后生成字节码文件NetClassLoaderSimple.class，ClassLoaderA和ClassLoaderB这两个类加载器并读取了NetClassLoaderSimple.class文件，并分别定义出了java.lang.Class实例来表示这个类，对于JVM来说，它们是两个不同的实例对象，但它们确实是同一份字节码文件，如果试图将这个Class实例生成具体的对象进行转换时，就会抛运行时异常java.lang.ClassCaseException，提示这是两个不同的类型。
-
-### classLoader的体系结构
-
-![image-20190225155430824](https://ws3.sinaimg.cn/large/006tKfTcgy1g0iq2ab0l8j316v0u01kx.jpg)
-
-### 定义自己的classLoader
-
-***既然JVM已经提供了默认的类加载器，为什么还要定义自已的类加载器呢？***
-
-​      因为Java中提供的默认ClassLoader，只加载指定目录下的jar和class，如果我们想加载其它位置的类或jar时，比如：我要加载网络上的一个class文件，通过动态加载到内存之后，要调用这个类中的方法实现我的业务逻辑。在这样的情况下，默认的ClassLoader就不能满足我们的需求了，所以需要定义自己的ClassLoader。
-
-***定义自已的类加载器分为两步：***
-
-1、继承java.lang.ClassLoader
-
-2、重写父类的findClass方法
-
-读者可能在这里有疑问，父类有那么多方法，为什么偏偏只重写findClass方法？
-
-​      因为JDK已经在loadClass方法中帮我们实现了ClassLoader搜索类的算法，当在loadClass方法中搜索不到类时，loadClass方法就会调用findClass方法来搜索类，所以我们只需重写该方法即可。如没有特殊的要求，一般不建议重写loadClass搜索类的算法。
-
-## Java类加载的步骤
-
-Java虚拟机通过装载、连接和初始化一个类型，使该类型可以被正在运行的Java程序使用。
-
-1. 装载：把二进制形式的Java类型读入Java虚拟机中。
-2. 连接：把装载的二进制形式的类型数据合并到虚拟机的运行时状态中去。
-     	 1. 验证：确保Java类型数据格式正确并且适合于Java虚拟机使用。
-       	 2. 准备：负责为该类型分配它所需内存。
-         	 3. 解析：把常量池中的符号引用转换为直接引用。(可推迟到运行中的程序真正使用某个符号引用时再解析)
-3. 初始化：为类变量赋适当的初始值
-
-所有Java虚拟机实现必须在每个类或接口**首次主动使用**时初始化。以下六种情况符合主动使用的要求：
-
-- 当创建某个类的新实例时(new、反射、克隆、序列化)
-- 调用某个类的静态方法
-- 使用某个类或接口的静态字段，或对该字段赋值(用final修饰的静态字段除外，它被初始化为一个编译时常量表达式)
-- 当调用Java API的某些反射方法时。
-- 初始化某个类的子类时。
-- 当虚拟机启动时被标明为启动类的类。
-
-除以上六种情况，所有其他使用Java类型的方式都是被动的，它们不会导致Java类型的初始化。
-
-> 对于接口来说，只有在某个接口声明的非常量字段被使用时，该接口才会初始化，而不会因为事先这个接口的子接口或类要初始化而被初始化。
-
-**父类需要在子类初始化之前被初始化，所以这些类应该被装载了。当实现了接口的类被初始化的时候，不需要初始化父接口。然而，当实现了父接口的子类(或者是扩展了父接口的子接口)被装载时，父接口也要被装载。(只是被装载，没有初始化)**
-
-## Java垃圾回收机制（garbage collection-GC）
-
-Java堆中存放着大量的Java对象实例，在垃圾收集器回收内存前，第一件事情就是确定哪些对象是“活着的”，哪些是可以回收的。
-
-### 引用计数算法（基本弃用）
-
-引用计数算法是判断对象是否存活的基本算法：给每个对象添加一个引用计数器，没当一个地方引用它的时候，计数器值加1；当引用失效后，计数器值减1。但是这种方法有一个致命的缺陷，**当两个对象相互引用时会导致这两个都无法被回收**。
-
-### 根搜索算法（目前使用中）
-
-在主流的商用语言中（Java、C#...）都是使用根搜索算法来判断对象是否存活。对于程序来说，根对象总是可以访问的。*从这些根对象开始，任何可以被触及的对象都被认为是"活着的"的对象。无法触及的对象被认为是垃圾，需要被回收*。
-
-Java虚拟机的根对象集合根据实现不同而不同，但是总会包含以下几个方面：
-
-- 虚拟机栈（栈帧中的本地变量表）中引用的对象。
-- 方法区中的类静态属性引用的变量。
-- 方法区中的常量引用的变量。
-- 本地方法JNI的引用对象。
-
-**区分活动对象和垃圾的两个基本方法是引用计数和根搜索。** 引用计数是通过为堆中每个对象保存一个计数来区分活动对象和垃圾。根搜索算法实际上是追踪从根结点开始的引用图。
-
-### 垃圾回收过程
-
--  Marking 标记
-
-  垃圾收集器会找出那些需要回收的对象所在的内存和不需要回收的对象所在的内存，并把它们标记出来，简单的说，也就是先找出垃圾在哪。
-
-  所有堆中的对象都会被扫描一遍，以此来确定回收的对象，所以这通常会是一个相对比较耗时的过程
-
-  ![7](https://ws4.sinaimg.cn/large/006tKfTcgy1g0ir1du1lij30qo0k0q2t.jpg)
-
-- Normal Deletion 清除
-
-  垃圾收集器会清除掉上一步标记出来的那些需要回收的对象区域。
-
-  存在的问题就是碎片问题：
-  标记清除之后会产生大量不连续的内存碎片，空间碎片太多可能会导致以后在程序运行过程中需要分配较大对象时，无法找到足够的连续内存而不得不提前触发另一次垃圾收集动作。
-
-  ![6](https://ws3.sinaimg.cn/large/006tKfTcgy1g0ir1mb8rsj30qo0k0jrb.jpg)
-
-  
-
-- Deletion with Compacting 压缩
-
-  由于简单的清除可能会存在碎片的问题，所以又出现了压缩清除的方法，也就是先清除需要回收的对象，然后再对内存进行压缩操作，将内存分成可用和不可用两大部分：
-
-  ![5](https://ws3.sinaimg.cn/large/006tKfTcgy1g0ir10bu2xj30qo0k0t8n.jpg)
-
-### JVM的分代
-
-为了增大垃圾收集的效率，所以JVM将堆进行分代，分为不同的部分，一般有三部分，新生代，老年代和永久代：
-
-![8](https://ws3.sinaimg.cn/large/006tKfTcgy1g0irckny0aj30qo0k0t8m.jpg)
-
-- 新生代
-
-  所有新new出来的对象都会最先出现在新生代中，当新生代这部分内存满了之后，就会发起一次垃圾收集事件，这种发生在新生代的垃圾收集称为Minor collections。这种收集通常比较快，因为新生代的大部分对象都是需要回收的，那些暂时无法回收的就会被移动到老年代。
-
-- 老年代
-
-  老年代用来存储那些存活时间较长的对象。一般来说，我们会给新生代的对象限定一个存活的时间，当达到这个时间还没有被收集的时候就会被移动到老年代中。
-
-- 永久代
-
-  用于存放静态文件，如Java类、方法等。持久代对垃圾回收没有显著影响，但是有些应用可能动态生成或者调用一些class，例如Hibernate 等，在这种时候需要设置一个比较大的持久代空间来存放这些运行过程中新增的类。
-
-  
-
-大概流程：
-
-内存分区：
-
-年轻代(Young Generation)（Eden,Survivor-s0,Survivor-s1） 
-
-年老代(Old Generation) 
-
-持久代(Permanent Generation)。（包含应用的类/方法信息, 以及JRE库的类和方法信息.和垃圾回收基本无关）   
-
-- 创建新对象，一般将直接放入新生代Eden区域，大对象将直接放入年老代。
-- 当Eden区域内存分配完毕，小Gc触发，根达性分析的可达对象将进入Survivor区域-s0，并清空Eden区域。不可达对象将直接删除。 
-- 当Eden区域再次内存分配完毕时候，小gc触发，根达性分析的可达对象将进入Survivor-s1区域，同时，Survivor-s0区域触发小gc，其中可达对象移动到Survivor-s1区域，企鹅年龄+1，并清空Survivor-s0,。 
-- Eden又填满之后，Survivor-s0与Survivor-s1，互换标签，Eden区域可达对象进入Survivor-s0,Survivor-s1触发小gc，可达对象进入Survivor-s0，并且年龄+1. 
-- 重复上述过程，达到一定时候，进入年老代。
 
 ## 锁
 
@@ -866,7 +1597,7 @@ HashMap 是一个散列表，它存储的内容是键值对(key-value)映射。 
 #### HashMap中hash函数怎么是是实现的？还有哪些 hash 的实现方式？
 
   　　1. 对key的hashCode做hash操作（高16bit不变，低16bit和高16bit做了一个异或）； 
-  　　2. h & (length-1); //通过位操作得到下标index。
+        　　2. h & (length-1); //通过位操作得到下标index。
 
 　　还有数字分析法、平方取中法、分段叠加法、 除留余数法、 伪随机数法。
 

@@ -8,7 +8,14 @@
 
 ANR的全称是`Application Not Responsing`，即我们俗称的应用无响应。
 
-要想知道如何避免ANR，就有必要了解哪些情况下会导致ANR，常见的以下几种情况都会导致ANR：
+要想知道如何避免ANR，就有必要了解哪些情况下会导致ANR
+
+发生ANR的原因：
+
+1. 当前的事件没有机会得到处理（即主线程正在处理前一个事件，没有及时的完成或者looper被某种原因阻塞住了）
+2. 当前的事件正在处理，但没有及时完成
+
+常见的以下几种情况都会导致ANR：
 
 - 主线程中被IO操作（从Android4.0以后不允许网络IO操作在主线程中）
 - 主线程中存在耗时操作
@@ -16,8 +23,9 @@ ANR的全称是`Application Not Responsing`，即我们俗称的应用无响应�
 
 Android系统会监控程序的响应情况，一旦出现以下两种情况就会弹出ANR对话框：
 
-- 应用程序超过5s没有响应用户输入事件（比如按键或者触摸）
-- BroadCastReceiver未在10s内完成相关操作
+1. KeyDispatchTimeout：原因就是View的点击事件或者触摸事件在5s内无法得到响应。
+2. BroadcastTimeout：原因是BroadcastReceiver的onReceive()函数运行在主线程中，在10s内无法完成处理。
+3. ServiceTimeout：原因是Service的各个生命周期函数在20s内无法完成处理。
 
 那么对应的避免ANR的基本思路就是避免IO操作在主线程中，避免在主线程中进行耗时操作，避免主线程中的错误操作等，具体的方法有如下几种：
 
@@ -25,6 +33,97 @@ Android系统会监控程序的响应情况，一旦出现以下两种情况就�
 - 使用Handler处理线程处理结果，而不是使用Thread.sleep或者Thread.wait来堵塞线程
 - Activity的onCreat和onResume方法中尽量避免进行耗时操作
 - BroadcastReceiver中的onReceive中也应该避免耗时操作，建议使用intentService处理
+
+### 主线程中的Looper.loop()一直无限循环为什么不会造成ANR？
+
+ActivityThread.java 是主线程入口的类，这里你可以看到写Java程序中司空见惯的main方法，而main方法正是整个Java程序的入口：
+
+```java
+public static final void main(String[] args) {
+        ...
+        //创建Looper和MessageQueue
+        Looper.prepareMainLooper();
+        ...
+        //轮询器开始轮询
+        Looper.loop();
+        ...
+    }
+```
+
+Looper.loop()方法:
+
+```java
+while (true) {
+       //取出消息队列的消息，可能会阻塞
+       Message msg = queue.next(); // might block
+       ...
+       //解析消息，分发消息
+       msg.target.dispatchMessage(msg);
+       ...
+    }
+```
+
+显而易见的，如果main方法中没有looper进行循环，那么主线程一运行完毕就会退出。
+
+**所以ActivityThread的main方法主要就是做消息循环，一旦退出消息循环，那么你的应用也就退出了。**
+
+因为Android 的是由事件驱动的，looper.loop() 不断地接收事件、处理事件，每一个点击触摸或者说Activity的生命周期都是运行在 Looper.loop() 的控制之下，如果它停止了，应用也就停止了。只能是某一个消息或者说对消息的处理阻塞了 Looper.loop()，而不是 Looper.loop() 阻塞它。
+
+**也就说我们的代码其实就是在这个循环里面去执行的，当然不会阻塞了。**
+
+handleMessage方法部分源码：
+
+```java
+public void handleMessage(Message msg) {
+        if (DEBUG_MESSAGES) Slog.v(TAG, ">>> handling: " + codeToString(msg.what));
+        switch (msg.what) {
+            case LAUNCH_ACTIVITY: {
+                Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER, "activityStart");
+                final ActivityClientRecord r = (ActivityClientRecord) msg.obj;
+                r.packageInfo = getPackageInfoNoCheck(r.activityInfo.applicationInfo, r.compatInfo);
+                handleLaunchActivity(r, null);
+                Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
+            }
+            break;
+            case RELAUNCH_ACTIVITY: {
+                Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER, "activityRestart");
+                ActivityClientRecord r = (ActivityClientRecord) msg.obj;
+                handleRelaunchActivity(r);
+                Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
+            }
+            break;
+            case PAUSE_ACTIVITY:
+                Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER, "activityPause");
+                handlePauseActivity((IBinder) msg.obj, false, (msg.arg1 & 1) != 0, msg.arg2, (msg.arg1 & 2) != 0);
+                maybeSnapshot();
+                Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
+                break;
+            case PAUSE_ACTIVITY_FINISHING:
+                Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER, "activityPause");
+                handlePauseActivity((IBinder) msg.obj, true, (msg.arg1 & 1) != 0, msg.arg2, (msg.arg1 & 1) != 0);
+                Trace.traceEnd(Trace.TRACE_TAG_ACTIVITY_MANAGER);
+                break;
+            ...........
+        }
+    }
+```
+
+可以看见Activity的生命周期都是依靠主线程的Looper.loop，当收到不同Message时则采用相应措施。
+
+如果某个消息处理时间过长，比如你在onCreate(),onResume()里面处理耗时操作，那么下一次的消息比如用户的点击事件不能处理了，整个循环就会产生卡顿，时间一长就成了ANR。
+
+让我们再看一遍造成ANR的原因，你可能就懂了。
+
+造成ANR的原因一般有两种：
+
+1. 当前的事件没有机会得到处理（即主线程正在处理前一个事件，没有及时的完成或者looper被某种原因阻塞住了）
+2. 当前的事件正在处理，但没有及时完成
+
+而且主线程Looper从消息队列读取消息，当读完所有消息时，主线程**阻塞**。子线程往消息队列发送消息，并且往管道文件写数据，主线程即被唤醒，从管道文件读取数据，**主线程被唤醒只是为了读取消息，当消息读取完毕，再次睡眠。因此loop的循环并不会对CPU性能有过多的消耗。**
+
+**总结：Looer.loop()方法可能会引起主线程的阻塞，但只要它的*消息循环没有被阻塞*，能一直处理事件就不会产生ANR异常。**
+
+
 
 ## ListView原理与优化
 
