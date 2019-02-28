@@ -131,6 +131,38 @@ process一般翻译成进程，进程是操作系统内核中的一个概念，�
 
 ## 线程（Thread）和进程（process）的区别
 
+### 进程
+
+●  程序运行的基本单元
+
+●  资源分配和拥有的基本单位
+
+●  有自己独立的地址空间
+
+●  多个进程可并发执行
+
+### 线程
+
+●  比进程更小的程序运行的基本单元
+
+●  CPU调度和分派的基本单位
+
+●  没有独立的地址空间，多个线程共享地址空间
+
+●  多个线程可并发执行，某一个线程可以创建和撤销另外的线程
+
+### 进程和线程的区别
+
+●  都可以并发执行
+
+●  都是程序运行的基本单元，但线程更小
+
+●  一个程序至少有一个进程，一个进程至少有一个线程
+
+●  进程有自己独立的地址空间，而进程中的线程共享此地址空间
+
+
+
 进程和线程的主要差别在于它们是不同的操作系统资源管理方式。进程有独立的地址空间，一个进程崩溃后，在保护模式下不会对其它进程产生影响，而线程只是一个进程中的不同执行路径。线程有自己的堆栈和局部变量，但线程之间没有单独的地址空间，一个线程死掉就等于整个进程死掉，所以多进程的程序要比多线程的程序健壮，但在[进程切换](https://www.baidu.com/s?wd=%E8%BF%9B%E7%A8%8B%E5%88%87%E6%8D%A2&tn=24004469_oem_dg&rsv_dl=gh_pl_sl_csd)时，耗费资源较大，效率要差一些。**但对于一些要求同时进行并且又要共享某些变量的并发操作，只能用线程，不能用进程。**
 
 **1) 简而言之,一个程序至少有一个进程,一个进程至少有一个线程.**
@@ -278,7 +310,7 @@ MVVM 模式将 Presenter 改名为 ViewModel，基本上与 MVP 模式完全一�
 
 ListView的实现离不开Adapter。可以这么理解：ListView中给出了数据来的时候，如何实现View的具体方式，相当于MVC中的V；而Adapter相当于MVC中的C，指挥了ListView的数据加载等行为。
 
-提一个问题：假设ListView中有10W个条项，那内存中会缓存10W个吗？答案当然是否定的。那么是如何实现的呢？下面这张图可以清晰地解释其中的原理:z
+提一个问题：假设ListView中有10W个条项，那内存中会缓存10W个吗？答案当然是否定的。那么是如何实现的呢？下面这张图可以清晰地解释其中的原理:
 
 ![5](https://ws2.sinaimg.cn/large/006tKfTcly1g0aj18qi2dj30xz0n879d.jpg)
 
@@ -489,6 +521,11 @@ save 和 restore 要配对使用( restore 可以比 save 少，但不能多)，�
 | MotionEvent.ACTION_MOVE   | 滑动View                   |
 | MotionEvent.ACTION_CANCEL | 结束事件（非人为原因）     |
 
+关于ACTION_CANCEL何时被触发，系统文档有这么一种使用场景：在设计设置页面的滑动开关时，如果不监听ACTION_CANCEL，在滑动到中间时，如果你手指上下移动，就是移动到开关控件之外，则此时会触发ACTION_CANCEL，而不是ACTION_UP，造成开关的按钮停顿在中间位置。 
+意思是当滑动的时候就会触发，不知道大家搞没搞过微信的长按录音，有一种状态是“松开手指，取消发送”，这时候就会触发ACTION_CANCEL。
+
+
+
 `事件列`：从手指接触屏幕 至 手指离开屏幕，这个过程产生的一系列事件，一般情况下，事件列都是以`DOWN`事件开始、`UP`事件结束，中间有0个或多个的MOVE事件。
 
 事件分发的本质：将点击事件（MotionEvent）传递到某个具体的View & 处理的整个过程
@@ -597,6 +634,20 @@ Binder往小了说可总结成一句话：
  而`Binder`的作用则是：连接 两个进程，实现了mmap()系统调用，主要负责 **创建数据接收的缓存空间** & **管理数据接收缓存** 
 注：传统的跨进程通信需拷贝数据2次，但`Binder`机制只需1次，主要是使用到了内存映射，具体下面会详细说明。
 
+### 为什么要使用Binder？
+
+主要有两个方面的原因：
+
+性能方面 
+在移动设备上（性能受限制的设备，比如要省电），广泛地使用跨进程通信对通信机制的性能有严格的要求，Binder相对出传统的Socket方式，更加高效。Binder数据拷贝只需要一次，而管道、消息队列、Socket都需要2次，共享内存方式一次内存拷贝都不需要，但实现方式又比较复杂。
+
+安全方面 
+传统的进程通信方式对于通信双方的身份并没有做出严格的验证，比如Socket通信ip地址是客户端手动填入，很容易进行伪造，而Binder机制从协议本身就支持对通信双方做身份校检，因而大大提升了安全性。
+
+还有一些好处，如实现面象对象的调用方式，在使用Binder时就和调用一个本地实例一样。
+
+
+
 ### binder跨进程通信机制（模型）
 
 `Binder` 跨进程通信机制 模型 基于 `Client - Server` 模式 ：
@@ -638,7 +689,7 @@ ANR全称`Application Not Responding`，意思就是程序未响应。
 Android系统会监控程序的响应状况，一旦出现下面两种情况，则弹出ANR对话框
 
 - 应用在5秒内未响应用户的输入事件（如按键或者触摸）
-- wBroadcastReceiver未在10秒内完成相关的处理
+- BroadcastReceiver未在10秒内完成相关的处理
 
 #### 如何避免
 
@@ -646,7 +697,7 @@ Android系统会监控程序的响应状况，一旦出现下面两种情况，�
 
 - 使用AsyncTask处理耗时IO操作。
 - 使用Thread或者HandlerThread时，调用`Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND)`设置优先级，否则仍然会降低程序响应，因为默认Thread的优先级和主线程相同。
-- ji使用Handler处理工作线程结果，而不是使用Thread.wait()或者Thread.sleep()来阻塞主线程。
+- 使用Handler处理工作线程结果，而不是使用Thread.wait()或者Thread.sleep()来阻塞主线程。
 - `Activity`的`onCreate`和`onResume`回调中尽量避免耗时的代码
 - `BroadcastReceiver`中`onReceive`代码也要尽量减少耗时，建议使用`IntentService`处理。
 
@@ -715,7 +766,7 @@ Android系统会监控程序的响应状况，一旦出现下面两种情况，�
 - 综合考虑设备内存阈值与其他因素设计合适的缓存大小
 - `onLowMemory()`：Android系统提供了一些回调来通知当前应用的内存使用情况，通常来说，当所有的background应用都被kill掉的时候，forground应用会收到onLowMemory()的回调。在这种情况下，需要尽快释放当前应用的非必须的内存资源，从而确保系统能够继续稳定运行。
 - `onTrimMemory()`：Android系统从4.0开始还提供了onTrimMemory()的回调，当系统内存达到某些条件的时候，所有正在运行的应用都会收到这个回调，同时在这个回调里面会传递以下的参数，代表不同的内存使用情况，收到onTrimMemory()回调的时候，需要根据传递的参数类型进行判断，合理的选择释放自身的一些内存占用，一方面可以提高系统的整体运行流畅度，另外也可以避免自己被系统判断为优先需要杀掉的应用
-- 资源文件需要选择合适的文件夹进行存放：例如我们只在`hdpi`的目录下放置了一张100100的图片，那么根据换算关系，`xxhdpi`的手机去引用那张图片就会被拉伸到200200。需要注意到在这种情况下，内存占用是会显著提高的。**对于不希望被拉伸的图片，需要放到assets或者nodpi的目录下**。
+- 资源文件需要选择合适的文件夹进行存放：例如我们只在`hdpi`的目录下放置了一张$100\times100$的图片，那么根据换算关系，`xxhdpi`的手机去引用那张图片就会被拉伸到$200\times200$。需要注意到在这种情况下，内存占用是会显著提高的。**对于不希望被拉伸的图片，需要放到assets或者nodpi的目录下**。
 - 谨慎使用static对象
 - 优化布局层次，减少内存消耗
 - 使用FlatBuffer等工具序列化数据
@@ -731,7 +782,7 @@ Android系统会监控程序的响应状况，一旦出现下面两种情况，�
 1. 图片使用完成后，没有及时的释放，导致Bitmap占用的内存越来越大，而安卓提供给Bitmap的内存是有一定限制的，当超出该内存时，自然就发生了OOM
 2. 图片过大
 
-这里的图片过大是指加载到内存时所占用的内存，并不是图片自身的大小。而图片加载到内存中时所占用的内存是根据图片的分辨率以及它的配置（ARGB值）计算的。举个例子：
+这里的图片过大是指**加载到内存时所占用的内存**，并不是图片自身的大小。而图片加载到内存中时所占用的内存是根据图片的分辨率以及它的配置（ARGB值）计算的。举个例子：
 
 假如有一张分辨率为2048x1536的图片，它的配置为ARGB_8888，那么它加载到内存时的大小就是2048x1526x4/1024/1024=12M.，因此当将这张图片设置到ImageView上时，将可能出现OOM。
 
@@ -807,7 +858,7 @@ return inSampleSize;
 
 1. 内存缓存，对应的缓存算法是LruCache<k,v>（近期最少使用算法）,Android提供了该算法。
 
-LruCache是一个泛型类，它的内部采用一个LinkedHashMap以强引用的方式存储外界的缓存对象，其提供了get和put方法来完成缓存的获取和添加操作，当缓存满时，LruCache会移除较早使用的缓存对象，然后再添加新的缓存对象。
+LruCache是一个泛型类，它的内部采用一个LinkedHashMap以**强引用**的方式存储外界的缓存对象，其提供了get和put方法来完成缓存的获取和添加操作，当缓存满时，LruCache会移除较早使用的缓存对象，然后再添加新的缓存对象。
 
 补充：之所以使用LinkedHashMap来实现LruCache是因为LinkedHashMap内部采用了双向链表的方式，它可以以访问顺序进行元素的排序。比如通过get方法获取了一个元素，那么就将这个元素放到链表的尾部，通过不断的get操作就得到了一个访问顺序的链表，这样位于链表头部的就是较早的元素。因此非常适合于LruCache算法的思想，在缓存满时，将链表头部的对象移除即可。LruCache经典使用方式:
 
@@ -1079,20 +1130,698 @@ View（包括ViewGroup）使用的是组合模式，将View组成成树形结构
 
 `Android`中的应用中，里面对各个窗口的管理相当复杂（任务栈、状态等等），Android系统当然可以不用Activity，让用户自己直接操作Window来开发自己的应用。但是如果让用户自己去管理这些Window，先不说工作量，光让用户自己去实现任务栈这点，有几个人能写的出来。**为了让大家能简单、快速的开发应用，Android通过定义Activity，让Activity帮我们管理好，我们只需简单的去重写几个回调函数，无需直接与Window对象接触**。各种事件也只需重写Activity里面的回调即可。无需关注其他细节，默认都帮我们写好了，针对需要定制的部分我们重写（设计模式为：模板方法模式）。
 
-## EventBus
+## 常用开源框架
 
-EventBus是一个Android事件发布/订阅框架，通过解耦发布者和订阅者简化Android事件传递，这里的事件可以理解为消息。事件传递既可以用于Android四大组件间通讯，也可以用于异步线程和主线程间通讯等。
- 传统的事件传递方式包括：Handler、BroadcastReceiver、Interface回调，相比之下EventBus的优点是代码简洁，使用简单，并将事件发布和 订阅充分解耦。
+### LeakCanry
 
-**事件Event： **又可称为消息，其实就是一个对象，可以是网络请求返回的字符串，也可以是某个开关状态等等。事件类型EventType是指事件所属的Class。
+LeakCanary是一个检测内存泄露的开源类库，以可视化的方式 轻松检测内存泄露，并且在出现内存泄漏时及时通知开发者，省去手工分析hprof的过程。
 
-事件分为一般事件和Sticky事件，相对于一般事件，Sticky事件不同之处在于，当事件发布后，再有订阅者开始订阅该类型事件，依然能收到该类型事件的最近一个Sticky事件。
+这里可能会穿插问到android中内存泄漏的常见原因以及避免方法。
 
-**订阅者Subscriber： **订阅某种事件类型的对象，当有发布者发布这类事件后，EventBus会执行订阅者的onEvent函数，这个函数叫事件响应函数。订阅者通过register接口订阅某个事件类型，unregister接口退订。订阅者存在优先级，优先级高的订阅者可以取消事件继续向优先级低的订阅者分发，默认所有订阅者优先级都为0。
+#### 原理
 
-**发布者Publisher： **发布某事件的对象，通过post接口发布事件。
+- 在Application中注册一个ActivityLifecycleCallbacks来监听Activity的销毁
 
-## okHttp
+- 通过IdleHandler在主线程空闲时进行检测（IdleHandler 可以用来提升性能，主要用在我们希望能够在当前线程消息队列空闲时做些事情，譬如 UI 线程在显示完成后，如果线程空闲我们就可以提前准备其他内容的情况下，不过最好不要做耗时操作。）
+
+- 检测是通过WeakReference实现的，如果没有被回收会再次调用gc再确认一遍
+
+- 确认有泄漏后，dump hprof文件，并开启一个进程IntentService通过HAHA进行分析
+
+IntentService是Service的子类,由于Service里面不能做耗时的操作,所以Google提供了IntentService,在IntentService内维护了一个工作线程来处理耗时操作，当任务执行完后，IntentService会自动停止。另外，可以启动IntentService多次，而每一个耗时操作会以工作队列的方式在IntentService的onHandleIntent回调方法中执行，并且，每次只会执行一个工作线程，执行完第一个再执行第二个，以此类推。
+
+### OkHttp（基于3.9版本）
+
+------
+
+#### [使用](https://link.juejin.im?target=http%3A%2F%2Fliuwangshu.cn%2Fapplication%2Fnetwork%2F5-okhttp2x.html)
+
+##### 1. 在gradle中添加依赖
+
+```
+compile 'com.squareup.okhttp3:okhttp:3.9.0'
+compile 'com.squareup.okio:okio:1.13.0'
+复制代码
+```
+
+##### 2. 创建OkHttpClient，并对timeout等进行设置
+
+```
+File sdcache = getExternalCacheDir();
+int cacheSize = 10 * 1024 * 1024;
+OkHttpClient.Builder builder = new OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .writeTimeout(20, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
+        .cache(new Cache(sdcache.getAbsoluteFile(), cacheSize));
+OkHttpClient mOkHttpClient=builder.build();
+复制代码
+```
+
+##### 3. 创建Request
+
+- get请求
+
+```
+Request request = new Request.Builder()
+            .url("http://www.baidu.com")
+            .build();
+复制代码
+```
+
+- post请求（post需要传入requsetBody）
+
+```
+RequestBody formBody = new FormEncodingBuilder()
+            .add("size", "10")
+            .build();
+    Request request = new Request.Builder()
+            .url("http://api.1-blog.com/biz/bizserver/article/list.do")
+            .post(formBody)
+            .build();
+复制代码
+```
+
+##### 4. 创建Call并执行（okHttp的返回结果并没有在ui线程）
+
+```
+Call call = mOkHttpClient.newCall(request);
+复制代码
+```
+
+- 同步执行
+
+```
+Response mResponse=call.execute();
+        if (mResponse.isSuccessful()) {     
+           return mResponse.body().string();
+       } else {
+           throw new IOException("Unexpected code " + mResponse);
+       }
+复制代码
+```
+
+- 异步执行
+
+```
+call.enqueue(new Callback() {
+        @Override
+        public void onFailure(Request request, IOException e) {
+        }
+        @Override
+        public void onResponse(Response response) throws IOException {
+            String str = response.body().string();
+            Log.i("wangshu", str);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(getApplicationContext(), "请求成功", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+    });
+复制代码
+```
+
+##### 5. 封装
+
+因为以下原因，所以我们需要封装：
+
+- 避免重复代码编写
+- 请求的回调改为UI线程
+- 其他需要的逻辑：例如加解密等
+
+#### OkHttp中的设计模式
+
+1. Builder模式：OkHttpClient 和Request等都是通过Builder模式创建的
+2. 责任链模式：拦截器通过责任链模式进行工作
+3. 门面模式：整体采用门面模式，OkHttpClient为门面，向子系统委派任务
+4. 享元模式：连接池等采用了享元模式
+5. 其他：工厂模式、代理模式等
+
+#### [源码分析](https://link.juejin.im?target=http%3A%2F%2Fliuwangshu.cn%2Fapplication%2Fnetwork%2F7-okhttp3-sourcecode.html)
+
+##### 1. Call
+
+- Call的实现类为RealCall
+- 在执行execute或者enqueue时，会取出okHttpClient中的Dispatcher执行对应的方法
+
+```
+client.dispatcher().enqueue(new AsyncCall(responseCallback, forWebSocket));
+复制代码
+```
+
+##### 2. Diapatcher
+
+- Diapatcher在OkHttpClient build时进行初始化
+- Dispatcher负责进行任务调度，内部维护一个线程池，处理并发请求
+- Dispatcher内部有三个队列
+
+```
+/** 将要运行的异步请求队列 */
+private final Deque<AsyncCall> readyAsyncCalls = new ArrayDeque<>();
+/**正在运行的异步请求队列 */
+private final Deque<AsyncCall> runningAsyncCalls = new ArrayDeque<>();
+/** 正在运行的同步请求队列 */
+private final Deque<RealCall> runningSyncCalls = new ArrayDeque<>();
+复制代码
+```
+
+- 执行时，线程会调用AsyncCall的excute方法
+
+##### 3. AsyncCall
+
+- AsyncCall是RealCall的一个内部类，实现了Runnalbe接口
+- AsyncCall 通过 getResponseWithInterceptorChain方法取得Response
+- 执行完毕后通过client.dispatcher().finished(this)；将自身从dispatcher队列中取出，并取出下一个加入相应队列
+
+```
+//AsyncCall 的excute方法
+@Override protected void execute() {
+  boolean signalledCallback = false;
+  try {
+    Response response = getResponseWithInterceptorChain(forWebSocket);
+    if (canceled) {
+      signalledCallback = true;
+      responseCallback.onFailure(RealCall.this, new IOException("Canceled"));
+    } else {
+      signalledCallback = true;
+      responseCallback.onResponse(RealCall.this, response);
+    }
+  } catch (IOException e) {
+    if (signalledCallback) {
+      // Do not signal the callback twice!
+      logger.log(Level.INFO, "Callback failure for " + toLoggableString(), e);
+    } else {
+      responseCallback.onFailure(RealCall.this, e);
+    }
+  } finally {
+    client.dispatcher().finished(this);
+  }
+}
+
+复制代码
+```
+
+##### 4. getResponseWithInterceptorChain
+
+getResponseWithInterceptorChain是用责任链的方式，执行拦截器，对请求和请求结果进行处理
+
+- getResponseWithInterceptorChain 中创建拦截器，并创建第一个RealInterceptorChain，执行其proceed方法
+
+```
+Response getResponseWithInterceptorChain() throws IOException {
+    // Build a full stack of interceptors.
+    List<Interceptor> interceptors = new ArrayList<>();
+    interceptors.addAll(client.interceptors());
+    interceptors.add(retryAndFollowUpInterceptor);
+    interceptors.add(new BridgeInterceptor(client.cookieJar()));
+    interceptors.add(new CacheInterceptor(client.internalCache()));
+    interceptors.add(new ConnectInterceptor(client));
+    if (!forWebSocket) {
+      interceptors.addAll(client.networkInterceptors());
+    }
+    interceptors.add(new CallServerInterceptor(forWebSocket));
+
+    Interceptor.Chain chain = new RealInterceptorChain(interceptors, null, null, null, 0,
+        originalRequest, this, eventListener, client.connectTimeoutMillis(),
+        client.readTimeoutMillis(), client.writeTimeoutMillis());
+
+    return chain.proceed(originalRequest);
+  }
+复制代码
+```
+
+- RealInterceptorChain的proceed方法中，会取出拦截器，并创建下一个Chain，将其作为参数传给拦截器的intercept方法
+
+```
+  // If there's another interceptor in the chain, call that.
+  if (index < client.interceptors().size()) {
+    Interceptor.Chain chain = new ApplicationInterceptorChain(index + 1, request, forWebSocket);
+    //从拦截器列表取出拦截器
+    Interceptor interceptor = client.interceptors().get(index);
+    Response interceptedResponse = interceptor.intercept(chain);
+
+    if (interceptedResponse == null) {
+      throw new NullPointerException("application interceptor " + interceptor
+          + " returned null");
+    }
+
+    return interceptedResponse;
+  }
+
+  // No more interceptors. Do HTTP.
+  return getResponse(request, forWebSocket);
+}
+
+复制代码
+```
+
+#### 拦截器
+
+##### 1. [自定义拦截器](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2Fd04b463806c8)
+
+- 自定义拦截器分为两类，interceptor和networkInterceptor（区别：networkInterceptor处理网络相关任务，如果response直接从缓存返回了，那么有可能不会执行networkInterceptor）
+- 自定义方式：实现Interceptor，重写intercept方法，并注册拦截器
+
+##### 2. [系统拦截器](https://link.juejin.im?target=https%3A%2F%2Fblog.csdn.net%2Flepaitianshi%2Farticle%2Fdetails%2F72457928)
+
+- RetryAndFollowUpInterceptor：进行失败重试和重定向
+- BridgeInterceptor：添加头部信息
+- CacheInterceptor：处理缓存
+- ConnectInterceptor：获取可用的connection实例
+- CallServerInterceptor：发起请求
+
+#### [连接池复用](https://link.juejin.im?target=http%3A%2F%2Fliuwangshu.cn%2Fapplication%2Fnetwork%2F8-okhttp3-sourcecode2.html)
+
+在ConnectInterceptor中，我们获取到了connection的实例，该实例是从ConnectionPool中取得
+
+##### 1. Connection
+
+- Connection 是客户端和服务器建立的数据通路，一个Connection上可能存在几个链接
+- Connection的实现类是RealConnection，是socket物理连接的包装
+- Connection内部维持着一个List<Reference>引用
+
+##### 2. StreamAllocation
+
+StreamAllocation是Connection维护的连接，以下是类内注解
+
+```
+ <ul>
+ *     <li><strong>Connections:</strong> physical socket connections to remote servers. These are
+ *         potentially slow to establish so it is necessary to be able to cancel a connection
+ *         currently being connected.
+ *     <li><strong>Streams:</strong> logical HTTP request/response pairs that are layered on
+ *         connections. Each connection has its own allocation limit, which defines how many
+ *         concurrent streams that connection can carry. HTTP/1.x connections can carry 1 stream
+ *         at a time, HTTP/2 typically carry multiple.
+ *     <li><strong>Calls:</strong> a logical sequence of streams, typically an initial request and
+ *         its follow up requests. We prefer to keep all streams of a single call on the same
+ *         connection for better behavior and locality.
+ * </ul>
+复制代码
+```
+
+##### 3. ConnectionPool
+
+ConnectionPool通过Address等来查找有没有可以复用的Connection，同时维护一个线程池，对Connection做回收工作
+
+### Retrofit
+
+------
+
+Retrofit帮助我们对OkHttp进行了封装，使网络请求更加方便
+
+#### [使用](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2Fa3e162261ab6)
+
+##### 1. 添加依赖
+
+```
+dependencies {
+    compile 'com.squareup.retrofit2:retrofit:2.0.2'
+  }
+复制代码
+```
+
+##### 2. 创建Retrofit实例
+
+```
+Retrofit retrofit = new Retrofit.Builder() 
+ .baseUrl("http://fanyi.youdao.com/") // 设置网络请求的Url地址
+ .addConverterFactory(GsonConverterFactory.create()) // 设置数据解析器 
+ .addCallAdapterFactory(RxJavaCallAdapterFactory.create()) // 支持RxJava平台 .build();
+复制代码
+```
+
+##### 3. 创建网络接口
+
+```
+@GET("user")
+Call<User> getUser(@Header("Authorization") String authorization)
+复制代码
+```
+
+##### 4. 创建Call
+
+```
+ GetRequest_Interface request = retrofit.create(GetRequest_Interface.class);
+//对 发送请求 进行封装
+Call<Reception> call = request.getCall();
+复制代码
+```
+
+##### 5. 执行Call的请求方法
+
+```
+//发送网络请求(异步) call.enqueue(new Callback<Translation>() { 
+//请求成功时回调
+ @Override 
+public void onResponse(Call<Translation> call, Response<Translation> response) { 
+   //请求处理,输出结果
+    response.body().show(); 
+ } 
+ //请求失败时候的回调 
+ @Override 
+ public void onFailure(Call<Translation> call, Throwable throwable) { 
+     System.out.println("连接失败"); 
+ } 
+ });
+ 
+ // 发送网络请求（同步） Response<Reception> response = call.execute();
+
+复制代码
+```
+
+#### [源码解析](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2F0c055ad46b6c)
+
+##### 1. Retrofit
+
+Retrofit 通过builder模式创建，我们可以对其进行各种设置：
+
+- baseUrl：请求地址的头部，必填
+- callFactory：网络请求工厂（不进行设置的话默认会生成一个OkHttpClient）
+- adapterFactories：网络请求适配器工厂的集合，这里有适配器因为Retrofit不仅支持Android，还支持Ios等其他平台（不进行设置的话会根据平台自动生成）
+- converterFactories：数据转换器工厂的集合（将网络返回的数据转换成我们需要的类）
+- callbackExecutor：回调方法执行器（Android平台默认通过Handler发送到主线程执行）
+
+##### 2. Call
+
+我们的每个method对应一个Call， Call的创建分为两步：
+
+- retorfit.create(myInfterfaceClass.class)创建我们网络请求接口类的实例
+- 调用对应方法拿到对应网络请求的Call
+
+关键在第一步，第一步是通过动态代理实现的
+
+```
+public <T> T create(final Class<T> service) {
+  Utils.validateServiceInterface(service);
+  if (validateEagerly) {
+    eagerlyValidateMethods(service);
+  }
+  return (T) Proxy.newProxyInstance(service.getClassLoader(), new Class<?>[] { service },
+      new InvocationHandler() {
+        private final Platform platform = Platform.get();
+
+        @Override public Object invoke(Object proxy, Method method, Object... args)
+            throws Throwable {
+          // If the method is a method from Object then defer to normal invocation.
+          if (method.getDeclaringClass() == Object.class) {
+            return method.invoke(this, args);
+          }
+          if (platform.isDefaultMethod(method)) {
+            return platform.invokeDefaultMethod(method, service, proxy, args);
+          }
+          ServiceMethod serviceMethod = loadServiceMethod(method);//1
+          OkHttpCall okHttpCall = new OkHttpCall<>(serviceMethod, args);
+          return serviceMethod.callAdapter.adapt(okHttpCall);
+        }
+      });
+}
+复制代码
+```
+
+- 通过loadServiceMethod方法生成mehtod对应的ServiceMethod
+- 将ServiceMethod和方法参数传进OkHttpCall生成OkHttpCall
+- 调用callAdapter方法对OkHttpCall进行处理并返回
+
+##### 1. ServiceMethod
+
+loadServiceMethod方法会首先在缓存里查找是否有该method对应的ServiceMethod，没有的话调用build方法创建一个
+
+```
+ServiceMethod loadServiceMethod(Method method) {
+ ServiceMethod result; 
+ // 设置线程同步锁 
+ synchronized (serviceMethodCache) { 
+ result = serviceMethodCache.get(method);
+  // ServiceMethod类对象采用了单例模式进行创建 
+  // 即创建ServiceMethod对象前，先看serviceMethodCache有没有缓存之前创建过的网络请求实例 
+  // 若没缓存，则通过建造者模式创建 
+  serviceMethod 对象 if (result == null) { 
+  // 下面会详细介绍ServiceMethod生成实例的过程 
+  result = new ServiceMethod.Builder(this, method).build(); 
+  serviceMethodCache.put(method, result); 
+   } 
+  }
+   
+  return result;
+}
+
+复制代码
+```
+
+ServiceMethod的创建过程即是对method的解析过程，解析过程包括：对注解的解析，寻找合适的CallAdapter和Convert等
+
+##### 2. OkHttpCall
+
+OkHttpCall实现了Call接口，当执行excute或enqueue请求命令时，内部通过传入的CallFactory（OkHttpClient）执行网络请求
+
+##### 3. callAdapter
+
+如果我们没有对CallAdapter进行设置，它的值将是Android平台的默认设置，其adapt方法如下
+
+```
+public <R> Call<R> adapt(Call<R> call) { 
+    return new ExecutorCallbackCall<>(callbackExecutor, call); 
+} 
+
+
+ExecutorCallbackCall(Executor callbackExecutor, Call<T> delegate) {
+
+ this.delegate = delegate; 
+ // 把上面创建并配置好参数的OkhttpCall对象交给静态代理delegate 
+ // 静态代理和动态代理都属于代理模式 
+ // 静态代理作用：代理执行被代理者的方法，且可在要执行的方法前后加入自己的动作，进行对系统功能的拓展 
+ 
+ this.callbackExecutor = callbackExecutor; 
+ // 传入上面定义的回调方法执行器 
+ // 用于进行线程切换 }
+
+复制代码
+```
+
+ExecutorCallbackCall对OkHttpCall进行了装饰，会调用CallBackExcutor对OkHttpCall执行的返回结果进行处理，使其位于主线程
+
+#### [自定义Convert和CallAdapter](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2F308f3c54abdd)
+
+### [Fresco](https://link.juejin.im?target=https%3A%2F%2Fwww.fresco-cn.org%2F)
+
+------
+
+Fresco是一个图片加载库，可以帮助我们加载图片显示，控制多线程，以及管理缓存和内存等
+
+#### [Fresco使用](https://link.juejin.im?target=https%3A%2F%2Fwww.fresco-cn.org%2Fdocs%2Findex.html)
+
+引入依赖
+
+```
+dependencies {
+  // 其他依赖
+  compile 'com.facebook.fresco:fresco:0.12.0'
+   // 在 API < 14 上的机器支持 WebP 时，需要添加
+  compile 'com.facebook.fresco:animated-base-support:0.12.0'
+
+  // 支持 GIF 动图，需要添加
+  compile 'com.facebook.fresco:animated-gif:0.12.0'
+
+  // 支持 WebP （静态图+动图），需要添加
+  compile 'com.facebook.fresco:animated-webp:0.12.0'
+  compile 'com.facebook.fresco:webpsupport:0.12.0'
+
+  // 仅支持 WebP 静态图，需要添加
+  compile 'com.facebook.fresco:webpsupport:0.12.0'
+}
+
+复制代码
+```
+
+初始化
+
+```
+Fresco.initialize(Context context);
+复制代码
+```
+
+使用SimpleView
+
+```
+<com.facebook.drawee.view.SimpleDraweeView
+    android:id="@+id/my_image_view"
+    android:layout_width="130dp"
+    android:layout_height="130dp"
+    fresco:placeholderImage="@drawable/my_drawable"
+  />
+复制代码
+```
+
+加载图片
+
+```
+Uri uri = Uri.parse("https://raw.githubusercontent.com/facebook/fresco/gh-pages/static/logo.png");
+SimpleDraweeView draweeView = (SimpleDraweeView) findViewById(R.id.my_image_view);
+draweeView.setImageURI(uri);
+
+复制代码
+```
+
+
+
+以上是Fresco的基本加载流程，此外，我们可以定制加载和显示的各个环节
+
+Fresco由两部分组成，Drawees负责图片的呈现，ImagePipeline负责图片的下载解码和内存管理
+
+#### [Drawees](https://link.juejin.im?target=https%3A%2F%2Fwww.fresco-cn.org%2Fdocs%2Fconcepts.html)
+
+Drawees 负责图片的呈现。它由三个元素组成，有点像MVC模式。
+
+##### DraweeView
+
+- 继承于 View, 负责图片的显示。
+- 一般情况下，使用 SimpleDraweeView 即可。 你可以在 XML 或者在 Java 代码中使用它，通过 setImageUri 给它设置一个 URI 来使用，这里有简单的入门教学：开始使用
+- 你可以使用 XML属性来达到各式各样的效果。
+
+##### DraweeHierarchy
+
+- DraweeHierarchy 用于组织和维护最终绘制和呈现的 Drawable 对象，相当于MVC中的M。
+- 你可以通过它来在Java代码中自定义图片的展示
+
+##### DraweeController
+
+- DraweeController 负责和 image loader 交互（ Fresco 中默认为 image pipeline, 当然你也可以指定别的），可以创建一个这个类的实例，来实现对所要显示的图片做更多的控制。
+- 如果你还需要对Uri加载到的图片做一些额外的处理，那么你会需要这个类的。
+
+##### DraweeControllerBuilder
+
+- DraweeControllers 由 DraweeControllerBuilder 采用 Builder 模式创建，创建之后，不可修改。具体参见: 使用ControllerBuilder。
+
+##### Listeners
+
+- 使用 ControllerListener 的一个场景就是设置一个 Listener监听图片的下载。
+
+#### ImagePipeline
+
+- Fresco 的 Image Pipeline 负责图片的获取和管理。图片可以来自远程服务器，本地文件，或者Content Provider，本地资源。压缩后的文件缓存在本地存储中，Bitmap数据缓存在内存中。
+- 在5.0系统以下，Image Pipeline 使用 pinned purgeables 将Bitmap数据避开Java堆内存，存在ashmem中。这要求图片不使用时，要显式地释放内存
+- SimpleDraweeView自动处理了这个释放过程，所以没有特殊情况，尽量使用SimpleDraweeView，在特殊的场合，如果有需要，也可以直接控制Image Pipeline。
+- ImagePipeline加载图片流程
+
+> 1. 检查内存缓存，如有，返回
+
+1. 后台线程开始后续工作
+2. 检查是否在未解码内存缓存中。如有，解码，变换，返回，然后缓存到内存缓存中。
+3. 检查是否在磁盘缓存中，如果有，变换，返回。缓存到未解码缓存和内存缓存中。
+4. 从网络或者本地加载。加载完成后，解码，变换，返回。存到各个缓存中。
+
+#### ImagePipeline的线程池
+
+Image pipeline 默认有3个线程池:
+
+> 1. 3个线程用于网络下载
+
+1. 2个线程用于磁盘操作: 本地文件的读取，磁盘缓存操作。
+2. 2个线程用于CPU相关的操作: 解码，转换，以及后处理等后台操作。
+
+#### ImagePipeline的 缓存
+
+ImagePipeLine有三级缓存
+
+> 1. 解码后的Bitmap缓存
+> 2. 未解码图片的内存缓存
+> 3. 磁盘缓存
+
+#### [对比](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2F6729dc17586b)
+
+##### 功能
+
+Fresco 相对于Glide/Picaso等拥有更多的功能，如图片的渐进式加载/动图/圆角等，
+
+##### 性能
+
+Fresco采用三级缓存：
+
+> 1. 解码后的Bitmap缓存
+> 2. 未解码图片的内存缓存
+> 3. 磁盘缓存
+
+Glide两级缓存：
+
+> 1. 根据ImageView控件尺寸获得对应的大小的bitmap来展示，可以缓存原始数据或者resize后数据
+> 2. 磁盘缓存
+
+##### 使用
+
+Fresco通过CloseableReference管理图片，通过图片控件DraweeView来显示图片和控制图片释放，虽然扩展性高，但是扩展起来麻烦；对项目有一定侵入性
+
+### EventBus
+
+------
+
+EventBus使用了观察者模式，方便我们项目中进行数据传递和通信
+
+#### [使用](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2Facfe78296bb5)
+
+添加依赖
+
+```
+compile 'org.greenrobot:eventbus:3.0.0'
+复制代码
+```
+
+注册和解绑
+
+```
+EventBus.getDefault().register(this);
+
+EventBus.getDefault().unregister(this);
+复制代码
+```
+
+添加订阅消息方法
+
+```
+@Subscribe(threadMode = ThreadMode.MAIN) 
+public void onEvent(MessageEvent event) {
+    /* Do something */
+}
+复制代码
+```
+
+发送消息
+
+```
+EventBus.getDefault().post(new MessageEvent("Hello !....."));
+    
+复制代码
+```
+
+##### @Subscribe注解
+
+该注解内部有三个成员，分别是threadMode、sticky、priority。
+
+> 1. threadMode代表订阅方法所运行的线程
+> 2. sticky代表是否是粘性事件
+> 3. priority代表优先级
+
+##### threadMode
+
+> 1. POSTING:表示订阅方法运行在发送事件的线程。
+> 2. MAIN：表示订阅方法运行在UI线程，由于UI线程不能阻塞，因此当使用MAIN的时候，订阅方法不应该耗时过长。
+> 3. BACKGROUND：表示订阅方法运行在后台线程，如果发送的事件线程不是UI线程，那么就使用该线程；如果发送事件的线程是UI线程，那么新建一个后台线程来调用订阅方法。
+> 4. ASYNC：订阅方法与发送事件始终不在同一个线程，即订阅方法始终会使用新的线程来运行。
+
+##### sticky 粘性事件
+
+在注册之前便把事件发生出去，等到注册之后便会收到最近发送的粘性事件（必须匹配）。注意：只会接收到最近发送的一次粘性事件，之前的会接受不到,demo
+
+#### [源码解析](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2Fbda4ed3017ba)
+
+参见链接
+
+##### [性能](https://link.juejin.im?target=https%3A%2F%2Fsegmentfault.com%2Fa%2F1190000005089229)
+
+1. EventBus通过反射的方式对@Subscribe方法进行解析。
+2. 默认情况下，解析是运行时进行的，但是我们也可以通过设置和加载依赖库，使其编译时形成索引，其性能会大大提升
 
 ## Intent
 
@@ -1103,8 +1832,8 @@ Intent的中文意思是“意图，意向”，在Android中提供了Intent机�
 ### Intent的七大属性
 
 **第一类：启动，有ComponentName（显式）,Action（隐式），Category（隐式）。**
- **第二类：传值，有Data（隐式），Type（隐式），Extra（隐式、显式）。**
- **第三类：启动模式，有Flag。**
+**第二类：传值，有Data（隐式），Type（隐式），Extra（隐式、显式）。**
+**第三类：启动模式，有Flag。**
 
 #### 1.ComponentName（显式Intent）
 
@@ -1112,24 +1841,24 @@ Intent的中文意思是“意图，意向”，在Android中提供了Intent机�
 
 ```java
 Intent intent = new Intent();
-                ComponentName componentName = new ComponentName(MainActivity.this,OtherActivity.class);
-                intent.setComponent(componentName);
-                startActivity(intent);
+ComponentName componentName = new ComponentName(MainActivity.this,OtherActivity.class);
+intent.setComponent(componentName);
+startActivity(intent);
 ```
 
 上面等同于下面两个：
 
 ```java
 Intent intent = new Intent();
-                intent.setClass(MainActivity.this,OtherActivity.class);
-                startActivity(intent);
+intent.setClass(MainActivity.this,OtherActivity.class);
+startActivity(intent);
 ```
 
 一般我们写成：
 
 ```java
  Intent intent = new Intent(MainActivity.this, OtherActivity.class);
-                startActivity(intent);
+ startActivity(intent);
 ```
 
 #### 2.Action跟Category（隐式Intent）
@@ -1149,18 +1878,18 @@ Intent intent = new Intent();
 
 ```java
 Intent intent = new Intent();
-                intent.setAction("com.yjn.ThirdActivity");
-                startActivity(intent);
+intent.setAction("com.yjn.ThirdActivity");
+startActivity(intent);
 ```
 
 当然可以写简单一点
 
 ```java
  Intent intent = new Intent("com.yjn.ThirdActivity");
-                startActivity(intent);
+ startActivity(intent);
 ```
 
-通过这中方式我们也可以启动一个Activity，那么大家可能也注意到了，我们的清单文件中有一个category的节点，那么没有这个节点可以吗？不可以！！当我们使用这种隐式启动的方式来启动一个Activity的时候，必须要action和category都匹配上了，该Activity才会成功启动。如果我们没有定义category，那么可以暂时先使用系统默认的category，总之，category不能没有。这个时候我们可能会有疑问了，如果我有多个Activity都配置了相同的action，那么会启动哪个？看下面一张图片:
+通过这种方式我们也可以启动一个Activity，那么大家可能也注意到了，我们的清单文件中有一个category的节点，那么没有这个节点可以吗？不可以！！当我们使用这种隐式启动的方式来启动一个Activity的时候，必须要action和category都匹配上了，该Activity才会成功启动。如果我们没有定义category，那么可以暂时先使用系统默认的category，总之，category不能没有。这个时候我们可能会有疑问了，如果我有多个Activity都配置了相同的action，那么会启动哪个？看下面一张图片:
 
 ![image-20190219135823814](https://ws4.sinaimg.cn/large/006tKfTcly1g0bozmdarrj30re16o77x.jpg)
 
@@ -1183,8 +1912,8 @@ action我们只能添加一个，但是category却可以添加多个（至少有
 
 ```java
 Intent intent = new Intent("com.yjn.ThirdActivity");
-                intent.addCategory("mycategory");
-                startActivity(intent);
+intent.addCategory("mycategory");
+startActivity(intent);
 ```
 
 #### 3.Data
@@ -1208,7 +1937,6 @@ startActivity(intent);
 <activity android:name=".HttpActivity" >
             <intent-filter>
                 <category android:name="android.intent.category.DEFAULT"/>
-
                 <action android:name="ANDROID.INTENT.ACTION.VIEW"/>
                 <data android:scheme="http"/>
             </intent-filter>
@@ -1223,9 +1951,7 @@ startActivity(intent);
     android:label="@string/title_activity_http" >  
     <intent-filter>  
         <action android:name="android.intent.action.VIEW" />  
-  
         <category android:name="android.intent.category.DEFAULT" />  
-  
         <data  
             android:scheme="myhttp" />  
     </intent-filter>  
@@ -1281,77 +2007,36 @@ int id = bundle.getInt("id");
 String name = bundle.getString("name");  
 ```
 
-### 附Intent调用常见系统组件方法
+##### 既然单独使用Intent就可以完成数据传送了，为什么还要使用Bundle？
+
+其实使用Intent传值实际上底层也是会产生bundle的：
 
 ```java
-// 调用浏览器  
-Uri webViewUri = Uri.parse("http://blog.csdn.net/zuolongsnail");  
-Intent intent = new Intent(Intent.ACTION_VIEW, webViewUri);  
-  
-// 调用地图  
-Uri mapUri = Uri.parse("geo:100,100");  
-Intent intent = new Intent(Intent.ACTION_VIEW, mapUri);  
-  
-// 播放mp3  
-Uri playUri = Uri.parse("file:///sdcard/test.mp3");  
-Intent intent = new Intent(Intent.ACTION_VIEW, playUri);  
-intent.setDataAndType(playUri, "audio/mp3");  
-  
-// 调用拨打电话  
-Uri dialUri = Uri.parse("tel:10086");  
-Intent intent = new Intent(Intent.ACTION_DIAL, dialUri);  
-// 直接拨打电话，需要加上权限<uses-permission id="android.permission.CALL_PHONE" />  
-Uri callUri = Uri.parse("tel:10086");  
-Intent intent = new Intent(Intent.ACTION_CALL, callUri);  
-  
-// 调用发邮件（这里要事先配置好的系统Email，否则是调不出发邮件界面的）  
-Uri emailUri = Uri.parse("mailto:zuolongsnail@163.com");  
-Intent intent = new Intent(Intent.ACTION_SENDTO, emailUri);  
-// 直接发邮件  
-Intent intent = new Intent(Intent.ACTION_SEND);  
-String[] tos = { "zuolongsnail@gmail.com" };  
-String[] ccs = { "zuolongsnail@163.com" };  
-intent.putExtra(Intent.EXTRA_EMAIL, tos);  
-intent.putExtra(Intent.EXTRA_CC, ccs);  
-intent.putExtra(Intent.EXTRA_TEXT, "the email text");  
-intent.putExtra(Intent.EXTRA_SUBJECT, "subject");  
-intent.setType("text/plain");  
-Intent.createChooser(intent, "Choose Email Client");  
-  
-// 发短信  
-Intent intent = new Intent(Intent.ACTION_VIEW);  
-intent.putExtra("sms_body", "the sms text");  
-intent.setType("vnd.android-dir/mms-sms");  
-// 直接发短信  
-Uri smsToUri = Uri.parse("smsto:10086");  
-Intent intent = new Intent(Intent.ACTION_SENDTO, smsToUri);  
-intent.putExtra("sms_body", "the sms text");  
-// 发彩信  
-Uri mmsUri = Uri.parse("content://media/external/images/media/23");  
-Intent intent = new Intent(Intent.ACTION_SEND);  
-intent.putExtra("sms_body", "the sms text");  
-intent.putExtra(Intent.EXTRA_STREAM, mmsUri);  
-intent.setType("image/png");  
-  
-// 卸载应用  
-Uri uninstallUri = Uri.fromParts("package", "com.app.test", null);  
-Intent intent = new Intent(Intent.ACTION_DELETE, uninstallUri);  
-// 安装应用  
-Intent intent = new Intent(Intent.ACTION_VIEW);  
-intent.setDataAndType(Uri.fromFile(new File("/sdcard/test.apk"), "application/vnd.android.package-archive");  
-  
-// 在Android Market中查找应用  
-Uri uri = Uri.parse("market://search?q=愤怒的小鸟");           
-Intent intent = new Intent(Intent.ACTION_VIEW, uri); 
+public Intent putExtra(String name, String value) {
+        if (mExtras == null) {
+            mExtras = new Bundle();
+        }
+        mExtras.putString(name, value);
+        return this;
+    }
 ```
 
+而且intent只能直接传送基本的数据类型，复杂的类还是需要bundle
 
+还有一个好处就是，如果您在ABC三个页面中传值且顺序必须是ABC，直接传递Bundle的数据就好了。而不用在 B 将数据从Intent拿出来,然后封装到新的Intent，传递到C，多此一举。
+
+##### bundle和HashMap的区别？
+
+bundle是根据键值对来存储数据的，既然这样，它和HashMap有什么区别呢？
+
+- Bundle内部是由ArrayMap实现的，ArrayMap的内部实现是两个数组，一个int数组是存储对象数据对应下标，一个对象数组保存key和value，内部使用二分法对key进行排序，所以在添加、删除、查找数据的时候，都会使用二分法查找，只适合于小数据量操作，如果在数据量比较大的情况下，那么它的性能将退化。而HashMap内部则是数组+链表结构，所以在数据量较少的时候，HashMap的Entry Array比ArrayMap占用更多的内存。因为使用Bundle的场景大多数为小数据量，我没见过在两个Activity之间传递10个以上数据的场景，所以相比之下，在这种情况下使用ArrayMap保存数据，在操作速度和内存占用上都具有优势，因此使用Bundle来传递数据，可以保证更快的速度和更少的内存占用。
+- 另外一个原因，则是在Android中如果使用Intent来携带数据的话，需要数据是基本类型或者是可序列化类型，HashMap使用Serializable进行序列化，而Bundle则是使用Parcelable进行序列化。而在Android平台中，更推荐使用Parcelable实现序列化，虽然写法复杂，但是开销更小，所以为了更加快速的进行数据的序列化和反序列化，系统封装了Bundle类，方便我们进行数据的传输。
 
 ## 版本问题
 
 ### CompileSdkVersion
 
-`compileSdkVersion` 告诉 Gradle 用哪个 Android SDK 版本编译你的应用。使用任何新添加的 API 就需要使用对应 Level 的 Android SDK。
+`compileSdkVersion` 告诉 Gradle 用哪个 Android SDK （Software Development Kit）版本编译你的应用。使用任何新添加的 API 就需要使用对应 Level 的 Android SDK。
 
 需要强调的是修改 `compileSdkVersion` 不会改变运行时的行为。当你修改了 `compileSdkVersion` 的时候，可能会出现新的编译警告、编译错误，但新的 `compileSdkVersion` 不会被包含到 APK 中：它纯粹只是在编译的时候使用。（你真的应该修复这些警告，他们的出现一定是有原因的）
 
@@ -1402,13 +2087,11 @@ minSdkVersion (lowest possible) <=
 
 
 
-
-
 ## Android中的动画
 
 ### 综述
 
-Android中的动画分为补间动画(Tweened Animation)和逐帧动画(Frame-by-Frame Animation)。没有意外的，补间动画是在几个关键的节点对对象进行描述又系统进行填充。而逐帧动画是在固定的时间点以一定速率播放一系列的drawable资源。下面对两种动画进行分别简要说明。
+Android中的动画分为补间动画(Tweened Animation)和逐帧动画(Frame-by-Frame Animation)。没有意外的，补间动画是在几个关键的节点对对象进行描述由系统进行填充。而逐帧动画是在固定的时间点以一定速率播放一系列的drawable资源。下面对两种动画进行分别简要说明。
 
 ### 补间动画
 
@@ -1552,13 +2235,193 @@ JAVA的加载方式与第一种方法相同。
 
 ## HandlerThread和Tread的区别
 
+我们知道Handler是用来异步更新UI的，更详细的说是用来做线程间的通信的，更新UI时是子线程与UI主线程之间的通信。那么现在我们要是想子线程与子线程之间的通信要怎么做呢？当然说到底也是用Handler+Thread来完成（不推荐，需要自己操作Looper），Google官方很贴心的帮我们封装好了一个类，那就是刚才说到的：HandlerThread。（类似的封装对于多线程的场景还有AsyncTask）
+
+HandlerThread的使用方法还是比较简单的，但是我们要明白一点的是：如果一个线程要处理消息，那么它必须拥有自己的Looper，并不是Handler在哪里创建，就可以在哪里处理消息的。
+
+如果不用HandlerThread的话，需要手动去调用Looper.prepare()和Looper.loop()这些方法。
+
+来看看HandlerThread的使用方法： 
+首先新建HandlerThread并且执行start()
+
+```
+private HandlerThread mHandlerThread;
+......
+mHandlerThread = new HandlerThread("HandlerThread");
+handlerThread.start();
+创建Handler，使用mHandlerThread.getLooper()生成Looper：
+```
+
+        final Handler handler = new Handler(mHandlerThread.getLooper()){
+            @Override
+            public void handleMessage(Message msg) {
+                System.out.println("收到消息");
+            }
+        };
+然后再新建一个子线程来发送消息：
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Thread.sleep(1000);//模拟耗时操作
+                    handler.sendEmptyMessage(0);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
+最后一定不要忘了在onDestroy释放,避免内存泄漏：
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        mHandlerThread.quit();
+    }
+执行结果很简单，就是在控制台打印字符串：收到消息
+
 ## IntentService是什么
 
-## 线程池和AsyncTask
+IntentService是Service的子类,由于Service里面不能做耗时的操作,所以Google提供了IntentService,在IntentService内维护了一个工作线程来处理耗时操作，当任务执行完后，IntentService会自动停止。另外，可以启动IntentService多次，而每一个耗时操作会以工作队列的方式在IntentService的onHandleIntent回调方法中执行，并且，每次只会执行一个工作线程，执行完第一个再执行第二个，以此类推。
 
-## MemoryCache
+使用示例：
 
-## AIDL
+```java
+public class MyService extends IntentService {
+    //这里必须有一个空参数的构造实现父类的构造,否则会报异常
+    //java.lang.InstantiationException: java.lang.Class<***.MyService> has no zero argument constructor
+    public MyService() {
+        super("");
+    }
+    
+    @Override
+    public void onCreate() {
+        System.out.println("onCreate");
+        super.onCreate();
+    }
 
-## 对象池
+    @Override
+    public int onStartCommand(@Nullable Intent intent, int flags, int startId) {
+        System.out.println("onStartCommand");
+        return super.onStartCommand(intent, flags, startId);
+
+    }
+
+    @Override
+    public void onStart(@Nullable Intent intent, int startId) {
+        System.out.println("onStart");
+        super.onStart(intent, startId);
+    }
+
+    @Override
+    public void onDestroy() {
+        System.out.println("onDestroy");
+        super.onDestroy();
+    }
+
+    //这个是IntentService的核心方法,它是通过串行来处理任务的,也就是一个一个来处理
+    @Override
+    protected void onHandleIntent(@Nullable Intent intent) {
+        System.out.println("工作线程是: "+Thread.currentThread().getName());
+        String task = intent.getStringExtra("task");
+        System.out.println("任务是 :"+task);
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+然后看看Activity里面怎么使用这个Service
+
+```java
+public class MainActivity extends AppCompatActivity {
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        
+        Intent intent = new Intent(this,MyService.class);
+        intent.putExtra("task","播放音乐");
+        startService(intent);
+        intent.putExtra("task","播放视频");
+        startService(intent);
+        intent.putExtra("task","播放图片");
+        startService(intent);
+    }
+}
+```
+
+运行结果：
+
+```java
+14:49:31.465 18974-18974/com.dgtech.sss.intentservicedemo I/System.out: onCreate
+14:49:31.467 18974-18974/com.dgtech.sss.intentservicedemo I/System.out: onStartCommand
+14:49:31.467 18974-18974/com.dgtech.sss.intentservicedemo I/System.out: onStart
+14:49:31.467 18974-18974/com.dgtech.sss.intentservicedemo I/System.out: onStartCommand
+14:49:31.467 18974-18974/com.dgtech.sss.intentservicedemo I/System.out: onStart
+14:49:31.467 18974-18974/com.dgtech.sss.intentservicedemo I/System.out: onStartCommand
+14:49:31.467 18974-18974/com.dgtech.sss.intentservicedemo I/System.out: onStart
+14:49:31.467 18974-19008/com.dgtech.sss.intentservicedemo I/System.out: 工作线程是:IntentService[]
+14:49:31.467 18974-19008/com.dgtech.sss.intentservicedemo I/System.out: 任务是 :播放音乐
+14:49:33.468 18974-19008/com.dgtech.sss.intentservicedemo I/System.out: 工作线程是: IntentService[]
+14:49:33.468 18974-19008/com.dgtech.sss.intentservicedemo I/System.out: 任务是 :播放视频
+14:49:35.472 18974-19008/com.dgtech.sss.intentservicedemo I/System.out: 工作线程是: IntentService[]
+14:49:35.472 18974-19008/com.dgtech.sss.intentservicedemo I/System.out: 任务是 :播放图片
+14:49:37.477 18974-18974/com.dgtech.sss.intentservicedemo I/System.out: onDestroy
+
+```
+
+从结果中可以看出我们startService()执行了三次, onCreate()方法只执行了一次,说明只有一个Service实例, onStartCommand()和onStart()也执行了三次,关键是onHandleIntent()也执行了三次,而且这三次是串行的,也就是执行完一个再执行下一个,当最后一个任务执行完, onDestroy()便自动执行了
+
+不管使用多少个service，oncreat（）方法只会执行一次。
+
+## AsyncTask
+
+在android中实现异步任务有两种方法：一种为通过多线程Thread配合Handler实现，另一种就是通过android为我们提供的AsyncTask来实现。AsyncTask使得编写异步任务更加简单。
+
+AsyncTask这个类，就是为了方便我们在后台线程中执行操作，然后将结果发送给主线程，从而在主线程中进行UI更新等操作。在使用AsyncTask时，我们无需关注ThreadHandler。AsyncTask内部会对其进行管理，这样我们就只需要关注于我们的业务逻辑即可。
+
+**默认是一个串行的线程池SerialExecutor**
+
+使用方法：
+
+AsyncTask有四个重要的回调方法，分别是：onPreExecute、doInBackground, onProgressUpdate 和 onPostExecute。这四个方法会在AsyncTask的不同时期进行自动调用，我们只需要实现这几个方法的内部逻辑即可。这四个方法的一些参数和返回值都是基于泛型的，而且泛型的类型还不一样，所以在AsyncTask的使用中会遇到三种泛型参数：Params, Progress 和 Result
+
+1.Params表示用于AsyncTask执行任务的参数的类型 
+2.Progress表示在后台线程处理的过程中，可以阶段性地发布结果的数据类型 
+3.Result表示任务全部完成后所返回的数据类型
+
+onPreExecute ：运行在主线程中的。在AsyncTask执行了execute()方法后就会在UI线程上执行onPreExecute()方法，该方法在task真正执行前运行，我们通常可以在该方法中显示一个进度条，从而告知用户后台任务即将开始。
+
+doInBackground ：该方法有WorkerThread注解，表示该方法是运行在单独的工作线程中的，而不是运行在主线程中。doInBackground会在onPreExecute()方法执行完成后立即执行，该方法用于在工作线程中执行耗时任务，我们可以在该方法中编写我们需要在后台线程中运行的逻辑代码，由于是运行在工作线程中，所以该方法不会阻塞UI线程。该方法接收Params泛型参数，参数params是Params类型的不定长数组，该方法的返回值是Result泛型，由于doInBackgroud是抽象方法，我们在使用AsyncTask时必须重写该方法。在doInBackground中执行的任务可能要分解为好多步骤，每完成一步我们就可以通过调用AsyncTask的publishProgress(Progress…)将阶段性的处理结果发布出去，阶段性处理结果是Progress泛型类型。当调用了publishProgress方法后，处理结果会被传递到UI线程中，并在UI线程中回调onProgressUpdate方法。根据我们的具体需要，我们可以在doInBackground中不调用publishProgress方法，当然也可以在该方法中多次调用publishProgress方法。doInBackgroud方法的返回值表示后台线程完成任务之后的结果。
+
+onProgressUpdate ：当我们在doInBackground中调用publishProgress(Progress…)方法后，就会在UI线程上回调onProgressUpdate方法，该方法是在主线程上被调用的，且传入的参数是Progress泛型定义的不定长数组。如果在doInBackground中多次调用了publishProgress方法，那么主线程就会多次回调onProgressUpdate方法。
+
+onPostExecute ：该方法也具有MainThread注解，表示该方法是在主线程中被调用的。当doInBackgroud方法执行完毕后，就表示任务完成了，doInBackgroud方法的返回值就会作为参数在主线程中传入到onPostExecute方法中，这样就可以在主线程中根据任务的执行结果更新UI。
+
+Asynctask有什么优缺点？ 
+使用的优点: 简单快捷，过程可控 
+使用的缺点: 在使用多个异步操作和并需要进行Ui变更时,就变得复杂起来.
+
+AsyncTask对象必须在主线程中创建 
+AsyncTask对象的execute方法必须在主线程中调用 
+一个AsyncTask对象只能调用一次execute方法
+
+内存泄漏，同Handler一样，非静态内部类持有外部类的引用导致内存泄漏
+AsyncTask的生命周期和Activity是不一致的，需要在Activity的onDestory方法中调用AsyncTask的cancle方法，取消任务执行。否则可能会导致崩溃。
+结果丢失：同上一条，在屏幕旋转或者activity在内存不够时，被系统杀掉，此时AsyncTask持有的Activity已经失效，调用更新UI的方法则会失效。
+
+并行或串行（可以调用executeOnExecutor来执行并行任务）：建议只用串行，避免多线程运行影响线程池的稳定性 。
+
+### 原理解读
+
+比较适用于一些耗时比较短的任务，内部封装了线程池，实现原理是FutureTask+Callable +SerialExecutor （线程池）。
+ 整个流程，在AsyncTask的构造方法中 ，会创建Future对象跟Callable对象，然后在execute方法中会执行onPreExecute()方法跟doInBackground方法，而doInbackground 的结果，会被封装成一个Message，再通过handler来进行线程间通信，通过message.what来识别是否需要调用onProgressUpdate，或是finish方法 。finish方法里面会调用onPostExecute方法 。
+ 另外我们可以通过publishProgress()方法来主动调用onProgressUpdate()方法，内部也是通过这个方法，来发出一个这样的message去调用onProgressUpdate的。
+
+
 
