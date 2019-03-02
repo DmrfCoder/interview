@@ -360,13 +360,15 @@ CAS作为知名无锁算法，那ConcurrentHashMap就没用锁了么？当然不
 
 ***
 
-## Thread.sleep() & Thread.yield()
+## Thread.sleep() & Thread.yield()&Thread.wait()的区别
 
 sleep()和yield()都会释放CPU。
 
-sleep()使当前线程进入停滞状态，所以执行sleep()的线程在指定的时间内肯定不会执行；yield()只是使当前线程重新回到可执行状态，所以执行yield()的线程有可能在进入到可执行状态后马上又被执行。
+sleep()可使优先级低的线程得到执行的机会，当然也可以让同优先级和高优先级的线程有执行的机会；yield()只能使**同优先级**的线程有执行的机会。
 
-sleep()可使优先级低的线程得到执行的机会，当然也可以让同优先级和高优先级的线程有执行的机会；yield()只能使同优先级的线程有执行的机会。
+Thread.sleep和Thread.yield()不会导致锁行为的改变，如果当前线程是拥有锁的，那么Thread.sleep不会让线程释放锁。如果能够帮助你记忆的话，可以简单认为和锁相关的方法都定义在Object类中，因此调用Thread.sleep是不会影响锁的相关行为。
+
+Thread.sleep和Object.wait都会暂停当前的线程，对于CPU资源来说，不管是哪种方式暂停的线程，都表示它暂时不再需要CPU的执行时间。OS会将执行时间分配给其它线程。区别是，调用wait后，需要别的线程执行notify/notifyAll才能够重新获得CPU执行时间。
 
 ##  arraylist 和 linkedlist 的区别？
 

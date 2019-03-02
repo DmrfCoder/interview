@@ -21,11 +21,11 @@ ANR的全称是`Application Not Responsing`，即我们俗称的应用无响应�
 - 主线程中存在耗时操作
 - 主线程中存在错误操作，比如Thread.wait或者Thread.sleep
 
-Android系统会监控程序的响应情况，一旦出现以下两种情况就会弹出ANR对话框：
+Android系统会监控程序的响应情况，一旦出现以下三种情况就会弹出ANR对话框：
 
-1. KeyDispatchTimeout：原因就是View的点击事件或者触摸事件在5s内无法得到响应。
-2. BroadcastTimeout：原因是BroadcastReceiver的onReceive()函数运行在主线程中，在10s内无法完成处理。
-3. ServiceTimeout：原因是Service的各个生命周期函数在20s内无法完成处理。
+1. View的点击事件或者触摸事件在5s内无法得到响应。
+2. BroadcastReceiver的onReceive()函数运行在主线程中，在10s内无法完成处理。
+3. Service的各个生命周期函数在20s内无法完成处理。
 
 那么对应的避免ANR的基本思路就是避免IO操作在主线程中，避免在主线程中进行耗时操作，避免主线程中的错误操作等，具体的方法有如下几种：
 
@@ -172,10 +172,6 @@ contentprovider是一种进程间数据交互&共享的方式，当然它也可�
 
 Binder是Android中的一种跨进程通信机制，Android是基于Linux的，所有的用户线程工作在不同的用户空间下，互相不能访问，但是他们都共享内核空间，所以传统的跨进程通信可以先从A进程的用户空间拷贝数据到内核空间，再将数据从内核空间拷贝到B进程的用户空间，这样做需要拷贝两次数据，效率太低，而Binder机制应用了内存映射的原理，其通过Binder驱动（位于内核空间）将A进程、B进程以及serviceManager连接起来，通过serviceManager来管理Service的注册与查询，在Android中Binder驱动和serviceManager都属于Android基础架构即Android系统已经帮我们实现好了，我们只需要自定义A进程和B进程，使其调用注册服务、获取服务&使用服务三个步骤即可，具体的实现方法如下：
 
-
-
-
-
 ## 如何自定义View，如果要实现一个转盘圆形的View，需要重写View中的哪些方法？
 
 自定义View一般是继承View或者ViewGroup，然后重点是以下几个方法：
@@ -193,12 +189,6 @@ Android事件分发机制的对象是点击事件，本质是将点击事件（M
 `ViewGroup`默认不拦截任何事件。Android源码中`ViewGroup`的`onInterceptTouchEvent`方法默认返回false。
 
 **View没有onIntercepteTouchEvent方法，一旦有点击事件传递给它，那么它的onTouchEvent方法就会被调用**。
-
-
-
-## Socket和LocalSocket
-
-
 
 ## 如何加载大图片
 
@@ -263,6 +253,8 @@ return inSampleSize;
 3. nSample的值一般为2的幂次方
 
 假如 一个分辨率为2048x1536的图片，如果设置 inSampleSize 为4，那么会产出一个大约512x384大小的Bitmap。加载这张缩小的图片仅仅使用大概0.75MB的内存，如果是加载完整尺寸的图片，那么大概需要花费12MB（前提都是Bitmap的配置是 ARGB_8888.
+
+## Socket和LocalSocket
 
 ## HttpClient和URLConnection的区别，怎么使用https
 
@@ -358,7 +350,7 @@ public class MainActivity extends Activity {
  }
 ```
 
-当Android应用启动的时候，会先创建一个应用主线程的Looper对象，Looper实现了一个简单的消息队列，一个一个的处理里面的Message对象。主线程Looper对象在整个应用生命周期中存在。当在主线程中初始化Handler时，该Handler和Looper的消息队列关联，发送到消息队列的Message会引用发送该消息的Handler对象，这样系统就可以调用 Handler#handleMessage(Message) 来分发处理该消息。然而，我们都知道**在Java中，非静态(匿名)内部类会引用外部类对象。而静态内部类不会引用外部类对象**。如果外部类是Activity，则会引起Activity泄露 。因为当Activity finish后，延时消息会继续存在主线程消息队列中，然后处理消息。而该消息引用了Activity的Handler对象，然后这个Handler又引用了这个Activity。这些引用对象会保持到该消息被处理完，这样就导致该Activity对象无法被回收，从而导致了上面说的 Activity泄露。也就是如果你执行了Handler的postDelayed()方法，该方法会将你的Handler装入一个Message，并把这条Message推到 MessageQueue中，那么在你设定的delay到达之前，会有一条MessageQueue -> Message -> Handler -> Activity的链，导致你的Activity被持有引用而无法被回收。 
+当Android应用启动的时候，会先创建一个应用主线程的Looper对象，Looper实现了一个简单的消息队列，一个一个的处理里面的Message对象。主线程Looper对象在整个应用生命周期中存在。当在主线程中初始化Handler时，该Handler和Looper的消息队列关联，发送到消息队列的Message会引用发送该消息的Handler对象，这样系统就可以调用 Handler.handleMessage(Message) 来分发处理该消息。然而，我们都知道**在Java中，非静态(匿名)内部类会引用外部类对象。而静态内部类不会引用外部类对象**。如果外部类是Activity，则会引起Activity泄露 。因为当Activity finish后，延时消息会继续存在主线程消息队列中，然后处理消息。而该消息引用了Activity的Handler对象，然后这个Handler又引用了这个Activity。这些引用对象会保持到该消息被处理完，这样就**导致该Activity对象无法被回收**，从而导致了上面说的 Activity泄露。也就是如果你执行了Handler的postDelayed()方法，该方法会将你的Handler装入一个Message，并把这条Message推到 MessageQueue中，那么在你设定的delay到达之前，会有一条MessageQueue -> Message -> Handler -> Activity的链，导致你的Activity被持有引用而无法被回收。 
 
 再比如：
 
@@ -378,7 +370,7 @@ Handler mHandler = new Handler() {
 方法一：通过完善自己的代码逻辑来进行保护。 
 1.在关闭Activity的时候停掉你的后台线程。线程停掉了，就相当于切断了Handler和外部连接的线，Activity自然会在合适的时候被回收。 
 2.如果你的Handler是被delay的Message持有了引用，那么使用相应的Handler的removeCallbacks()方法，把消息对象从消息队列移除就行了。 
-方法二：将Handler声明为静态类,然后通过WeakReference 来保持外部的Activity对象。 由于静态类不持有外部类的对象，所以你的Activity可以随意被回收。由于Handler不再持有外部类对象的引用，导致程序不允许你在Handler中操作Activity中的对象了。所以你需要在Handler中增加一个对Activity的弱引用（WeakReference）
+方法二：将Handler声明为静态类,然后通过WeakReference 来保持外部的Activity对象。 由于**静态类不持有外部类的对象**，所以你的Activity可以随意被回收。**由于Handler不再持有外部类对象的引用，导致程序不允许你在Handler中操作Activity中的对象了。所以你需要在Handler中增加一个对Activity的弱引用（WeakReference）**
 
 ```java
 static class MyHandler extends Handler {
@@ -413,14 +405,6 @@ static class MyHandler extends Handler {
 
 
 
-## Android中的Thread, Looper和Handler机制(附带HandlerThread与AsyncTask)
-
-
-
-## View的绘制过程
-
-## 
-
 ## 属性动画(Property Animation)和补间动画(Tween Animation)的区别，为什么在3.0之后引入属性动画
 
 [官方解释：调用简单](http://android-developers.blogspot.com/2011/05/introducing-viewpropertyanimator.html)
@@ -434,17 +418,17 @@ static class MyHandler extends Handler {
 
 ## 设计一个网络请求框架(可以参考Volley框架)
 
-
-
 ## 网络图片加载框架(可以参考BitmapFun)
 
 ## Android里的LRU（Least Recently Used 最近最少使用）算法原理
 
 LRU是近期最少使用的算法，它的核心思想是当缓存满时，会优先淘汰那些近期最少使用的缓存对象。采用LRU算法的缓存有两种：LrhCache和DisLruCache，分别用于实现内存缓存和硬盘缓存，其核心思想都是LRU缓存算法。
 
-LruCache的核心思想很好理解，就是要维护一个缓存对象列表，其中对象列表的排列方式是按照访问顺序实现的，即一直没访问的对象，将放在队尾，即将被淘汰。而最近访问的对象将放在队头，最后被淘汰。
+LruCache的核心思想很好理解，就是要维护一个缓存对象队列，其中对象列表的排列方式是按照访问顺序实现的，即一直没访问的对象，将放在队尾，即将被淘汰。而最近访问的对象将放在队头，最后被淘汰。
 
 ## Service onBindService 和startService 启动的区别
+
+service的生命周期、service的停止方式
 
 ## APK安装过程
 
@@ -527,7 +511,7 @@ Parcelable:
 
 在Android系统中，提供了独特的匿名共享内存子系统`Ashmem(Anonymous Shared Memory)`，它以驱动程序的形式实现在内核空间中。它有两个特点，一是能够辅助内存管理系统来有效地管理不再使用的内存块，二是它通过Binder进程间通信机制来实现进程间的内存共享。
 
-`ashmem`并像`Binder`是Android重新自己搞的一套东西，而是利用了Linux的 **tmpfs文件系统**。tmpfs是一种可以基于RAM或是SWAP的高速文件系统，然后可以拿它来实现不同进程间的内存共享。
+`ashmem`并不像`Binder`那样是Android重新自己搞的一套东西，而是利用了Linux的 **tmpfs文件系统**。tmpfs是一种可以基于RAM或是SWAP的高速文件系统，然后可以拿它来实现不同进程间的内存共享。
 
 大致思路和流程是：
 
@@ -874,6 +858,23 @@ fragment被称为碎片，可以作为界面来使用，在一个Activity中可�
 fragment的生命周期：onAttach——>onCreate——>onCreateView——>onViewCreated——>onActivityCreated——>onStart——>onResume——>onPause——>onStop——>onDestroyView——>onDestroy——>onDetach；
  fragment的生命周期大致就这么多，但是还有一个比较常见的就是onHiddenChanged，这个是在切换fragment的时候会执行，至于什么场景下会执行什么，我还是建议你自己动手实验一把；这里还需要注意的是，如果是通过add方法显示fragment，那么切换fragment不会执行其生命周期，只会执行onHiddenChanged方法；如果是通过replace方法显示fragment，切换fragment的时候会重新走生命周期的流程。
 
+### Android中asset和res目录的区别
+
+> 1. res目录下的资源文件会在R文件中生成对应的id，asset不会\
+> 2. res目录下的文件在生成apk时，除raw（即res/raw）目录下文件不进行编译外，都会被编译成二进制文件；asset目录下的文件不会进行编译
+> 3. asset目录允许有子目录
+
+### [Android中App 是如何沙箱化的,为何要这么做](https://link.juejin.im?target=https%3A%2F%2Fblog.csdn.net%2Fljheee%2Farticle%2Fdetails%2F53191397)
+
+> 1. 沙箱化可以提升安全性和效率
+> 2. Android的底层内核为Linux，因此继承了Linux良好的安全性，并对其进行了优化。在Linux中，一个用户对应一个uid，而在Android中，（通常）一个APP对应一个uid，拥有独立的资源和空间，与其他APP互不干扰。如有两个APP A和B，A并不能访问B的资源，A的崩溃也不会对B造成影响，从而保证了安全性和效率
+
+### LayoutInflater，LayoutInflater.inflate()这两个是什么意思？
+
+​     LayoutInflater是一个用来实例化XML布局文件为View对象的类
+
+​     LayoutInflater.infalte(R.layout.test,null)用来从指定的XML资源中填充一个新的View
+
 ## Android的多渠道打包你了解吗
 
 **多渠道打包：就是指分不同的市场打包，如安卓市场、百度市场、谷歌市场等等，Android的这个市场有点多，就不一一列举了，多渠道打包是为了针对不同市场做出不同的一些统计，数据分析，收集用户信息。**
@@ -1063,12 +1064,12 @@ mvp模式下的activity只承担了view层的角色，controller的角色完全�
 presenter复用度高，可以随意搬到任何界面。
 
 mvp模式下还方便测试维护： 
-可以在为完成界面的情况下实现接口调试，只需写一个Java类，实现对应的接口，presenter网络获取数据后能调用相应的方法。 
+可以在未完成界面的情况下实现接口调试，只需写一个Java类，实现对应的接口，presenter网络获取数据后能调用相应的方法。 
 相反的，在接口未完成联调的情况下正常显示界面，由presenter提供测试数据。
 
 mvp的问题在于view层和presenter层是通过接口连接，在复杂的界面中，维护过多接口的成本很大。 
 
-解决办法是定义一些基类接口，把网络请求结果,toast等通用逻辑放在里面，然后供定义具体业务的接口集成。
+解决办法是定义一些基类接口，把网络请求结果,toast等通用逻辑放在里面，然后供定义具体业务的接口继承。
 
 
 
@@ -1098,9 +1099,7 @@ ProGuard由shrink、optimize、obfuscate和preverify四个步骤组成，每个�
 
 ## 怎样做系统调度。
 
-简述Android的View绘制流程，Android的wrap_content是如何计算的。
-
-## 设计一个下载器。
+## 简述Android的View绘制流程，Android的wrap_content是如何计算的。
 
 ## 数组实现队列。
 
@@ -1154,24 +1153,6 @@ android中图片的使用是非常占用内存资源的。
 
 如何避免死锁：多个线程以同样的顺序加锁和释放锁
 
-
-
-## 数据结构中堆的概念，堆排序
-
-
-
-## ReentrantLock 、synchronized和volatile（n面）
-
-## HashMap
-
-## singleTask启动模式
-
-## 用到的一些开源框架，介绍一个看过源码的，内部实现过程。
-
-## 消息机制实现
-
-## ReentrantLock的内部实现
-
 ## App启动崩溃异常捕捉
 
 主进程运行的所有代码都跑在`Looper.loop();`。前面也提到，crash的发生是由于 主线程有未捕获的异常。那么我**把Looper.loop();用try-catch块包起来，应用程序就永不崩溃了！**
@@ -1216,17 +1197,207 @@ public static interface UncaughtExceptionHandler {
 
 ```
 
+## new Message和obtainMessage的区别
 
+创建Message对象的时候，有三种方式，分别为： 
+1.Message msg = new Message(); 
+2.Message msg2 = Message.obtain(); 
+3.Message msg1 = handler1.obtainMessage(); 
 
-## 二叉树，给出根节点和目标节点，找出从根节点到目标节点的路径
+这三种方式的区别如下：
 
-## 模式MVP，MVC介绍
+- Message msg = new Message();
 
-## 断点续传的实现
+  这种就是直接初始化一个Message对象，没有什么特别的。 
+
+- Message msg2 = Message.obtain();
+
+  ```java
+  /**
+       * Return a new Message instance from the global pool. Allows us to
+       * avoid allocating new objects in many cases.
+       */
+      public static Message obtain() {
+          synchronized (sPoolSync) {
+              if (sPool != null) {
+                  Message m = sPool;
+                  sPool = m.next;
+                  m.next = null;
+                  m.flags = 0; // clear in-use flag
+                  sPoolSize--;
+                  return m;
+              }
+          }
+          return new Message();
+      }
+  ```
+
+  从注释可以得知，从整个Messge池中返回一个新的Message实例，通过obtainMessage能避免重复Message创建对象。 
+
+- Message msg1 = handler1.obtainMessage();
+
+  ```java
+  public final Message obtainMessage()
+  {
+  return Message.obtain(this);
+  }
+  ```
+
+  可以看到，第二种跟第三种其实是一样的，都可以避免重复创建Message对象，所以建议用第二种或者第三种任何一个创建Message对象。 
+
+## ReentrantLock 、synchronized和volatile（n面）
+
+volatile：可见性、有序性，为什么不能保证原子性？
+
+synchronized、ReentrantLock：可见性、原子性
+
+## HashMap
+
+## singleTask启动模式
+
+## 用到的一些开源框架，介绍一个看过源码的，内部实现过程。
+
+okhttp
+
+## 消息机制实现
+
+handler机制
+
+## ReentrantLock的内部实现
+
+？？
+
+## 断点续传的实现&设计一个下载器
+
+首先定义下载的相关类，存储url、文件总大小、已经下载的文件大小等信息：
+
+```java
+public class FileInfo implements Serializable{
+    private String url; //URL
+    private int length; //长度或结束位置
+    private int start; //开始位置
+    private int now;//当前进度
+//构造方法，set/get略
+}
+```
+
+启动开始下载的监听事件：
+
+```java
+//开始按钮逻辑，停止逻辑大致相同
+strat.setOnClickListener(new View.OnClickListener() {
+     @Override
+     public void onClick(View view) {
+        Intent intent = new Intent(MainActivity.this,DownLoadService.class);
+        intent.setAction(DownLoadService.ACTION_START);
+        intent.putExtra("fileUrl",info);
+        startService(intent);
+   }
+});
+```
+
+使用intent来启动service。
+
+然后在Service中的onStartCommand()中，将FileInfo对象从Intent中取出，如果是开始命令，则开启一个线程，根据该url去获得要下载文件的大小，将该大小写入对象并通过Handler传回Service，同时在本地创建一个相同大小的本地文件。暂停命令最后会讲到。
+
+```java
+public void run() {
+            HttpURLConnection urlConnection = null;
+            RandomAccessFile randomFile = null;
+            try {
+                URL url = new URL(fileInfo.getUrl());
+                urlConnection = (HttpURLConnection) url.openConnection();
+                urlConnection.setConnectTimeout(3000);
+                urlConnection.setRequestMethod("GET");
+                int length = -1;
+                if (urlConnection.getResponseCode() == HttpStatus.SC_OK) {
+                    //获得文件长度
+                    length = urlConnection.getContentLength();
+                }
+                if (length <= 0) {
+                    return;
+                }
+                //创建相同大小的本地文件
+                File dir = new File(DOWNLOAD_PATH);
+                if (!dir.exists()) {
+                    dir.mkdir();
+                }
+                File file = new File(dir, FILE_NAME);
+                randomFile = new RandomAccessFile(file, "rwd");
+                randomFile.setLength(length);
+                //长度给fileInfo对象
+                fileInfo.setLength(length);
+                //通过Handler将对象传递给Service
+                mHandle.obtainMessage(0, fileInfo).sendToTarget();
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {  //流的回收逻辑略
+            }
+        }
+    }
+```
+
+获取到文件的大小之后就可以开始下载了，当用户点击了暂停之后将截止暂停时对应的已下载进度、url等信息保存起来（另外的文件或数据库）并结束下载进程，当用户点击了继续下载的按钮后从文件或数据库中将之前的下载进度读取出来，使用setRequestProperty告知服务器从哪里开始传递数据，传递到哪里结束，然后继续下载，直至最终下载完成。
+
+主要涉及的点：
+
+- 开启service，service中开启下载线程
+- getContentLength()获取文件总大小
+- RandomAccessFile(file, "rwd")创建指定大小的文件和随机读写seek（start）
+- 保存下载的url和当前的下载进度等信息
+- setRequestProperty告诉服务器数据传送的起点
 
 ## 集合的接口和具体实现类，介绍
 
 ## TreeMap具体实现
+
+HashMap不保证数据有序，LinkedHashMap保证数据可以保持插入顺序，而如果我们希望Map可以保持key的大小顺序的时候，我们就需要利用TreeMap了。
+
+Hashtable继承Dictionary类，同样是通过key-value键值对保存数据的数据结构。Hashtable和HashMap最大的不同是Hashtable的方法都是同步的，在多线程中，你可以直接使用Hashtable，而如果要使用HashMap，则必须要自己实现同步来保证线程安全。当然，如果你不需要使用同步的话，HashMap的性能是肯定优于Hashtable的。此外，HashMap是接收null键和null值的，而Hashtable不可以。
+
+
+
+## Android的多点触控如何传递 
+
+在onTouch（Event event）中通过event.getPointerCount,可以获得触摸点的个数，通过event.getX(index)，添加索引可以获得不同控制点的坐标，然后做自己需要的事情。
+
+## 还有onTouchEvent()、onTouch()、onClick()、onLongClick（）的先后顺序
+
+安卓中view和viewGroup在点击的时候有两个方法，onTouch和onTouchEvent
+
+onTouch是设置了onTouchLisenter之后的回调方法。如果设置了onTouchLisenter就会调用ontouch方法，同时onTouchEvent方法不会再被调用
+
+如果没有设置onTouchLisenter，就会调用onTouchEvent。就是说ontouch的优先级比onTouchEvent高。
+
+onClickLisenter是在onTouchEvent中被调用的，优先级最低
+
+事件传递的顺序：onTouch/onTouchEvent—>Action_Down—>Action_Move—>Action_Up
+
+Action_Down—>Action_Move—>onLongCLick()—>Action_Up
+
+Action_Down—>Action_Move—>Action_Up—>onCLick()
+
+返回true表示消费了该事件，不会再继续向下传递。
+
+onTouch/onTouchEvent—>onLongClick—>onCLick
+
+**如何保证Service不被杀死？如何保证进程不被杀死？**
+
+1、单例模式：好几种写法，要求会手写，分析优劣。一般双重校验锁中用到volatile，需要分析volatile的原理
+
+2、观察者模式：要求会手写，有些面试官会问你在项目中用到了吗？实在没有到的可以讲一讲EventBus，它用到的就是观察者模式
+
+3、适配器模式：要求会手写，有些公司会问和装饰器模式、代理模式有什么区别？
+
+4、建造者模式+工厂模式：要求会手写
+
+HashMap、LinkedHashMap、ConcurrentHashMap，在用法和原理上有什么差异，很多公司会考HashMap原理，通过它做一些扩展，比如中国13亿人口年龄的排序问题，年龄对应桶的个数，年龄相同和hash相同问题类似。
+
+2、ArrayList和LinkedList对比，这个相对简单一点。
+
+3、平衡二叉树、二叉查找树、红黑树，这几个我也被考到。
+
+4、Set原理，这个和HashMap考得有点类似，考hash算法相关，被问到过常用hash算法。HashSet内部用到了HashMap
 
 ## synchronized与ReentrantLock
 
@@ -1240,9 +1411,23 @@ public static interface UncaughtExceptionHandler {
 
 ## 前台切换到后台，然后再回到前台，Activity生命周期回调方法。弹出Dialog，生命值周期回调方法。
 
+resume正常前台状态
+
+pause半透明、半覆盖状态
+
+stop后台状态
+
 ## Activity的启动模式
 
 ## 企业级产品中apk的大小至关重要，请提出不少于5个方案，如何缩减apk包大小
+
+- 复用系统资源
+- 注意资源文件的放置位置
+- 一些非必须文件用户安装后从网络下载
+- 对图片等资源进行必要压缩
+- 减少重复sdk的使用，对于功能相似的sdk只保留一个
+- 去除不必要的依赖，比如support包下有语言依赖包，去除我们不需要的语言
+- 代码混淆
 
 ## 【设计题】SDK设计
 
@@ -1252,16 +1437,184 @@ public static interface UncaughtExceptionHandler {
 
 2）请设计出SDK暴露给用户的接口；
 
-## 简述Activity、Window、WindowManager、View、ViewRootImpl的作用和相互之间的关系。
+## 简述Activity、Window、WindowManager、WindowManagerImpl、View、ViewRootImpl的作用和相互之间的关系。
+
+View：最基本的UI组件，表示屏幕上的一个矩形区域。 
+Window： 表示一个窗口，包含一个View tree和窗口的layout 参数。View tree的root View可以通过getDecorView得到。还可以设置Window的Content View。 
+Activity包含一个Window，该Window在Activity的attach方法中通过调用PolicyManager.makeNewWindow创建。 
+WindowManager：一个`interface`，继承自ViewManager。 有一个implementation class：android.view.WindowManagerImpl。其实WindowManager并不是整个系统的窗口管理器，而是所在应用进程的窗口管理器。系统全局的窗口管理器运行在SystemServer进程中，是一个Service。ViewRoot通过IWindowSession接口与全局窗口管理器进行交互。 将一个View add到WindowManager时，WindowManagerImpl创建一个ViewRoot来管理该窗口的根View。，并通过ViewRoot.setView方法把该View传给ViewRoot。 
+ViewRoot用于管理窗口的根View，并和global window manger进行交互。ViewRoot中有一个nested class： W，W是一个Binder子类，用于接收global window manager的各种消息， 如按键消息， 触摸消息等。 ViewRoot有一个W类型的成员mWindow，ViewRoot在Constructor中创建一个W的instance并赋值给mWindow。 ViewRoot是Handler的子类， W会通过Looper把消息传递给ViewRoot。 ViewRoot在setView方法中把mWindow传给sWindowSession。 
+
+总之，每个窗口对应着一个Window对象，一个根View和一个ViewRoot对象。要想创建一个窗口，可以调用WindowManager的addView方法，作为参数的view将作为在该窗口上显示的根view。
 
 ## 【设计题】APP路由设计
 
 App 发展到一定程度时，页面越来越多，工程越来越大，合作开发的人也越来越多，这时就可能需要引入路由系统，实现模块间的解耦。请设计一个路由系统，使得app内页面的跳转就像浏览器访问网页一样易于管理和解耦。
 
-列表卡顿怎么优化？首先卡顿怎么量化；其次怎么发现造成卡顿的原因；针对可能发现的问题，又如何解决？请设计一套方案。
+使用注解将当前Activity加入到Map<url,activity>中，跳转的时候根据url去跳转。
 
-插件化+组件化+热修复：这几个东西算是类似的吧，我还是一个个说 
+## 列表卡顿怎么优化？首先卡顿怎么量化；其次怎么发现造成卡顿的原因；针对可能发现的问题，又如何解决？请设计一套方案。
 
-- 1.插件化：几个优点分别是，多成员负责不同的模块的时候加快编译速度、各个模块解耦、减小发版的包大小按需加载。使用的框架我倾向于自己写一个，但是不知道有没有时间，最后可能会在tinker和360RePlugin中选择一个吧。
-- 2.组件化：其实和插件化类似，主要用于解耦模块，用到的技术是路由组件和gradle分模块依赖技术，倾向于自己写一个。
-- 3.热修复：主要用于应对线上bug，应该会在andfix和Robust里面选一个，毕竟我们的项目对这个要求不高
+## 插件化+组件化+热修复
+
+- 1.插件化：随着apk越来越大，各种业务逻辑越来越繁杂，会达到apk开发的一个瓶颈；从业务上说，业务的繁杂会导致代码急剧的膨胀，当代码中的方法数超过65535时，就无法再容纳创建新的方法。插件化时将 apk 分为宿主和插件部分，插件在需要的时候才加载进来。
+- 2.组件化(Module)：其实和插件化类似，主要用于解耦模块，随着APP版本不断的迭代，新功能的不断增加，业务也会变的越来越复杂，APP业务模块的数量有可能还会继续增加，而且每个模块的代码也变的越来越多，这样发展下去单一工程下的APP架构势必会影响开发效率，增加项目的维护成本，每个工程师都要熟悉如此之多的代码，将很难进行多人协作开发，而且Android项目在编译代码的时候电脑会非常卡，又因为单一工程下代码耦合严重，每修改一处代码后都要重新编译打包测试，导致非常耗时，最重要的是这样的代码想要做单元测试根本无从下手，所以必须要有更灵活的架构代替过去单一的工程架构。
+- 3.热修复：热修复说白了就是”打补丁”，比如你们公司上线一个app，用户反应有重大bug,需要紧急修复。如果按照通常做法,那就是程序猿加班搞定bug,然后测试,重新打包并发布。这样带来的问题就是成本高,效率低。于是,热修复就应运而生.一般通过事先设定的接口从网上下载无Bug的代码来替换有Bug的代码。这样就省事多了,用户体验也好。
+- 模块化
+
+android中的classLoader和java的classLoader有什么不同
+
+## 为什么android中方法数最多只能有64k=65532个？
+
+android中的方法都是通过invoke-kind指令调用的，invoke-kind指令中有一个参数是需要调用方法的索引，根据这个索引去找方法并调用，巧的是这个参数是16位的，所以最多只能存$2^{16}=2^{10}*2^6=1k*2^6=64k$.
+
+## 接口和抽象类的区别
+
+# 关于项目
+
+## Gesture
+
+主要涉及到的点：Android、Tensorflow、Python
+
+关于Android：NDK、音频播放与收集、深度学习模型在移动端的部署与优化
+
+### NDK
+
+#### JNI介绍
+
+##### 简介
+
+定义：Java Native Interface，即 Java本地接口
+作用： 使得Java 与 本地其他类型语言（如C、C++）交互
+
+即在 Java代码 里调用 C、C++等语言的代码 或 C、C++代码调用 Java 代码
+
+特别注意：
+
+JNI是 Java 调用 Native 语言的一种特性
+JNI 是属于 Java 的，与 Android 无直接关系
+
+##### 为什么要有 JNI
+
+背景：实际使用中，Java 需要与 本地代码 进行交互
+问题：因为 Java 具备跨平台的特点，所以Java 与 本地代码交互的能力非常弱
+解决方案： 采用 JNI特性 增强 Java 与 本地代码交互的能力
+
+##### 实现步骤
+
+在Java中声明Native方法（即需要调用的本地方法）
+编译上述 Java源文件javac（得到 .class文件）
+通过 javah 命令导出JNI的头文件（.h文件）
+使用 Java需要交互的本地代码 实现在 Java中声明的Native方法 
+如 Java 需要与 C++ 交互，那么就用C++实现 Java的Native方法
+
+编译.so库文件
+通过Java命令执行 Java程序，最终实现Java调用本地代码
+
+##### NDK介绍
+
+简介
+定义：Native Development Kit，是 Android的一个工具开发包 
+NDK是属于 Android 的，与Java并无直接关系
+
+作用：快速开发C、 C++的动态库，并自动将so和应用一起打包成 APK 
+即可通过 NDK在 Android中 使用 JNI与本地代码（如C、C++）交互
+应用场景：在Android的场景下 使用JNI
+
+即 Android开发的功能需要本地代码（C/C++）实现
+
+![1](https://ws2.sinaimg.cn/large/006tKfTcgy1g0n6bgtomlj30yg0g877o.jpg)
+
+额外注意：
+
+![2](https://ws2.sinaimg.cn/large/006tKfTcgy1g0n6buo2gnj30wk0gu75h.jpg)
+
+JNI与NDK的关系：
+
+![3](https://ws1.sinaimg.cn/large/006tKfTcgy1g0n6cedcb7j30yg0g0gnz.jpg)
+
+简单的使用流程：
+
+首先在java层编写需要调用的native方法，一般格式是：
+
+```java
+public class SignalProcess {
+    public native void DemoNew();
+
+    public native int DemoL(short[] Record, double[] DIST, double[] tempII, double[] tempQQ);
+
+    static {
+        System.loadLibrary("signalprocess");
+    }
+
+}
+
+```
+
+然后在cpp文件夹下编写与java中声明的native方法对应的c代码，基本格式如下：
+
+```c
+
+extern "C"
+JNIEXPORT jdouble
+Java_cn_dmrf_nuaa_gesturewithtf_JniClass_SignalProcess_DemoL(
+        JNIEnv *env,
+        jobject /* this */,
+        jshortArray BUFF,
+        jdoubleArray REDist,
+        jdoubleArray tII,
+        jdoubleArray tQQ
+) {
+    jshort *Buff = (env)->GetShortArrayElements(BUFF, 0);
+    jdouble *O_dist = (env)->GetDoubleArrayElements(REDist, 0);
+    jdouble *tempII = (env)->GetDoubleArrayElements(tII, 0);
+    jdouble *tempQQ = (env)->GetDoubleArrayElements(tQQ, 0);
+    
+    ...
+
+    (env)->ReleaseDoubleArrayElements(tQQ, tempQQ, 0);
+    (env)->ReleaseDoubleArrayElements(tII, tempII, 0);
+    (env)->ReleaseShortArrayElements(BUFF, Buff, 0);
+    (env)->ReleaseDoubleArrayElements(REDist, O_dist, 0);
+
+    return RE;
+
+}
+```
+
+然后需要编辑cmakeLists文件，主要就两部分：
+
+```c
+add_library( MyCic
+             SHARED
+             src/main/cpp/mycic/MyCic.cpp )
+```
+
+三个参数：库名，库类型，cpp文件的路径
+
+和：
+
+```c
+target_link_libraries( # Specifies the target library.
+                       signalprocess
+
+                       # Links the target library to the log library
+                       # included in the NDK.
+                       ${log-lib}
+                       MyCic
+                       ADist
+                       support
+                       )
+```
+
+添加链接，添加之后链接的文件中可以include被链接的库对应的cpp文件。
+
+### 音频模块
+
+AudioTrack
+
+AudioRecord
+
+### 深度学习模型的部署与优化
+
+TensorflowLite
