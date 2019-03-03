@@ -571,6 +571,8 @@ viewGroup能操作自己也可以操作孩子（通过`viewGroup.getChildAt(i).g
 
 ## RecyclerView
 
+一个类似于listview的控件，规范化了viewholder的使用，封装了itemview的复用工作，不用像之前那样settag（）了，引入了layoutManager，方便动画编写，提供了局部item更新的接口。
+
 ## Zygote
 
 ## Android自定义view的步骤

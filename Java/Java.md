@@ -605,8 +605,6 @@ public class CallableThreadTest implements Callable<Integer> {
 
 我们可以通过ThreadPoolExecutor来创建一个线程池
 
-
-
 ```
 new ThreadPoolExecutor(corePoolSize, maximumPoolSize,keepAliveTime, 
 milliseconds,runnableTaskQueue, threadFactory,handler);
@@ -629,8 +627,6 @@ milliseconds,runnableTaskQueue, threadFactory,handler);
 #### 向线程池提交任务
 
 我们可以通过execute()或submit()两个方法向线程池提交任务，不过它们有所不同
-
- 
 
 - execute()方法没有返回值，所以无法判断任务知否被线程池执行成功
 

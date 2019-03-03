@@ -671,15 +671,11 @@ public void onRequestPermissionsResult(int requestCode, @NonNull String[] permis
 
 ## ListView与RecyclerView
 
-    1. **ViewHolder**：在ListView中，ViewHolder需要自己来定义，且这只是一种推荐的使用方式，不使用当然也可以，这不是必须的。而在RecyclerView中使用 `RecyclerView.ViewHolder` 则变成了必须，尽管实现起来稍显复杂，但它却解决了ListView面临的上述不使用自定义ViewHolder时所面临的问题。
-    
-    2. **LayoutManager**：RecyclerView提供了更加丰富的布局管理。`LinearLayoutManager`，可以支持水平和竖直方向上滚动的列表。`StaggeredGridLayoutManager`，可以支持交叉网格风格的列表，类似于瀑布流或者Pinterest。`GridLayoutManager`，支持网格展示，可以水平或者竖直滚动，如展示图片的画廊。
-    
-    3. **ItemAnimator**：相比较于ListView，`RecyclerView.ItemAnimator` 则被提供用于在`RecyclerView`添加、删除或移动item时处理动画效果。
-    
-    4. **ItemDecoration**：RecyclerView在默认情况下并不在item之间展示间隔符。如果你想要添加间隔符，你必须使用`RecyclerView.ItemDecoration`类来实现。
-
-ListView可以设置选择模式，并添加`MultiChoiceModeListener`，`RecyclerView`中并没有提供这样功能。
+1. **ViewHolder**：在ListView中，ViewHolder需要自己来定义，且这只是一种推荐的使用方式，不使用当然也可以，这不是必须的。而在RecyclerView中使用 `RecyclerView.ViewHolder` 则变成了必须，尽管实现起来稍显复杂，但它却解决了ListView面临的上述不使用自定义ViewHolder时所面临的问题。
+2. **LayoutManager**：RecyclerView提供了更加丰富的布局管理。`LinearLayoutManager`，可以支持水平和竖直方向上滚动的列表。`StaggeredGridLayoutManager`，可以支持交叉网格风格的列表，类似于瀑布流或者Pinterest。`GridLayoutManager`，支持网格展示，可以水平或者竖直滚动，如展示图片的画廊。
+3. **ItemAnimator**：相比较于ListView，`RecyclerView.ItemAnimator` 则被提供用于在`RecyclerView`添加、删除或移动item时处理动画效果。
+4. **ItemDecoration**：RecyclerView在默认情况下并不在item之间展示间隔符。如果你想要添加间隔符，你必须使用`RecyclerView.ItemDecoration`类来实现。
+5. ListView可以设置选择模式，并添加`MultiChoiceModeListener`，`RecyclerView`中并没有提供这样功能。
 
 ***
 
@@ -897,6 +893,53 @@ fragment的生命周期：onAttach——>onCreate——>onCreateView——>onVie
 
  7)使用第三方包时把用到的代码加到项目中来,避免引用整一个第三方库
 
+
+
+## Android当前应用跳转到三方应用
+
+从一个应用直接跳转到另外一个应用,没有就自动前往应用商店下载,需要有第三方应用的包名：
+
+```
+if(isApplicationInstall("第三方app包名")){
+    //直接进入
+    loge("已安装!");
+    PackageManager packageManager = getPackageManager();
+    Intent intent=new Intent();
+    intent = packageManager.getLaunchIntentForPackage("第三方app包名");
+    startActivity(intent);
+}else {
+    //应用商店安装
+    loge("未安装!");
+    Intent intent ;
+    Uri uri = Uri.parse("market://details?id=第三方app包名");
+    intent = new Intent(Intent.ACTION_VIEW, uri);
+    startActivity(intent);
+}
+....
+/**
+ * by moos on 2017/09/18
+ * func:判断手机是否安装了该应用
+ * @param packageName
+ * @return
+ */
+private boolean isApplicationInstall(String packageName){
+    return new File("/data/data/" + packageName).exists();
+}
+
+```
+
+## JVM、ART、Dalvik的区别和联系
+
+Jvm和Dalvik：JVM是java中的虚拟机即java virtual machies，而Dalvk是Google为了android定制的虚拟机，其相对jvm来说做了很多优化，使其更加适合于Android，dex格式是专门为Dalvik应用设计的一种压缩格式，适合于内存和处理器速度有限的平台。其允许同时独立运行多个进程，这样的好处是就算一个进程崩溃了也不会对其他进程产生影响，因为他们有各自独立的地址空间。
+
+Dalvik和Art：Dalvik下的应用每次运行的时候都要通过即时编译器（JIT）将字节码转化为机器码，即每次应用运行的时候都需要先编译再运行，这样的好处是应用在安装的时候会比较快，缺点就是应用启动的速度会变慢。为了解决这个问题，Google在2014年6月的IO大会上使用ART代替的Dalvik，ART的优点是在安装的时候就预编译字节码为机器代码，这样在以后应用的运行时就不用再反复编译了，提高了应用的启动速度，同时也节省了手机的能耗，缺点是应用安装的时候会比较慢，同时由于同一份代码的机器代码会比字节码大10%-20%，所以造成相同的应用在Art下的大小可能比在Dalvik下大10%左右。
+
+## Android中的classLoader相比java中的classLoader有什么区别？
+
+Android中一个运行中的应用至少会有两个classLoader，一个是系统的BootClassLoader，用来加载FrameWork层级需要的东西，然后才是我们自己应用中的classLoader，当然，BootClassLoader是我们应用中classLoader的父级classLoader。在Android中classLoader是一个抽象类，在平时开发中我们一般是使用其实现类
+
+在java的jvm中可以直接通过classL来加载.class或者.jar，但是在Android的Davik/Art下，apk在安装的时候会先经过一个叫DexOpt的工具对其做优化，转化为Dalvik下的字节码文件，处理完了之后会产生ODex文件（后缀是.dex或者.odex），在运行应用的时候去加载含有dex文件的apk或者jar文件，而不是直接加载class，所以android中classLoader的工作是由BaseDexClassLoader来完成的。BaseDexClassLoader继承了classLoader抽象类，其有两个子类：DexClassLoader和PathClassLoader，DexClassLoader可以加载Sd卡上的.dex或者.jar或者.apk文件。
+
 # 字节跳动Android岗面试题
 
 ## java的classloader工作原理
@@ -972,9 +1015,9 @@ GC机制主要是通过可达性分析法，通过一系列称为“GC Roots”�
 
 ## 既然有GC机制，为什么还会有内存泄露的情     
 
-​            理论上Java因为有垃圾回收机制不会存在内存泄露问题（这也是Java被广泛使用于服务器端编程的一个重要原因）。
+理论上Java因为有垃圾回收机制不会存在内存泄露问题（这也是Java被广泛使用于服务器端编程的一个重要原因）。
 
-​            然而在实际开发中，可能会存在无用但可达的对象，这些对对象不能被GC回收，因此会导致内存溢出发生。
+然而在实际开发中，可能会存在无用但可达的对象，这些对对象不能被GC回收，因此会导致内存溢出发生。
 
 ## jvm的内存模型是什么样的？如何理解java的虚函数表？
 
@@ -1094,14 +1137,6 @@ ProGuard由shrink、optimize、obfuscate和preverify四个步骤组成，每个�
 **OCP原则（开闭原则）**：一个软件实体如类、模块和函数应该对扩展开放，对修改关闭。
 
 能用抽象类的别用具体类，能用接口的别用抽象类。总之一句：尽量面向接口编程。
-
-
-
-## 怎样做系统调度。
-
-## 简述Android的View绘制流程，Android的wrap_content是如何计算的。
-
-## 数组实现队列。
 
 ## 网络优化的方案
 
@@ -1251,10 +1286,6 @@ volatile：可见性、有序性，为什么不能保证原子性？
 
 synchronized、ReentrantLock：可见性、原子性
 
-## HashMap
-
-## singleTask启动模式
-
 ## 用到的一些开源框架，介绍一个看过源码的，内部实现过程。
 
 okhttp
@@ -1347,15 +1378,11 @@ public void run() {
 - 保存下载的url和当前的下载进度等信息
 - setRequestProperty告诉服务器数据传送的起点
 
-## 集合的接口和具体实现类，介绍
-
 ## TreeMap具体实现
 
 HashMap不保证数据有序，LinkedHashMap保证数据可以保持插入顺序，而如果我们希望Map可以保持key的大小顺序的时候，我们就需要利用TreeMap了。
 
 Hashtable继承Dictionary类，同样是通过key-value键值对保存数据的数据结构。Hashtable和HashMap最大的不同是Hashtable的方法都是同步的，在多线程中，你可以直接使用Hashtable，而如果要使用HashMap，则必须要自己实现同步来保证线程安全。当然，如果你不需要使用同步的话，HashMap的性能是肯定优于Hashtable的。此外，HashMap是接收null键和null值的，而Hashtable不可以。
-
-
 
 ## Android的多点触控如何传递 
 
@@ -1399,15 +1426,7 @@ HashMap、LinkedHashMap、ConcurrentHashMap，在用法和原理上有什么差�
 
 4、Set原理，这个和HashMap考得有点类似，考hash算法相关，被问到过常用hash算法。HashSet内部用到了HashMap
 
-## synchronized与ReentrantLock
 
-## 重要：手写生产者/消费者模式、单例模式
-
-## 逻辑地址与物理地址，为什么使用逻辑地址
-
-## 一个无序，不重复数组，输出N个元素，使得N个元素的和相加为M，给出时间复杂度、空间复杂度。手写算法
-
-## Android进程分类
 
 ## 前台切换到后台，然后再回到前台，Activity生命周期回调方法。弹出Dialog，生命值周期回调方法。
 
@@ -1416,8 +1435,6 @@ resume正常前台状态
 pause半透明、半覆盖状态
 
 stop后台状态
-
-## Activity的启动模式
 
 ## 企业级产品中apk的大小至关重要，请提出不少于5个方案，如何缩减apk包大小
 
@@ -1440,7 +1457,7 @@ stop后台状态
 ## 简述Activity、Window、WindowManager、WindowManagerImpl、View、ViewRootImpl的作用和相互之间的关系。
 
 View：最基本的UI组件，表示屏幕上的一个矩形区域。 
-Window： 表示一个窗口，包含一个View tree和窗口的layout 参数。View tree的root View可以通过getDecorView得到。还可以设置Window的Content View。 
+Window： 一个抽象基类，唯一的实现类时PhoneWindow，表示一个窗口，包含一个View tree和窗口的layout 参数。View tree的root View可以通过getDecorView得到。还可以设置Window的Content View。 
 Activity包含一个Window，该Window在Activity的attach方法中通过调用PolicyManager.makeNewWindow创建。 
 WindowManager：一个`interface`，继承自ViewManager。 有一个implementation class：android.view.WindowManagerImpl。其实WindowManager并不是整个系统的窗口管理器，而是所在应用进程的窗口管理器。系统全局的窗口管理器运行在SystemServer进程中，是一个Service。ViewRoot通过IWindowSession接口与全局窗口管理器进行交互。 将一个View add到WindowManager时，WindowManagerImpl创建一个ViewRoot来管理该窗口的根View。，并通过ViewRoot.setView方法把该View传给ViewRoot。 
 ViewRoot用于管理窗口的根View，并和global window manger进行交互。ViewRoot中有一个nested class： W，W是一个Binder子类，用于接收global window manager的各种消息， 如按键消息， 触摸消息等。 ViewRoot有一个W类型的成员mWindow，ViewRoot在Constructor中创建一个W的instance并赋值给mWindow。 ViewRoot是Handler的子类， W会通过Looper把消息传递给ViewRoot。 ViewRoot在setView方法中把mWindow传给sWindowSession。 
@@ -1454,6 +1471,46 @@ App 发展到一定程度时，页面越来越多，工程越来越大，合作�
 使用注解将当前Activity加入到Map<url,activity>中，跳转的时候根据url去跳转。
 
 ## 列表卡顿怎么优化？首先卡顿怎么量化；其次怎么发现造成卡顿的原因；针对可能发现的问题，又如何解决？请设计一套方案。
+
+如何量化卡顿：android中会每隔16ms重绘一次我们的界面，因为android设置的刷新率是60FPS（Frame Per Second），也就是一秒钟刷新16次，大概就是16ms刷新一次，如果我们的页面/列表没有在16ms内重绘完成，就会出现掉帧现象，即至少下一个16ms之后（也可能更多）用户才能看到刷新的结果，这样用户就会感觉到卡顿。
+
+一个view的重绘主要经历这样几个耗时阶段：Measure、Layout、Draw，如果这三个阶段加起来耗费的事件超过了16ms则一定会卡顿我们可以用Hierarchy View这类工具探测一下当前界面的views在这三个阶段耗费的平均时间，然后在对应时间过长的阶段优化。
+
+造成卡顿的原因：
+
+- 布局复杂
+
+  一般来说CPU负责UI布局的Mesure、layout、draw计算，GPU负责根据计算结果绘制UI，如果Mesure、layout、draw这些阶段执行的操作过于耗时，就会导致CPU的计算耗时大于16ms造成卡顿，这种情况可以用用Hierarchy View这类工具探测耗时时间；
+
+  优化方案：减少Mesure、layout、draw中的耗时操作，优化算法
+
+- 过度绘制（overdraw）
+
+  理想情况下屏幕上每个像素点在每一帧都只应该被绘制一次，如果绘制多次就出现了过度绘制现象，可以通过开启手机的开发者选项—>GPU过度绘制来查看当前界面的过度绘制情况，理想情况下一个像素点只绘制一次才是正常的。这种情况一般是因为多次绘制了背景或者绘制了不可见的view。
+
+  优化方案：取消被覆盖控件的背景，比如一个Fragment在ViewPager上，这时应该取消ViewPager的背景，另外Activity默认情况下, theme会给window设置一个纯色的背景，如果想取消这个背景可以在manifest中设置：
+
+  ```
+  <item name="android:windowBackground">@null</item>
+  ```
+
+  或者在代码中：
+
+  ```
+  getWindow().setBackgroundDrawable(null);
+  ```
+
+- Ui线程复杂的运算
+
+  UI线程进行耗时操作会阻塞Looper.loop()中的循环，自然会造成卡顿。
+
+  优化方案：使用子线程执行耗时操作，使用Handler回传处理结果。
+
+- 频繁的GC
+
+  **执行GC操作的时候，任何线程的任何操作都会需要暂停，等待GC操作完成之后，其他操作才能够继续运行**, 故而如果程序频繁GC, 自然会导致界面卡顿.这种情况一般是在短时间内瞬间new了很多对象然后在短时间内又被释放了，这就是内存抖动。
+
+  优化方案：不在OnDraw这类频繁调用的方法中new很多对象。
 
 ## 插件化+组件化+热修复
 
@@ -1469,6 +1526,52 @@ android中的classLoader和java的classLoader有什么不同
 android中的方法都是通过invoke-kind指令调用的，invoke-kind指令中有一个参数是需要调用方法的索引，根据这个索引去找方法并调用，巧的是这个参数是16位的，所以最多只能存$2^{16}=2^{10}*2^6=1k*2^6=64k$.
 
 ## 接口和抽象类的区别
+
+## 怎样做系统调度。
+
+## 简述Android的View绘制流程，Android的wrap_content是如何计算的。
+
+ViewGroup.LayoutParams
+
+## 数组实现队列。
+
+## HashMap
+
+## singleTask启动模式
+
+## 集合的接口和具体实现类，介绍
+
+## synchronized与ReentrantLock
+
+## 重要：手写生产者/消费者模式、单例模式
+
+生产者和消费者的精髓是:
+
+不同线程操作同一对象的不同方法,但是要保持其互斥,也不能出现死锁的情况,条件满足就通知其他等待的线程 ,条件不满足,就休眠等待。
+
+在Thread-1的生产者只负责生产,在Thread-2的消费者则只负责消费,操作互斥,当生产者达到上限则进行等待,反之消费者达到上限所有线程就等待。
+
+- 生产者持续生产，直到缓冲区满，阻塞；缓冲区不满后，继续生产
+- 消费者持续消费，直到缓冲区空，阻塞；缓冲区不空后，继续消费
+- 生产者可以有多个，消费者也可以有多个
+
+android中最经典的就是Handler机制，android中有三种方式可以在非UI线程更新UI：
+
+- view.post()
+- runonUi()
+- handler
+
+其实前两种方法的底层都是通过handler机制实现的，handler维护了一个messagequeue和Loop，这里的enqueueMessage就相当于生产者，而next就相当于消费者。
+
+
+
+## 逻辑地址与物理地址，为什么使用逻辑地址
+
+## 一个无序，不重复数组，输出N个元素，使得N个元素的和相加为M，给出时间复杂度、空间复杂度。手写算法
+
+## Android进程分类
+
+## Activity的启动模式
 
 # 关于项目
 
