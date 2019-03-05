@@ -471,7 +471,7 @@ Serializable`序列化不保存静态变量，可以使用`Transient`关键字�
 
 
 
-Serializable是java提供的序列化接口，使用方法是让待序列化的类实现Parcelable接口即可，不需要额外实现任何方法，但是最好手动加上一个private static final long serialVersionUID变量，其作用是一个类序列化时，运行时会保存它的版本号，然后在反序列化时检查你要反序列化成的对象版本号是否一致，不一致的话就会报错：·`InvalidClassException`，如果我们不自己创建这个版本号，序列化过程中运行时会根据类的许多特点计算出一个默认版本号。然而只要你对这个类修改了一点点，这个版本号就会改变。这种情况如果发生在序列化之后，反序列化时就会导致上面说的错误，Serializable 的序列化与反序列化分别通过 ObjectOutputStream 和 ObjectInputStream 进行。
+Serializable是java提供的序列化接口，使用方法是让待序列化的类实现Serializable接口即可，不需要额外实现任何方法，但是最好手动加上一个private static final long serialVersionUID变量，其作用是一个类序列化时，运行时会保存它的版本号，然后在反序列化时检查你要反序列化成的对象版本号是否一致，不一致的话就会报错：·`InvalidClassException`，如果我们不自己创建这个版本号，序列化过程中运行时会根据类的许多特点计算出一个默认版本号。然而只要你对这个类修改了一点点，这个版本号就会改变。这种情况如果发生在序列化之后，反序列化时就会导致上面说的错误，Serializable 的序列化与反序列化分别通过 ObjectOutputStream 和 ObjectInputStream 进行。
 
 Parcelable 是 Android 特有的序列化接口，方法是实现Parcelable接口并重写相应方法，as中建议使用插件**Android Parcelable Code Generator**自动化完成Parcelable接口对应方法的重写。
 
@@ -567,6 +567,8 @@ ContentProvider 有以下两个特点：
 ***
 
 ## 广播注册后不解除注册会有什么问题？(内存泄露)
+
+如果我们在Activity中使用了registerReceiver()方法注册了一个BroadcastReceiver，如果没在Activity的生命周期内调用unregisterReceiver()方法取消注册此BroadcastReceiver，由于BroadcastReceiver不止被Activity引用，还可能会被AMS等系统服务、管理器等之类的引用，导致BroadcastReceiver无法被回收，而BroadcastReceiver中又持有着Activity的引用(即：onReceive方法中的参数Context)，会导致Activity也无法被回收(虽然Activity回调了onDestroy方法，但并不意味着Activity被回收了)，从而导致严重的内存泄漏。
 
 我们可以通过两种方式注册`BroadcastReceiver`，一是在Activity启动过程中通过代码动态注册，二是在AndroidManifest.xml文件中利用`<receiver>`标签进行静态注册。
 
@@ -1721,3 +1723,30 @@ AudioRecord
 ### 深度学习模型的部署与优化
 
 TensorflowLite
+
+
+
+
+
+抖音一面：
+
+Thread、Process
+
+线程池，singleThreadpool什么场景下使用
+
+网络三次握手四次挥手，get、post通常是在请求的什么部分发送出去的，为什么需要三次握手而不是两次
+
+二叉树中序遍历
+
+二面：
+
+三次握手四次挥手
+
+activity的启动模式
+
+okhttp源码讲解
+
+判断平衡二叉树
+
+dx、px等的区别
+

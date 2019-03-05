@@ -393,8 +393,20 @@ Java 给多线程编程提供了内置的支持。 一条线程指的是进程�
 Thread.run()和Thread.start()的区别：
 
 - start（）方法来启动线程，真正实现了多线程运行。这时无需等待run方法体代码执行完毕，可以直接继续执行下面的代码；通过调用Thread类的start()方法来启动一个线程， 这时此线程是处于就绪状态， 并没有运行。 然后通过此Thread类调用方法run()来完成其运行操作的， 这里方法run()称为线程体，它包含了要执行的这个线程的内容， Run方法运行结束， 此线程终止。然后CPU再调度其它线程。
-
 - run（）方法当作普通方法的方式调用。程序还是要顺序执行，要等待run方法体执行完毕后，才可继续执行下面的代码； 程序中只有主线程这一个线程， 其程序执行路径还是只有一条， 这样就没有达到写线程的目的。
+
+wait和sleep的区别：
+
+Thread有一个sleep()静态方法，它也能使线程暂停一段时间。sleep与wait的不同点是：sleep并不释放锁，并且sleep的暂停和wait暂停是不一样的。obj.wait会使线程进入obj对象的等待集合中并等待唤醒。 
+
+但是wait()和sleep()都可以通过interrupt()方法打断线程的暂停状态，从而使线程立刻抛出InterruptedException。 
+
+如果线程A希望立即结束线程B，则可以对线程B对应的Thread实例调用interrupt方法。如果此刻线程B正在wait/sleep/join，则线程B会立刻抛出InterruptedException，在catch() {} 中直接return即可安全地结束线程。 
+
+需要注意的是，InterruptedException是线程自己从内部抛出的，并不是interrupt()方法抛出的。对某一线程调用interrupt()时，如果该线程正在执行普通的代码，那么该线程根本就不会抛出InterruptedException。但是，一旦该线程进入到wait()/sleep 
+
+sleep是线程类（Thread）的方法，导致此线程暂停执行指定时间，给执行机会给其他线程，但是监控状态依然保持，到时后会自动恢复 。调用sleep不会释放对象锁。 
+wait是Object类的方法，对此对象调用wait方法导致本线程放弃对象锁，进入等待此对象的等待锁定池，只有针对此对象发出notify方 法（或notifyAll）后本线程才进入对象锁定池准备获得对象锁进入运行状态。
 
 ### 线程的优先级
 
@@ -675,10 +687,13 @@ try {
 
 #### 四种拒绝策略
 
-1. AbortPolicy：不执行新任务，直接抛出异常，提示线程池已满，线程池默认策略
-2. DiscardPolicy：不执行新任务，也不抛出异常，基本上为静默模式。
-3. DisCardOldSetPolicy：将消息队列中的第一个任务替换为当前新进来的任务执行
-4. CallerRunPolicy：拒绝新任务进入，如果该线程池还没有被关闭，那么这个新的任务在执行线程中被调用）
+ThreadPoolExecutor.AbortPolicy()  抛出java.util.concurrent.RejectedExecutionException异常 
+
+ThreadPoolExecutor.DiscardPolicy() 抛弃当前的任务 
+
+ThreadPoolExecutor.DiscardOldestPolicy() 抛弃旧的任务 （队列中的第一个任务替换为当前新进来的任务执行）
+
+ThreadPoolExecutor.CallerRunsPolicy() 重试添加当前的任务，他会自动重复调用execute()方法 
 
 ### Java通过Executors提供四种线程池
 
@@ -800,6 +815,8 @@ b 操作数栈 – 如果需要执行任何中间操作，操作数栈作为运�
 
 c 帧数据 – 方法的所有符号都保存在这里。在任意异常的情况下，catch块的信息将会被保存在帧数据里面。
 
+![20180617161343935](https://ws2.sinaimg.cn/large/006tKfTcgy1g0l3tcquztj31v60ow1kx.jpg)
+
 ##### PC寄存器
 
 每个线程都有一个单独的PC寄存器来保存**当前执行指令的地址**，一旦该指令被执行，pc寄存器会被更新至下条指令的地址。
@@ -836,7 +853,7 @@ Java本地接口 (JNI): JNI 会与本地方法库进行交互并提供执行引�
 
 本地方法库:它是一个执行引擎所需的本地库的集合。
 
-![20180617161343935](https://ws2.sinaimg.cn/large/006tKfTcgy1g0l3tcquztj31v60ow1kx.jpg)
+
 
 
 
@@ -1104,6 +1121,8 @@ Java虚拟机的根对象集合根据实现不同而不同，但是总会包含�
 
 ### java内存模型
 
+**更恰当说JMM描述的是一组规则，通过这组规则控制程序中各个变量在共享数据区域和私有数据区域的访问方式，JMM是围绕原子性，有序性、可见性展开的。**
+
 Java内存模型看上去和Java内存结构（JVM内存结构）差不多，很多人会误以为两者是一回事儿，这也就导致面试过程中经常答非所为。
 
 在前面的关于JVM的内存结构的图中，我们可以看到，其中Java堆和方法区的区域是多个线程共享的数据区域。也就是说，多个线程可能可以操作保存在堆或者方法区中的同一个数据。这也就是我们常说的“Java的线程间通过共享内存进行通信”。
@@ -1118,7 +1137,7 @@ Java内存模型是根据英文Java Memory Model（JMM）翻译过来的。其�
 
 ### java对象模型
 
-Java是一种面向对象的语言，而Java对象在JVM中的存储也是有一定的结构的。而这个关于Java对象自身的存储模型称之为Java对象模型。
+Java是一种面向对象的语言，而**Java对象在JVM中的存储也是有一定的结构的**。而这个关于Java对象自身的存储模型称之为Java对象模型。
 
 HotSpot虚拟机中，设计了一个OOP-Klass Model。OOP（Ordinary Object Pointer）指的是普通对象指针，而Klass用来描述对象实例的具体类型。
 
@@ -1538,10 +1557,10 @@ ReentrantLock 、synchronized都可以实现多线程编程的安全性.
 
 ReentrantLock相比synchronized的高级功能:
 
-- 等待可中断，持有锁的线程长期不释放的时候，正在等待的线程可以选择放弃等待，这相当于Synchronized来说可以避免出现死锁的情况。
-- 公平锁，多个线程等待同一个锁时，必须按照申请锁的时间顺序获得锁，Synchronized锁非公平锁，ReentrantLock默认的构造函数是创建的非公平锁，可以通过参数true设为公平锁，但公平锁表现的性能不是很好。
-- 锁绑定多个条件，一个ReentrantLock对象可以同时绑定多个对象。
-- 在资源竞争不是很激烈的情况下，Synchronized的性能要优于ReetrantLock，但是在资源竞争很激烈的情况下，Synchronized的性能会下降几十倍，但是ReetrantLock的性能能维持常态；
+- 等待**可中断**，持有锁的线程长期不释放的时候，正在等待的线程可以选择放弃等待，这相当于Synchronized来说可以避免出现死锁的情况。
+- **公平锁**，多个线程等待同一个锁时，必须按照申请锁的时间顺序获得锁，Synchronized锁非公平锁，ReentrantLock默认的构造函数是创建的非公平锁，可以通过参数true设为公平锁，但公平锁表现的性能不是很好。
+- **锁绑定多个条件**，一个ReentrantLock对象可以同时绑定多个对象。
+- **在资源竞争不是很激烈的情况下，Synchronized的性能要优于ReetrantLock，但是在资源竞争很激烈的情况下，Synchronized的性能会下降几十倍，但是ReetrantLock的性能能维持常态**；
 
 #### **synchronized**
 
@@ -1697,9 +1716,9 @@ size：HashMap的大小，它是HashMap保存的键值对的数量。
 
 　　1.HashMap继承于AbstractMap，而Hashtable继承于Dictionary； 
 　　2.线程安全不同。Hashtable的几乎所有函数都是同步的，即它是线程安全的，支持多线程。而HashMap的函数则是非同步的，它不是线程安全的。若要在多线程中使用HashMap，需要我们额外的进行同步处理； 
-　　3.null值。HashMap的key、value都可以为null。Hashtable的key、value都不可以为null； 
-　　4.迭代器(Iterator)。HashMap的迭代器(Iterator)是fail-fast迭代器，而Hashtable的enumerator迭代器不是fail-fast的。所以当有其它线程改变了HashMap的结构（增加或者移除元素），将会抛出ConcurrentModificationException。 
-　　5.容量的初始值和增加方式都不一样：HashMap默认的容量大小是16；增加容量时，每次将容量变为“原始容量x2”。Hashtable默认的容量大小是11；增加容量时，每次将容量变为“原始容量x2 + 1”； 
+　　3.null值。HashMap的key、value都可以为null。**Hashtable的key、value都不可以为null**； 
+　　4.迭代器(Iterator)。**HashMap的迭代器(Iterator)是fail-fast迭代器，而Hashtable的enumerator迭代器不是fail-fast的。**所以当有其它线程改变了HashMap的结构（增加或者移除元素），将会抛出ConcurrentModificationException。 
+　　5.容量的初始值和增加方式都不一样：**HashMap默认的容量大小是16；增加容量时，每次将容量变为“原始容量x2”。Hashtable默认的容量大小是11；增加容量时，每次将容量变为“原始容量x2 + 1”；** 
 　　6.添加key-value时的hash值算法不同：HashMap添加元素时，是使用自定义的哈希算法。Hashtable没有自定义哈希算法，而直接采用的key的hashCode()。 
 　　7.速度。由于Hashtable是线程安全的也是synchronized，所以在单线程环境下它比HashMap要慢。如果你不需要同步，只需要单一线程，那么使用HashMap性能要好过Hashtable。
 
