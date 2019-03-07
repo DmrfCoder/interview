@@ -706,6 +706,7 @@ ThreadPoolExecutor.CallerRunsPolicy() 重试添加当前的任务，他会自动
 - FixedThreadPool()：定长线程池。
   - 可控制线程最大并发数（同时执行的线程数）
   - 超出的线程会在队列中等待
+  - 如果某个线程因为执行异常而结束，那么线程池会补充一个新线程。
 
 - ScheduledThreadPool()：
   - 定时线程池。
@@ -731,7 +732,7 @@ ThreadPoolExecutor.CallerRunsPolicy() 重试添加当前的任务，他会自动
   - 有且仅有一个工作线程执行任务
   - 所有任务按照指定顺序执行，即遵循队列的入队出队规则
 
-  newSingleThreadExecutor创建一个单线程化的线程池，它只会用唯一的工作线程来执行任务，保证所有任务按照指定顺序(FIFO, LIFO, 优先级)执行
+  newSingleThreadExecutor创建一个单线程化的线程池，它只会用唯一的工作线程来执行任务，**保证所有任务按照指定顺序(FIFO, LIFO, 优先级)执行**，如果这个唯一的线程因为异常结束，那么会有一个新的线程来替代它。此线程池保证所有任务的执行顺序按照任务的提交顺序执行
 
 
 

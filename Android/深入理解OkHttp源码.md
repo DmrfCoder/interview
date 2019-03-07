@@ -86,7 +86,7 @@ addNetworkInterceptor和addInterceptor的区别：
 
 客户端和服务器建立socket连接需要经历TCP的三次握手和四次挥手，是一种比较消耗资源的动作。Http中有一种keepAlive connections的机制，在和客户端通信结束以后可以保持连接指定的时间。OkHttp3支持**5个并发**socket连接，默认的keepAlive时间为5分钟。
 
-okHttp中的连接池逻辑主要是通过ConnectionPool实现的，它是在Okhttpclient的builder中被创建的，的里的几个重要变量：
+okHttp中的连接池逻辑主要是通过ConnectionPool实现的，在ConnectionPool的内部有一个private static final Executor executor =new ThreadPoolExecutor（），其线程池基本大小是0，线程池最大大小是Integer.MAX_VALUE，它是在Okhttpclient的builder中被创建的，的里的几个重要变量：
 
 （1）executor线程池，类似于CachedThreadPool，用于执行清理空闲连接的任务。
 
