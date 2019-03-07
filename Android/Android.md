@@ -1,5 +1,9 @@
 # Android
 
+[TOC]
+
+
+
 ## Android的系统架构是怎么样的？
 
 总的来说，Android的系统体系结构分为**四层**，自顶向下分别是：
@@ -46,7 +50,7 @@ Android四大组件分别是`Activity`，`Service`服务,`Content Provider`内�
 当`activity`中弹出`dialog`对话框的时候，`activity不会回调onPause`。
 然而当`activity`启动`dialog风格的activity`的时候，此`activity会回调onPause函数`。
 
-#### 关于Android屏幕旋转时Activity的声明周期
+#### 关于Android屏幕旋转时Activity的生命周期
 
 如果配置了`android:configChanges="keyboardHidden|orientation|screenSize"`，  这句话意思就是配置双引号里面参数意义，软键盘隐藏，方向，屏幕大小，则屏幕旋转时只会调用Activity的configChanges方法，我们可以重写该方法，达到不调用其他的生命周期的方法的目的。
 
@@ -55,13 +59,13 @@ Android四大组件分别是`Activity`，`Service`服务,`Content Provider`内�
 - onCreate
 - onStart
 - onResume
-- onSaveInstanceState
+- **onSaveInstanceState**
 - onPause
 - onStop
 - onDestroy
 - OnCreate
 - onStart
-- OnRestoreInstanceState
+- **OnRestoreInstanceState**
 - onResume
 
 #### onSaveInstanceState 什么时候调用
@@ -73,6 +77,22 @@ Android四大组件分别是`Activity`，`Service`服务,`Content Provider`内�
 >    4. 从一个activity启动另一个activity
 > 2. 这个方法的调用时机是在onStop前，但是它和onPause没有既定的时序关系
 
+#### A activity启动B activity和B activity返回A activity的生命周期执行过程
+
+1. A启动B:A.onPause()→B.onCreate()→B.onStart()→B.onResume()→A.onStop
+2. B返回A：B.onPause()→A.onRestart()→A.onStart()→A.onResume()→B.onStop()
+3. 再按Back键：A.onpause()→A.onStop()→A.onDestroy()
+
+#### Activity执行finish后的生命周期
+
+> 1. 在onCreate中执行：onCreate -> onDestroy
+> 2. 在onStart中执行：onCreate -> onStart -> onStop -> onDestroy
+> 3. 在onResume中执行：onCreate -> onStart -> onResume -> onpause -> onStop -> onDestroy
+
+#### Activity的启动流程
+
+![image-20190307150642544](https://ws3.sinaimg.cn/large/006tKfTcgy1g0u8vpcfjrj31480u0txj.jpg)
+
 #### [Activity之间的通信方式](https://juejin.im/post/5a9509ef6fb9a06337575d4b)
 
 > 1. Intent
@@ -82,7 +102,7 @@ Android四大组件分别是`Activity`，`Service`服务,`Content Provider`内�
 
 #### activity启动的四种模式
 
-standard，singleTop，singleTask，singleInstance，如果要使用这四种启动模式，必须在manifest文件中<activity>标签中的launchMode属性中配置，如：
+standard，singleTop，singleTask，singleInstance，如果要使用这四种启动模式，必须在manifest文件中<activity>标签中的`android:launchMode`属性中配置，如：
 
 ```java
 <activity android:name=".app.InterstitialMessageActivity"
@@ -118,6 +138,82 @@ standard，singleTop，singleTask，singleInstance，如果要使用这四种启
 ![image-20190218133254451](https://ws1.sinaimg.cn/large/006tKfTcly1g0ain5wyjmj30u012cb2a.jpg)
 
 适合需要与程序分离开的页面。例如闹铃提醒，将闹铃提醒与闹铃设置分离。
+
+#### TaskAffinity 属性
+
+任务相关性，标识一个Activity所需的任务栈的名字。默认情况下，所有的Activity所需的任务栈的名字是应用的包名，当然也可以单独指定TaskAffinity属性。
+
+TaskAffinity属性主要和singleTask启动模式和allowTaskReparenting属性配对使用，在其他情况下使用没有意义
+
+当TaskAffinity和singleTask启动模式配对使用的时候，它是具有该模式的Activity的目前任务栈的名字，待启动的Activity会运行在名字和TaskAffinity相同的任务栈中
+
+当TaskAffinity和allowTaskReparenting结合的时候，当一个应用A启动了应用B的某个Activity C后，如果Activity C的allowTaskReparenting属性设置为true的话，那么当应用B被启动后，系统会发现Activity C所需的任务栈存在了，就将Activity C从A的任务栈中转移到B的任务栈中。
+
+#### 当前应用有两个Activity A和B，B的 android:launchMode 设置了singleTask模式，A是默认的standard，那么A startActivity启动B，B会新启一个Task吗？如果不会，那么startActivity的Intent加上FLAG_ACTIVITY_NEW_TASK这个参数会不会呢？
+
+- 设置了singleTask启动模式的Activity，它在启动的时会先在系统中查看属性值affinity等于它的属性值taskAffinity ( taskAffinity默认为包名 ) 的任务栈是否存在。如果存在这样的任务栈，它就会在这个任务栈中启动，否则就会在新任务栈中启动。
+
+- 当Intent对象包含`FLAG_ACTIVITY_NEW_TASK`标记时，系统在查找时仍然按Activity的taskAffinity属性进行匹配，如果找到一个任务栈的taskAffinity与之相同，就将目标Activity压入此任务栈中，如果找不到则创建一个新的任务栈。
+
+- 设置了singleTask启动模式的Activity在已有的任务栈中已经存在相应的Activity实例，再启动它时会把这个Activity实例上面的Activity全部结束掉。也就是说singleTask自带clear top的效果。
+
+
+
+#### onNewIntent调用时机
+
+一个Activity已经启动，当再次启动它时，如果他的启动模式（如SingleTask，SingleTop）标明不需要重新启动，会调用onNewIntent
+
+#### [如何获取当前屏幕Activity的对象？](https://link.juejin.im/?target=https%3A%2F%2Fblog.csdn.net%2Fvfush%2Farticle%2Fdetails%2F51483436)
+
+重写Application的onCreate()方法，或在Application的无参构造方法内，调用`Application.registerActivityLifecycleCallbacks()`方法，并实现`ActivityLifecycleCallbacks`接口:
+
+```java
+public void onCreate() {  
+  super.onCreate();  
+  this.registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {  
+
+    @Override  
+    public void onActivityStopped(Activity activity) {  
+        Logger.v(activity, "onActivityStopped");  
+    }  
+
+    @Override  
+    public void onActivityStarted(Activity activity) {  
+        Logger.v(activity, "onActivityStarted");  
+    }  
+
+    @Override  
+    public void onActivitySaveInstanceState(Activity activity, Bundle outState) {  
+        Logger.v(activity, "onActivitySaveInstanceState");  
+    }  
+
+    @Override  
+    public void onActivityResumed(Activity activity) {  
+        Logger.v(activity, "onActivityResumed");  
+    }  
+
+    @Override  
+    public void onActivityPaused(Activity activity) {  
+        Logger.v(activity, "onActivityPaused");  
+    }  
+
+    @Override  
+    public void onActivityDestroyed(Activity activity) {  
+        Logger.v(activity, "onActivityDestroyed");  
+    }  
+
+    @Override  
+    public void onActivityCreated(Activity activity, Bundle savedInstanceState) {  
+        Logger.v(activity, "onActivityCreated");  
+    }  
+  });  
+}; 
+
+```
+
+这样就能获取到Activity对象了。
+
+
 
 #### Fragment
 
@@ -157,6 +253,10 @@ standard，singleTop，singleTask，singleInstance，如果要使用这四种启
 
 一个通过`context.startService()`方法启动的service，其他组件也可以通过`context.bindService()`与它绑定，在这种情况下，不能使用`stopSelf()`或者`context.stopService()`停止service，只能当所有客户解除绑定在调用`context.stopService()`才会终止。
 
+#### [为什么有时需要在Service中创建子线程而不是Activity中](https://link.juejin.im/?target=http%3A%2F%2Fwww.cnblogs.com%2Fyejiurui%2Farchive%2F2013%2F11%2F18%2F3429451.html)
+
+这是因为Activity很难对Thread进行控制，当Activity被销毁之后，就没有任何其它的办法可以再重新获取到之前创建的子线程的实例。而且在一个Activity中创建的子线程，另一个Activity无法对其进行操作。但是Service就不同了，所有的Activity都可以与Service进行关联，然后可以很方便地操作其中的方法，即使Activity被销毁了，之后只要重新与Service建立关联，就又能够获取到原有的Service中Binder的实例。因此，使用Service来处理后台任务，Activity就可以放心地finish，完全不需要担心无法对后台任务进行控制的情况。
+
 #### [IntentService](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2F332b6daf91f0)
 
 > 1. IntentService 是继承自 Service,内部通过HandlerThread启动一个新线程处理耗时操作，可以看做是Service和HandlerThread的结合体，在完成了使命之后会自动停止，适合需要在工作线程处理UI无关任务的场景
@@ -194,7 +294,15 @@ standard，singleTop，singleTask，singleInstance，如果要使用这四种启
 
 但是，注意这两种方式在ContentProvider的方法没有执行完成前都会阻塞调用者。
 
+#### 每个ContentProvider的操作是在哪个线程中运行的呢（其实我们关心的是UI线程和工作线程）？比如我们在UI线程调用getContentResolver().query查询数据，而当数据量很大时（或者需要进行较长时间的计算）会不会阻塞UI线程呢？
+
+- ContentProvider和调用者在同一个进程，ContentProvider的方法（query/insert/update/delete等）和调用者在同一线程中
+
+- ContentProvider和调用者在不同的进程，ContentProvider的方法会运行在它自身所在进程的一个Binder线程中
+
 ### BroadcastReceiver（广播机制）
+
+接受一种或者多种Intent作触发事件，接受相关消息，做一些简单处理
 
 广播(Broadcast)机制用于进程/线程间通信，广播分为广播发送和广播接收两个过程，其中广播接收者BroadcastReceiver便是Android四大组件之一。
 
@@ -262,11 +370,886 @@ Android 3.1开始系统在Intent与广播相关的flag增加了参数：
 > 4. handler 的handle方法收到消息，从mPendingBroadcasts取出receiver并调用onreceive方法
 >     其他：删除方法是通过一个辅助的hashmap实现的，hashmap存储了receiver和receiverRecord
 
+## 存储
 
+### android中的数据存储方式都有哪些
+
+1. File
+2. SharedPreferences
+3. SQlite
+4. 网络
+5. ContentProvider
+
+### SharedPreference是否是进程同步的？如何实现进程同步？
+
+SharedPreference是线程同步的，内部用了很多synchronized锁来实现线程同步；
+
+SharedPreference不是进程同步的，实现进程同步可以通过设置模式`MODE_MULTI_PROCESS`，但该模式不安全，Google官方推荐使用ContentProvider来实现SharedPreference的进程同步，ContentProvider中有一个`Bundle call(String method, String arg, Bundle extras)`方法，我们可以重写该方法，根据传入的不同参数实现对sp的增删改查。
+
+### SharedPreferences commit和apply的区别
+
+- commit是同步的提交，这种方式很常用，在比较早的SDK版本中就有了。这种提交方式会阻塞调用它的线程，并且这个方法会返回boolean值告知保存是否成功（如果不成功，可以做一些补救措施）。
+
+- apply是异步的提交方式，目前Android Studio也会提示大家使用这种方式
+
+###  文件存储路径与权限和权限
+
+1. 文件存储分为内部存储和外部存储
+2. 内部存储 
+   1. `Environment.getDataDirectory() = /data`  这个方法是获取内部存储的根路径
+   2. `getFilesDir().getAbsolutePath() = /data/user/0/packname/files` 这个方法是获取某个应用在内部存储中的files路径
+   3. `getCacheDir().getAbsolutePath() = /data/user/0/packname/cache`  这个方法是获取某个应用在内部存储中的cache路径
+   4. `getDir(“myFile”, MODE_PRIVATE).getAbsolutePath() = /data/user/0/packname/app_myFile`
+3. 外部存储 
+   1. `Environment.getExternalStorageDirectory().getAbsolutePath() = /storage/emulated/0`  这个方法是获取外部存储的根路径
+   2. `Environment.getExternalStoragePublicDirectory(“”).getAbsolutePath() = /storage/emulated/0` 这个方法是获取外部存储的根路径 
+   3. `getExternalFilesDir(“”).getAbsolutePath() = /storage/emulated/0/Android/data/packname/files `这个方法是获取某个应用在外部存储中的files路径 
+   4. `getExternalCacheDir().getAbsolutePath() = /storage/emulated/0/Android/data/packname/cache` 这个方法是获取某个应用在外部存储中的cache路径
+4. 清除数据和卸载APP时， 内外存储的file和cache都会被删除
+5. 内部存储file和cache不需要权限；外部存储低版本上（19以下）file和cache需要权限，高版本不需要权限；Environment.getExternalStorageDirectory()需要权限
+
+### SqLite
+
+1. SQLite每个数据库都是以单个文件（.db）的形式存在，这些数据都是以B-Tree的数据结构形式存储在磁盘上。
+2. 使用SQLiteDatabase的insert，delete等方法或者execSQL方法默认都开启了事务，如果操作顺利完成才会更新.db数据库。事务的实现是依赖于名为rollback journal文件，借助这个临时文件来完成原子操作和回滚功能。在/data/data//databases/目录下看到一个和数据库同名的.db-journal文件。
+
+#### 如何对SqLite数据库中进行大量的数据插入？
+
+使用SQLiteDatabase的insert，delete等方法或者execSQL方法默认都开启了事务，如果操作的顺利完成才会更新.db数据库。事务的实现是依赖于名为rollback journal文件，借助这个临时文件来完成原子操作和回滚功能。
+
+> 可以在/data/data/<packageName>/databases/目录下看到一个和数据库同名的.db-journal文件。
+
+SQLite想要执行操作，需要将程序中的SQL语句编译成对应的SQLiteStatement，比如" select * from table1 "，每执行一次都需要将这个String类型的SQL语句转换成SQLiteStatement。如下insert的操作最终都是将ContentValues转成SQLiteStatementi，对于批量处理插入或者更新的操作，我们可以重用SQLiteStatement，使用SQLiteDatabase的beginTransaction()方法开启一个事务，样例如下：
+
+```java
+try
+    {
+        sqLiteDatabase.beginTransaction();//开启新事物
+        SQLiteStatement stat = sqLiteDatabase.compileStatement(insertSQL);
+
+        // 插入10000次
+        for (int i = 0; i < 10000; i++)
+        {
+            stat.bindLong(1, 123456);
+            stat.bindString(2, "test");
+            stat.executeInsert();
+        }
+        sqLiteDatabase.setTransactionSuccessful();
+    }
+    catch (SQLException e)
+    {
+        e.printStackTrace();
+    }
+    finally
+    {
+        // 结束
+        sqLiteDatabase.endTransaction();
+        sqLiteDatabase.close();
+    }
+```
+
+### 如何导入外部数据库
+
+1. 把数据库db文件放在res/raw下打包进apk
+2. 通过FileInputStream读取db文件，通过FileOutputStream将文件写入/data/data/包名/database下
+
+## View
+
+### Android自定义view的步骤
+
+继承View或者ViewGroup（从View继承一般需要忙活的方法是onDraw这里，从ViewGroup继承一般需要忙活的方法是onLayout这里）
+
+#### 构造函数（获取自定义的参数）
+
+主要获取该view在xml文件中声明时的自定义参数，通过AttributeSet对象attrs获取他们的值，一共有四个构造函数：
+
+```java
+	public View(Context context) {
+        throw new RuntimeException("Stub!");
+    }
+
+    public View(Context context, @RecentlyNullable cy attrs) {
+        throw new RuntimeException("Stub!");
+    }
+
+    public View(Context context, @RecentlyNullable AttributeSet attrs, int defStyleAttr) {
+        throw new RuntimeException("Stub!");
+    }
+
+    public View(Context context, @RecentlyNullable AttributeSet attrs, int defStyleAttr, int defStyleRes) {
+        throw new RuntimeException("Stub!");
+    }
+```
+
+一般我们只会用到前两个，第一个是在使用java代码new该view时调用的，第二个是在xml文件中声明后调用的。
+
+#### onMeasure（测量View大小）
+
+measure过程要分情况来看，如果只是一个原始的View，那么通过measure方法就完成其测量过程，如果是一个ViewGroup，除了完成自己的测量过程外，还会遍历去调用所有子元素的measure方法。
+
+#### onSizeChanged （确定View的大小）
+
+一般情况下onMeasure中就可以把View的大小确定下来了，但是因为View的大小不仅由View本身控制，而且受父控件的影响，所以我们在确定View大小的时候最好使用系统提供的onSizeChanged回调函数。
+
+#### onLayout （确定子View的位置）
+
+主要是用于确定子View的具体布局位置，一般是在继承了ViewGroup的时候需要重写这个方法，一般都是在onLayout中获取所有的子类，然后根据需求计算出子View的位置参数，再通过调用子View的layout(l,t, r, b)方法设置子View的位置。
+
+#### onDraw （绘制内容）
+
+重写onDraw方法基本可以说是自定义View的一个标配。这部分也决定了自定义View的具体效果。是猫是狗，主要取决于你在一个方法的canvas上画了什么。
+
+#### Canvas使用
+
+- **save**：用来保存 Canvas 的状态。save 之后，可以调用 Canvas 的平移、放缩、旋转、错切、裁剪等操作。
+- **restore**：用来恢复Canvas之前保存的状态。防止 save 后对 Canvas 执行的操作对后续的绘制有影响。
+
+save 和 restore 要配对使用( restore 可以比 save 少，但不能多)，如果 restore 调用次数比 save 多，会引发 Error 。save 和 restore 之间，往往夹杂的是对 Canvas 的特殊操作。
+
+#### 自定义View控件的状态被保存需要满足两个条件
+
+1. View有唯一的ID
+2. View的初始化时要调用setSaveEnabled(true)
+
+### view的绘制流程
+
+整个View树的绘图流程是在ViewRootImpl类的performTraversals()方法（这个方法巨长）开始的，该函数做的执行过程主要是根据之前设置的状态，判断是否重新计算视图大小(measure)、是否重新放置视图的位置(layout)、以及是否重绘 (draw)，其核心也就是通过判断来选择顺序执行这三个方法中的哪个，如下：
+
+```java
+private void performTraversals() {
+        ......
+        //最外层的根视图的widthMeasureSpec和heightMeasureSpec由来
+        //lp.width和lp.height在创建ViewGroup实例时等于MATCH_PARENT
+        int childWidthMeasureSpec = getRootMeasureSpec(mWidth, lp.width);
+        int childHeightMeasureSpec = getRootMeasureSpec(mHeight, lp.height);
+        ......
+        mView.measure(childWidthMeasureSpec, childHeightMeasureSpec);
+        ......
+        mView.layout(0, 0, mView.getMeasuredWidth(), mView.getMeasuredHeight());
+        ......
+        mView.draw(canvas);
+        ......
+    }
+```
+
+![image-20190307163650339](https://ws1.sinaimg.cn/large/006tKfTcgy1g0ubhh10m5j30ms0mkadr.jpg)
+
+### View的measureSpec 由谁决定?顶级view呢？
+
+1. View的MeasureSpec由父容器的MeasureSpec和其自身的LayoutParams共同确定，
+2. 而对于DecorView是由它的MeasureSpec由窗口尺寸和其自身的LayoutParams共同确定。
+
+###  [View和ViewGroup的基本绘制流程](https://link.juejin.im?target=https%3A%2F%2Fblog.csdn.net%2Fu011155781%2Farticle%2Fdetails%2F52584044)
+
+#### View
+
+> 1. measure -> onMeasure
+> 2. layout（onLayout方法是空的，因为他没有child了）
+> 3. draw -> ondraw
+
+#### ViewGroup
+
+> 1. measure -> onMeasure (onMeasure中需要调用childView的measure计算大小)
+> 2. layout -> onLayout （onLayout方法中调用childView的layout方法）
+> 3. draw -> onDraw （ViewGroup一般不绘制自己，ViewGroup默认实现dispatchDraw去绘制孩子）
+
+### draw方法 大概有几个步骤
+
+> 1. drawbackground
+> 2. 如果要视图显示渐变框，这里会做一些准备工作
+> 3. draw自身内容
+> 4. drawChild
+> 5. 如果需要, 绘制当前视图在滑动时的边框渐变效果
+> 6. 绘制装饰，如滚动条
+
+###  [两指缩放](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2F0c863bbde8eb)
+
+> 1. 为了解决多点触控问题，android在MotionEvent中引入了pointer概念
+> 2. 通过ACTION_DOWN、ACTION_POINTER_DOWN、ACTION_MOVE、ACTION_POINTER_UP、ACTION_UP来检测手机的动作
+> 3. 每个手指的位置可以通过getX（pointIndex）来获得，这样我们就能判断出滑动的距离
+> 4. 缩放有多种实现： 1. ImageView可以通过setImageMatrix（martix）来实现 2. 自定义View可以缩放Canvas的大小 3. 还可以设置LayoutParams来改变大小
+
+###  [Scroller](https://link.juejin.im?target=https%3A%2F%2Fmp.weixin.qq.com%2Fs%3F__biz%3DMzIwMzYwMTk1NA%3D%3D%26mid%3D2247484893%26idx%3D1%26sn%3D5874130932d4533064e40045055d0185%26chksm%3D96cda490a1ba2d86491a65f34513e50b80a5d0ccbedae644225bc0a3d262505d43381b603310%23rd)
+
+> 1. Scroller 通常用来实现平滑的滚动
+> 2. 实现平滑滚动： 
+>    1. 新建Scroller，并设置合适的插值器
+>    2. 在View的computeScroll方法中调用scroller，查看当前应该滑动到的位置，并调用view的scrollTo或者scrollBy方法滑动
+>    3. 调用Scroller的start方法开始滑动
+
+### [ScrollView是否滑动到底部](https://link.juejin.im?target=https%3A%2F%2Fblog.csdn.net%2Fwang2963973852%2Farticle%2Fdetails%2F60135960)
+
+> 1. 滑动时会调用onScrollChange方法，在该方法中监听状态
+> 2. 判断childView.getMeasureHeight（总高度） == getScrollY（滑动的高度） + chilView.getHeight(可见高度)
+
+
+
+###  View事件的分发（Android中的事件分发）
+
+> 1. 思想：委托子View处理，子View不能处理则自己处理
+> 2. 委托过程：activity -> window -> viewGroup -> view
+> 3. 处理事件方法的优先级：onTouchListener > onTouchEvent > onClickListener
+
+```java
+伪代码
+public boolean dispatchTouchEvent(MotionEvent ev){
+	boolean consume = false;
+    if(onInterceptTouchEvent(ev)){
+      consume = onTouchEvent(ev)
+    } else {
+      consume = child.dispatchTouchEvent(ev);
+    }
+    return consume;
+}
+
+```
+
+> 完整的事件通常包括Down、Move、Up，当down事件被拦截下来以后，move和up就不再走intercept方法，而是直接被传递给当前view处理
+
+
+
+事件分发的对象是点击事件，当用户触摸屏幕时（`View` 或 `ViewGroup`派生的控件），将产生点击事件（`Touch`事件），而`Touch`事件的相关细节（发生触摸的位置、时间等）被封装成`MotionEvent`对象，对应的事件类型有4种：
+
+| 事件类型                  | 具体动作                   |
+| ------------------------- | -------------------------- |
+| MotionEvent.ACTION_DOWN   | 按下View（所有事件的开始） |
+| MotionEvent.ACTION_UP     | 抬起View（与DOWN对应）     |
+| MotionEvent.ACTION_MOVE   | 滑动View                   |
+| MotionEvent.ACTION_CANCEL | 结束事件（非人为原因）     |
+
+关于ACTION_CANCEL何时被触发，系统文档有这么一种使用场景：在设计设置页面的滑动开关时，如果不监听ACTION_CANCEL，在滑动到中间时，如果你手指上下移动，就是移动到开关控件之外，则此时会触发ACTION_CANCEL，而不是ACTION_UP，造成开关的按钮停顿在中间位置。 
+意思是当滑动的时候就会触发，不知道大家搞没搞过微信的长按录音，有一种状态是“松开手指，取消发送”，这时候就会触发ACTION_CANCEL。
+
+`事件列`：从手指接触屏幕 至 手指离开屏幕，这个过程产生的一系列事件，一般情况下，事件列都是以`DOWN`事件开始、`UP`事件结束，中间有0个或多个的MOVE事件。
+
+事件分发的本质：将点击事件（MotionEvent）传递到某个具体的View & 处理的整个过程
+
+事件分发的对象与顺序：
+
+![7](https://ws4.sinaimg.cn/large/006tKfTcly1g0alnqw859j30e10kfabn.jpg)
+
+​	
+
+​	
+
+事件分发中的三个重要方法：dispatchTouchEvent、onInterceptTouchEvent和onTouchEvent
+
+| 方法                                     | 方法中文名 | 解释                                                         |
+| ---------------------------------------- | ---------- | ------------------------------------------------------------ |
+| dispatchTouchEvent(MotionEvent ev)       | 事件分发   | 用来进行事件的分发。如果事件能够传递给当前View，那么此方法一定会被调用，返回结果受当前View的onTouchEvent和下级View的DispatchTouchEvent方法的影响，表示是否消耗当前事件。 |
+| onInterceptTouchEvent(MotionEvent event) | 事件拦截   | 在上述方法内部调用，用来判断是否拦截某个事件，如果当前View拦截了某个事件，那么在同一个事件序列当中，此方法不会被再次调用，返回结果表示是否拦截当前事件。 |
+| onTouchEvent(MotionEvent event)          | 事件响应   | 在dispatchTouchEvent方法中调用，用来处理点击事件，返回结果表示是否消耗当前事件，如果不消耗，则在同一个事件序列中，当前View无法再次接收到事件 |
+
+三者的关系可以总结为如下伪代码：
+
+```java
+public boolean dispatchTouchEvent(MotionEvent ev) {
+    boolean consume = false;
+    if (onInterceptTouchEvent(ev)) {
+        consume = onTouchEvent(ev);
+    } else {
+        consume = child.dispatchTouchEvent(ev);
+    }
+
+    return consume;
+}
+```
+
+一个事件序列只能被一个View拦截且消耗，不过通过事件代理`TouchDelegate`，可以将`onTouchEvent`强行传递给其他View处理。
+
+**某个View一旦决定拦截，那么这一事件序列就都只能由它来处理**。
+
+**某个View一旦开始处理事件，如果不消耗ACTION_DOWN事件（onTouchEvent返回了false），那么事件会重新交给它的父元素处理，即父元素的onTouchEvent会被调用**。
+
+完整的事件通常包括Down、Move、Up，当down事件被拦截下来以后，move和up就不再走intercept方法，而是直接被传递给当前view处理
+
+ViewGroup`默认不拦截任何事件。Android源码中`ViewGroup`的`onInterceptTouchEvent`方法默认返回false。
+
+**View没有onIntercepteTouchEvent方法，一旦有点击事件传递给它，那么它的onTouchEvent方法就会被调用**。
+
+
+
+多点触控的要点：
+
+在onTouch（Event event）中通过event.getPointerCount,可以获得触摸点的个数，通过event.getX(index)，添加索引可以获得不同控制点的坐标，然后做自己需要的事情。
+
+#### [什么时候执行ACTION_CANCEL](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2F8360d7150786)
+
+> 1. 一个点击或者活动事件包含ACTION_DOWN，ACTION_MOVE,ACTION_UP等
+> 2. 当子View处理了ACTION_DOWN事件之后，后续的ACTION_MOVE,ACTION_UP都会直接交由这个子View处理
+> 3. 如果此时父View拦截了ACTION_MOVE,ACTION_UP，那么子View会收到一个ACTION_CANCEL
+> 4. 场景举例：点击一个控件，并滑动到控件外，此时次控件会收到一个ACTION_CALNCEL
+
+#### 滑动冲突
+
+> 外部拦截：重写onInterceptTouchEvent方法
+> 内部拦截：重写dispatchTouchEvent方法，同时配合requestDisAllowInterceptTouchEvent方法
+
+### [RecyclerView](https://link.juejin.im?target=https%3A%2F%2Fblog.csdn.net%2Fxx326664162%2Farticle%2Fdetails%2F61199895)
+
+RecyclerView 与 ListView 类似，都是通过缓存view提高性能，但是RecyclerView有更高的可定制性。下面是使用时的一些设置，通过这些设置来达到对view样式的自定义：其中1、2是必须设置的，3、4可选
+
+> 1. 想要控制其item们的排列方式，请使用布局管理器LayoutManager
+> 2. 如果要创建一个适配器，请使用RecyclerView.Adapter （Adapter通过范型的方式，帮助我们生成ViewHolder）
+> 3. 想要控制Item间的间隔，请使用RecyclerView.ItemDecoration
+> 4. 想要控制Item增删的动画，请使用RecyclerView.ItemAnimator
+>     扩展：RecyclerView可以很方便的进行局部刷新（notifyItemChanged（））
+
+####  [RecyclerView绘制流程](https://link.juejin.im?target=https%3A%2F%2Fblog.csdn.net%2Fhfyd_%2Farticle%2Fdetails%2F53910631%3F_t_t_t%3D0.81394347618334)
+
+> RecyclerView的Measure和Layout是委托LayoutManager进行的
+
+#### RecyclerView的局部刷新
+
+> 1. 调用notifyItemChange方法
+> 2. 如果想刷新某个item的局部，可以有两种方法 
+>    1. [notifyItemRangeChanged方法](https://link.juejin.im?target=https%3A%2F%2Fblog.csdn.net%2Fjdsjlzx%2Farticle%2Fdetails%2F52893469)
+>    2. [根据position获取对应的ViewHolder，更新其View](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2Fc5ca75d3a78c)
+
+####  [RecyclerView的缓存](https://link.juejin.im?target=https%3A%2F%2Fzhuanlan.zhihu.com%2Fp%2F23339185)
+
+> 1. RecyclerView采用四级缓存，ListView采用两级缓存
+> 2. 四级缓存: 
+>    1. mAttachedScrap：用于屏幕内的itemView快速复用，不需要create和bind
+>    2. mCacheViews：用于屏幕外的itemView快速复用，默认为两个，通过postion查找，不需要create和bind
+>    3. mViewCacheExtentsion：需要用户定制，默认不实现
+>    4. mRecyclerPool：默认上限5个；不需要create，需要bind；多个RecyclerView可以共用一个pool
+> 3. 总结：缓存方面和ListView最大区别是mCacheViews可以缓存屏幕外的item，并且不需要重新bind
+
+####  [RecyclerView 自定义LayoutManager](https://link.juejin.im?target=https%3A%2F%2Fblog.csdn.net%2Fqibin0506%2Farticle%2Fdetails%2F52676670)
+
+> 1. 重写onLayoutChildren方法 
+>    1. 调用detachAndScrapAttachedViews方法，缓存View
+>    2. 计算并设置每个children的位置
+>    3. 调用fill方法
+> 2. 重写fill方法进行布局
+> 3. 重写canScrollVertically和scrollVerticallyBy方法，支持滑动
+
+#### [SurfaceView](https://link.juejin.im?target=https%3A%2F%2Fblog.csdn.net%2FPicasso_L%2Farticle%2Fdetails%2F49817725)与View的区别
+
+> 1. View主要适用于主动更新的情况下，而SurfaceView主要适用于被动更新，例如频繁地刷新；
+> 2. View在主线程中对画面进行刷新，而SurfaceView通常会通过一个子线程来进行页面刷新
+> 3. 而SurfaceView在底层实现机制中就已经实现了[双缓冲机制](https://link.juejin.im?target=https%3A%2F%2Fbbs.csdn.net%2Ftopics%2F390834677)
+
+###  view 的布局
+
+布局全都继承自ViewGroup
+
+> 1. FrameLayout(框架布局) ：没有对child view的摆布进行控制，这个布局中所有的控件都会默认出现在视图的左上角。
+> 2. LinearLayout(线性布局)：横向或竖向排列内部View
+> 3. RelativeLayout(相对布局)：以view的相对位置进行布局
+> 4. TableLayout（表格布局）：将子元素的位置分配到行或列中，一个TableLayout由许多的TableRow组成
+> 5. GridLayout:和TableLayout类似
+> 6. ConstraintLayout（约束布局）：和RelativeLayout类似，还可以通过GuideLine辅助布局，适合图形化操作**推荐使用**
+> 7. AbsoluteLayout（绝对布局）：已经被废弃
+
+####  [线性布局 相对布局 效率哪个高](https://link.juejin.im/?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2F8a7d059da746)
+
+> 相同层次下，因为相对布局会调用两次measure，所以线性高 当层次较多时，建议使用相对布局
+
+### View 的invalidate\postInvalidate\requestLayout方法
+
+> 1. invalidate 会调用onDraw进行重绘，只能在主线程
+> 2. postInvalidate 可以在其他线程
+> 3. requestLayout会调用onLayout和onMeasure，不一定会调用onDraw
+
+### 更新UI方式
+
+> 1. Activity.runOnUiThread(Runnable)
+> 2. View.post(Runnable),View.postDelay(Runnable,long)
+> 3. Handler
+
+####  [postDelayed原理](https://link.juejin.im?target=https%3A%2F%2Fblog.csdn.net%2Fqingtiantianqing%2Farticle%2Fdetails%2F72783952)
+
+> 1. 不管是view的postDelayed方法，还是Handler的post方法，通过包装后最终都会走Handler的sendMessageAtTime方法
+> 2. 随后会通过MessageQueue的enqueueMessage方法将message加入队列，加入时按时间排序，我们可以理解成Message是一个有序队列，时间是其排序依据
+> 3. 当Looper从MessageQueue中调用next方法取出message时，如果还没有到时间，就会阻塞等待
+> 4. 2中当有新的message加完成后，会检查当前有没有3中设置的阻塞，需不需要唤起，如果需要唤起则唤起
+
+### 当一个TextView的实例调用setText()方法后执行了什么
+
+> 1. setText后会对text做一些处理，如设置AutoLink，Ellipsize等
+> 2. 在合适的位置调用TextChangeListener
+> 3. 调用requestLayout和invalidate方法
+
+### 自定义View执行invalidate()方法,为什么有时候不会回调onDraw()
+
+> 1. View 的draw方法会根据很多标识位来决定是否需要调用onDraw，包括是否绑定在当前窗口等
+
+```java
+if (!verticalEdges && !horizontalEdges) {
+            // Step 3, draw the content
+            if (!dirtyOpaque) onDraw(canvas);
+            ...
+}
+```
+
+###  [View 的生命周期](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2F08e6dab7886e)
+
+> 1. 构造方法
+> 2. onFinishInflate：该方法当View及其子View从XML文件中加载完成后会被调用。
+> 3. onVisibilityChanged
+> 4. onAttachedToWindow
+> 5. onMeasure
+> 6. onSizeChanged
+> 7. onLayout
+> 8. onDraw
+> 9. onWindowFocusChanged
+> 10. onWindowVisibilityChanged
+> 11. onDetachedFromWindow
+
+###  [ListView针对多种item的缓存是如何实现的](https://link.juejin.im/?target=https%3A%2F%2Fwww.cnblogs.com%2Fwangzehuaw%2Fp%2F5383600.html)
+
+> 1. 维护一个缓存view的数组，数组长度是 adapter的getViewItemTypeCount
+> 2. 通过getItemViewType获得缓存view 的数组，取出缓存的view
+
+###  [Android中捕获 App崩溃和重启](https://link.juejin.im?target=https%3A%2F%2Fblog.csdn.net%2Fjiaweihaoku%2Farticle%2Fdetails%2F78053403)
+
+#### 关于UncaughtExceptionHandler
+
+java中，Thread的run方法是不抛出任何检查型的异常的，但是Thread本身却会因为没有捕获的异常而崩溃，比如：
+
+```java
+public class NoCaughtThread
+{
+	public static void main(String[] args)
+	{
+		try
+		{
+			Thread thread = new Thread(new Task());
+			thread.start();
+		}
+		catch (Exception e)
+		{
+			System.out.println("==Exception: "+e.getMessage());
+		}
+	}
+}
+ 
+class Task implements Runnable
+{
+	@Override
+	public void run()
+	{
+		System.out.println(3/2);
+		System.out.println(3/0);
+		System.out.println(3/1);
+	}
+}
+```
+
+上面的代码中虽然在main中进行了try catch，但是由于Task的run并不会抛出异常，当发生异常时Task线程会直接崩溃而不是将异常向上抛出，所以就算在main中加了try catch也没用。
+
+解决上述问题的方案有两种：
+
+- 在run中try catch异常
+- 使用`UncaughtExceptionHandler`：
+
+```java
+
+public class WitchCaughtThread
+{
+	public static void main(String args[])
+	{
+		Thread thread = new Thread(new Task());
+		thread.setUncaughtExceptionHandler(new ExceptionHandler());
+		thread.start();
+	}
+}
+ 
+class ExceptionHandler implements UncaughtExceptionHandler
+{
+	@Override
+	public void uncaughtException(Thread t, Throwable e)
+	{
+		System.out.println("==Exception: "+e.getMessage());
+	}
+}
+```
+
+同样可以为所有的Thread设置一个默认的UncaughtExceptionHandler，通过调用Thread.setDefaultUncaughtExceptionHandler(Thread.UncaughtExceptionHandler eh)方法，这是Thread的一个static方法。
+
+所以，在android中避免APP崩溃的做法：
+
+1. 实现Thread.UncaughtExceptionHandler()接口，在uncaughtException方法中完成对崩溃的上报和对App的重启。
+2. 实现自定义Application，并在Application中注册1中Handler实例。
+
+### 如何判断APP被强杀
+
+
+
+> 1. 在Application中定义一个static常量，赋值为－1
+> 2. 在欢迎界面改为0
+> 3. 在BaseActivity判断该常量的值
+
+### 什么情况会导致Force Close ？如何避免？能否捕获导致其的异常？
+
+> 1. 出现运行时异常（如nullpointer/数组越界等），而我们又没有try catch捕获，可能造成Force Close
+> 2. 避免：需要我们在编程时谨慎处理逻辑，提高代码健壮性。如对网络传过来的未知数据先判空，再处理；此外还可以通过静态代码检查来帮助我们提高代码质量
+> 3. 此外，我们还可以在Application初始化时注册[UncaultExceptionHandler](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2F84eba8efa45e)，来捕捉这些异常重启我们的程序
+
+
+
+## Android优化
+
+###  [Android启动优化](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2Ff5514b1a826c)
+
+> 1. 启动优化的目的是提高用户感知的启动速度
+> 2. 可以采用**TraceView**等分析耗时，找出优化方向
+> 3. 优化的思路： 
+>    1. 利用提前展示出来的Window，设置Theme，快速展示出来一个界面，给用户快速反馈的体验（启动后再改变回来）
+>    2. 异步初始化一些第三方SDK
+>    3. 延迟初始化
+>    4. 针对性的优化算法，减少耗时
+
+### 布局优化
+
+1：尽量多使用LinearLayout（线性布局）和RelativeLayout（相对布局），不要使用AbsoluteLayout（绝对布局）
+
+2：在布局层次相同的情况下，建议使用LinearLayout代替RelativeLayout，因为这时LinearLayout的性能比RelativeLayout要好一些。
+
+3：将可复用的组件抽取出来并通过**include**标签使用
+
+4：使用**ViewStub**标签来加载一些不常用的布局
+
+5：使用**merge**标签减少布局的嵌套层次。灵活使用后面三条原则，将极大优化项目的布局。
+
+#### include
+
+include就是为了解决重复定义相同布局的问题。例如你有五个界面，这五个界面的顶部都有布局一模一样的一个返回按钮和一个文本控件，在不使用include的情况下你在每个界面都需要重新在xml里面写同样的返回按钮和文本控件的顶部栏，这样的重复工作会相当的恶心。使用include标签，我们只需要把这个会被多次使用的顶部栏独立成一个xml文件，然后在需要使用的地方通过include标签引入即可：
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>  
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"  
+    android:layout_width="match_parent"  
+    android:id="@+id/my_title_parent_id"  
+    android:layout_height="wrap_content" >  
+
+    <TextView  
+        android:id="@+id/title_tv"  
+        android:layout_width="wrap_content"  
+        android:layout_height="wrap_content"  
+        android:layout_centerVertical="true"  
+        android:layout_marginLeft="20dp"  
+        android:layout_toRightOf="@+id/back_btn"  
+        android:gravity="center"  
+        android:text="我的title"  
+        android:textSize="18sp" />  
+
+</RelativeLayout>  
+
+```
+
+include布局文件：
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>  
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"  
+    android:layout_width="match_parent"  
+    android:layout_height="match_parent"  
+    android:orientation="vertical" >  
+
+    <include  
+        android:id="@+id/include_parent"  
+        android:layout_width="match_parent"  
+        android:layout_height="wrap_content"  
+        layout="@layout/my_title_layout" />  
+
+    <!-- 代码省略 -->
+</LinearLayout>  
+```
+
+findviewByid的用法：
+
+```java
+// 使用include时设置的id,即R.id.my_title_ly
+View titleView = findViewById(R.id.include_parent) ;  
+// 通过titleView找子控件
+TextView titleTextView = (TextView)titleView.findViewById(R.id.title_tv) ;  
+titleTextView.setText("new Title");  
+```
+
+或者：
+
+```java
+TextView titleTextView = (TextView)findViewById(R.id.title_tv) ;  
+titleTextView.setText("new Title");  
+```
+
+#### ViewStub
+
+其实ViewStub就是一个宽高都为0的一个View，它默认是不可见的，只有通过调用setVisibility函数或者Inflate函数才会将其要装载的目标布局给加载出来，从而达到延迟加载的效果，这个要被加载的布局通过android:layout属性来设置。例如我们通过一个ViewStub来惰性加载一个消息流的评论列表，因为一个帖子可能并没有评论，此时我可以不加载这个评论的ListView，只有当有评论时我才把它加载出来，这样就去除了加载ListView带来的资源消耗以及延时，示例如下 :
+
+```xml
+<ViewStub  
+    android:id="@+id/stub_import"  
+    android:inflatedId="@+id/stub_comm_lv"  
+    android:layout="@layout/my_comment_layout"  
+    android:layout_width="fill_parent"  
+    android:layout_height="wrap_content"  
+    android:layout_gravity="bottom" / >
+```
+
+my_comment_layout.xml如下:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>  
+<ListView xmlns:android="http://schemas.android.com/apk/res/android"  
+    android:layout_width="match_parent"  
+    android:id="@+id/my_comm_lv"  
+    android:layout_height="match_parent" >  
+
+</ListView>  
+```
+
+在运行时，我们只需要控制id为stub_import的ViewStub的可见性或者调用inflate()函数来控制是否加载这个评论列表即可。示例如下 :
+
+```java
+public class MainActivity extends Activity {  
+
+    public void onCreate(Bundle b){  
+        // main.xml中包含上面的ViewStub  
+        setContentView(R.layout.main);  
+
+        // 方式1，获取ViewStub,  
+        ViewStub listStub = (ViewStub) findViewById(R.id.stub_import);  
+        // 加载评论列表布局  
+        listStub.setVisibility(View.VISIBLE);  
+        // 获取到评论ListView，注意这里是通过ViewStub的inflatedId来获取  
+            ListView commLv = findViewById(R.id.stub_comm_lv);  
+                if ( listStub.getVisibility() == View.VISIBLE ) {  
+                       // 已经加载, 否则还没有加载  
+                }  
+            }  
+       }  
+```
+
+#### Merge
+
+其实就是减少在include布局文件时的层级。标签是这几个标签中最让我费解的，大家可能想不到，标签竟然会是一个Activity，里面有一个LinearLayout对象:
+
+```java
+/** 
+ * Exercise <merge /> tag in XML files. 
+ */  
+public class Merge extends Activity {  
+    private LinearLayout mLayout;  
+
+    @Override  
+    protected void onCreate(Bundle icicle) {  
+        super.onCreate(icicle);  
+
+        mLayout = new LinearLayout(this);  
+        mLayout.setOrientation(LinearLayout.VERTICAL);  
+        LayoutInflater.from(this).inflate(R.layout.merge_tag, mLayout);  
+
+        setContentView(mLayout);  
+    }  
+
+    public ViewGroup getLayout() {  
+        return mLayout;  
+    }  
+}  
+```
+
+使用merge来组织子元素可以减少布局的层级。例如我们在复用一个含有多个子控件的布局时，肯定需要一个ViewGroup来管理，例如这样 :
+
+```xml
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"  
+    android:layout_width="fill_parent"  
+    android:layout_height="fill_parent">  
+
+    <ImageView    
+        android:layout_width="fill_parent"   
+        android:layout_height="fill_parent"   
+
+        android:scaleType="center"  
+        android:src="@drawable/golden_gate" />  
+
+    <TextView  
+        android:layout_width="wrap_content"   
+        android:layout_height="wrap_content"   
+        android:layout_marginBottom="20dip"  
+        android:layout_gravity="center_horizontal|bottom"  
+
+        android:padding="12dip"  
+
+        android:background="#AA000000"  
+        android:textColor="#ffffffff"  
+
+        android:text="Golden Gate" />  
+
+</FrameLayout> 
+```
+
+将该布局通过include引入时就会多引入了一个FrameLayout层级，此时结构如下 :
+
+![merge2](https://ws3.sinaimg.cn/large/006tKfTcgy1g0ucyrectfj30960gz0t9.jpg)
+
+
+
+使用merge标签就会消除上图中蓝色的FrameLayout层级。示例如下 :
+
+```
+<merge xmlns:android="http://schemas.android.com/apk/res/android">  
+
+    <ImageView    
+        android:layout_width="fill_parent"   
+        android:layout_height="fill_parent"   
+
+        android:scaleType="center"  
+        android:src="@drawable/golden_gate" />  
+
+    <TextView  
+        android:layout_width="wrap_content"   
+        android:layout_height="wrap_content"   
+        android:layout_marginBottom="20dip"  
+        android:layout_gravity="center_horizontal|bottom"  
+
+        android:padding="12dip"  
+
+        android:background="#AA000000"  
+        android:textColor="#ffffffff"  
+
+        android:text="Golden Gate" />  
+
+</merge>  
+```
+
+![merge3](https://ws1.sinaimg.cn/large/006tKfTcgy1g0uczxryvqj308u0dmdg9.jpg)
+
+
+
+### 网络优化
+
+1. 不用域名,用ip直连
+2. 请求合并与拆分
+3. 请求数据的缩小：删除无用数据，开启Gzip压缩
+4. 精简的数据格式：json/webp/根据设备和网络环境的不同采用不同分辨率图片
+5. 数据缓存
+6. 预加载
+7. 连接的复用：使用http2.0 (效率提升30%)
+
+### [APK瘦身](https://link.juejin.im?target=https%3A%2F%2Fblog.csdn.net%2Fvfush%2Farticle%2Fdetails%2F52266843)
+
+> 1. 分析APK 
+>    1. 使用Android Studio的分析器分析apk结构
+>    2. 使用lint分析无用代码和资源
+>    3. 或者使用第三方工具，如NimbleDroid/ClassShark
+> 2. 删除无用资源 
+>    1. 对无用资源和代码删除
+>    2. 优化结构，对重复资源去重
+>    3. 对依赖去重，依赖多个功能类似的sdk时，只保留一个
+>    4. 去除不需要的依赖，如语言support包可能包含多种语言，配置只保留我们需要的资源等
+>    5. 开启gradle的ProGuard/Code shrinking/minifyEnabled等，自动去除不需要的资源和代码】
+> 3. 压缩已用资源 
+>    1. 选取适当的图片格式，如webp
+>    2. 对图片进行压缩
+>    3. 选取合适的依赖包，而不是直接依赖V7包等
+>    4. 使用微信的打包插件AndResGuard对图片进行压缩
+>    5. 使用facebook的ReDex对dex文件进行压缩
+> 4. 通过网络按需加载
 
 ## 如何理解android中的context
 
 ![image-20190301132911899](https://ws2.sinaimg.cn/large/006tKfTcgy1g0n8cbdgktj31480u0gow.jpg)
+
+### [Android中Application和Activity的Context对象的区别](https://juejin.im/post/5a9514e25188257a865d9b5a)
+
+> 1. 生命周期不一样
+> 2. Application 不能showDialog
+> 3. Application startActivity时必须new一个Task
+> 4. Application layoutInflate直接使用默认主题，可能与当前主题不一样
+
+## APK的安装流程
+
+![image-20190307173534943](https://ws3.sinaimg.cn/large/006tKfTcgy1g0ud6l1vy5j317j0u0gtb.jpg)
+
+1：解压文件到data/app目录下
+
+2：资源管理器加载资源文件
+
+3：解析解析AndroidManifest文件，并在/data/data/目录下创建对应的应用数据目录。
+
+4：然后对dex文件进行优化，并保存在dalvik-cache目录下。
+
+5：将AndroidManifest文件解析出的四大组件信息注册到PackageManagerService中。
+
+6：安装完成后，发送广播。
+
+## Android Debug和Release状态的不同
+
+调试模式允许我们为优化代码而添加许多额外的功能，这些功能在Release时都应该去掉；Release包可以为了安全等做一些额外的优化，这些优化可能比较耗时，在Debug时是不需要的
+
+> 1. log日志只在debug时输入，release时应该关掉（为了安全）
+> 2. 签名/混淆/压缩等在debug编译时可以加入，减少打包时间
+> 3. 可以在debug包中加入一些额外的功能辅助我们开发，如直接打印网络请求的控件，内存泄漏检测工具LeakCanary等
+> 4. 在打Release包时，除了混淆等操作，往往还需要加固操作，保证APP的安全
+
+## jar和aar的区别
+
+> Jar包里面只有代码，aar里面不光有代码还包括代码还包括资源文件，比如 drawable 文件，xml 资源文件。对于一些不常变动的 Android Library，我们可以直接引用 aar，加快编译速度
+
+## 如何退出自己的APP
+
+1. 记录启动的activity
+2. 需要退出时调用存活activity的finish方法，并调用System.exit(0)方法
+
+## 视频加密
+
+视频加密根据场景的不同有很多种方式
+
+> 1. 如仅对地址加密，可以起到防盗链的目的，可以与其他方法一起使用
+> 2. 对整个文件加密，加解密时间长，不实用
+> 3. 对文件的头中尾加密，播放器可以直接跳过，破解简单,不实用
+> 4. 对视频流加密([基于苹果HLS协议的加密](https://link.juejin.im?target=https%3A%2F%2Fgithub.com%2Fhauk0101%2Fvideo-hls-encrypt)     [基于RTPE协议](https://link.juejin.im?target=https%3A%2F%2Fgithub.com%2Fgwuhaolin%2Fblog%2Fissues%2F10))
+> 5. 关键帧加密
+
+## Android如何生成设备唯一标识
+
+选取 DeviceId，AndroidId，Serial Number，Mac，蓝牙地址等中的一个或者几个作为种子，生成UUID。
+
+## Android如何在不压缩的情况下加载高清大图
+
+如果单个图片非常巨大，并且还不允许压缩。比如显示：世界地图、清明上河图、微博长图等，不压缩，按照原图尺寸加载，那么屏幕肯定是不够大的，并且考虑到内存的情况，不可能一次性整图加载到内存中，所以肯定是局部加载，那么就需要用到一个类：
+
+`BitmapRegionDecoder`
+
+其次，既然屏幕显示不完，那么最起码要添加一个上下左右拖动的手势，让用户可以拖动查看。
+
+`BitmapRegionDecoder`主要用于显示图片的某一块矩形区域，如果你需要显示某个图片的指定区域，那么这个类非常合适。
+
+对于该类的用法，非常简单，既然是显示图片的某一块区域，那么至少只需要一个方法去设置图片；一个方法传入显示的区域即可；详见：
+
+`BitmapRegionDecoder`提供了一系列的`newInstance`方法来构造对象，支持传入文件路径，文件描述符，文件的inputstrem等。
+
+例如：
+
+```java
+BitmapRegionDecoder bitmapRegionDecoder =BitmapRegionDecoder.newInstance(inputStream, false);
+```
+
+
+上述解决了传入我们需要处理的图片，那么接下来就是显示指定的区域。
+
+```java
+bitmapRegionDecoder.decodeRegion(rect, options);
+```
+
+参数一很明显是一个rect，参数二是BitmapFactory.Options，你可以控制图片的inSampleSize,inPreferredConfig等。
+
+## Android中有哪些方法实现定时和延时任务？它们的适用场景是什么？
+
+1. 倒计时类:用`CountDownTimer`
+2. 延迟类:
+   - CountDownTimer，可巧妙的将countDownInterval设成和millisInFuture一样，这样就只会调用一次onTick和一次onFinish
+   - handler.sendMessageDelayed,可参考CountDownTimer的内部实现，简化一下，个人比较推荐这个
+   - TimerTask，代码写起来比较乱 
+   - Thread.sleep，感觉这种不太好
+3. 定时类: 
+   - 参照延迟类的，自己计算好要延迟多少时间 
+   - handler.sendMessageAtTime 
+   - AlarmManager，适用于定时比较长远的时间，例如闹铃
 
 ## Application，Task和Process的区别与联系
 
@@ -299,7 +1282,7 @@ application翻译成中文时一般称为“应用”或“应用程序”，在
 
 由此可见，application是由四大组件组成的。在app安装时，系统会读取manifest的信息，将所有的组件解析出来，以便在运行时对组件进行实例化和调度。
 
-### Task
+### Task（任务栈）
 
 task是在程序运行时，只针对activity的概念。说白了，task是一组相互关联的activity的集合，它是存在于framework层的一个概念，控制界面的跳转和返回。这个task存在于一个称为back stack的数据结构中，也就是说，framework是以栈的形式管理用户开启的activity。这个栈的基本行为是，当用户在多个activity之间跳转时，执行压栈操作，当用户按返回键时，执行出栈操作。
 
@@ -529,132 +1512,9 @@ viewGroup能操作自己也可以操作孩子（通过`viewGroup.getChildAt(i).g
 
 ## Zygote
 
-## Android自定义view的步骤
+1. 
 
-继承View或者ViewGroup（从View继承一般需要忙活的方法是onDraw这里，从ViewGroup继承一般需要忙活的方法是onLayout这里）
-
-### 构造函数（获取自定义的参数）
-
-主要获取该view在xml文件中声明时的自定义参数，通过AttributeSet对象attrs获取他们的值，一共有四个构造函数：
-
-```java
-	public View(Context context) {
-        throw new RuntimeException("Stub!");
-    }
-
-    public View(Context context, @RecentlyNullable cy attrs) {
-        throw new RuntimeException("Stub!");
-    }
-
-    public View(Context context, @RecentlyNullable AttributeSet attrs, int defStyleAttr) {
-        throw new RuntimeException("Stub!");
-    }
-
-    public View(Context context, @RecentlyNullable AttributeSet attrs, int defStyleAttr, int defStyleRes) {
-        throw new RuntimeException("Stub!");
-    }
-```
-
-一般我们只会用到前两个，第一个是在使用java代码new该view时调用的，第二个是在xml文件中声明后调用的。
-
-### onMeasure（测量View大小）
-
-measure过程要分情况来看，如果只是一个原始的View，那么通过measure方法就完成其测量过程，如果是一个ViewGroup，除了完成自己的测量过程外，还会遍历去调用所有子元素的measure方法。
-
-### onSizeChanged （确定View的大小）
-
-一般情况下onMeasure中就可以把View的大小确定下来了，但是因为View的大小不仅由View本身控制，而且受父控件的影响，所以我们在确定View大小的时候最好使用系统提供的onSizeChanged回调函数。
-
-### onLayout （确定子View的位置）
-
-主要是用于确定子View的具体布局位置，一般是在继承了ViewGroup的时候需要重写这个方法，一般都是在onLayout中获取所有的子类，然后根据需求计算出子View的位置参数，再通过调用子View的layout(l,t, r, b)方法设置子View的位置。
-
-### onDraw （绘制内容）
-
-重写onDraw方法基本可以说是自定义View的一个标配。这部分也决定了自定义View的具体效果。是猫是狗，主要取决于你在一个方法的canvas上画了什么。
-
-## Canvas使用
-
-- **save**：用来保存 Canvas 的状态。save 之后，可以调用 Canvas 的平移、放缩、旋转、错切、裁剪等操作。
-- **restore**：用来恢复Canvas之前保存的状态。防止 save 后对 Canvas 执行的操作对后续的绘制有影响。
-
-save 和 restore 要配对使用( restore 可以比 save 少，但不能多)，如果 restore 调用次数比 save 多，会引发 Error 。save 和 restore 之间，往往夹杂的是对 Canvas 的特殊操作。
-
-## Android中的事件分发
-
-事件分发的对象是点击事件，当用户触摸屏幕时（`View` 或 `ViewGroup`派生的控件），将产生点击事件（`Touch`事件），而`Touch`事件的相关细节（发生触摸的位置、时间等）被封装成`MotionEvent`对象，对应的事件类型有4种：
-
-| 事件类型                  | 具体动作                   |
-| ------------------------- | -------------------------- |
-| MotionEvent.ACTION_DOWN   | 按下View（所有事件的开始） |
-| MotionEvent.ACTION_UP     | 抬起View（与DOWN对应）     |
-| MotionEvent.ACTION_MOVE   | 滑动View                   |
-| MotionEvent.ACTION_CANCEL | 结束事件（非人为原因）     |
-
-关于ACTION_CANCEL何时被触发，系统文档有这么一种使用场景：在设计设置页面的滑动开关时，如果不监听ACTION_CANCEL，在滑动到中间时，如果你手指上下移动，就是移动到开关控件之外，则此时会触发ACTION_CANCEL，而不是ACTION_UP，造成开关的按钮停顿在中间位置。 
-意思是当滑动的时候就会触发，不知道大家搞没搞过微信的长按录音，有一种状态是“松开手指，取消发送”，这时候就会触发ACTION_CANCEL。
-
-
-
-`事件列`：从手指接触屏幕 至 手指离开屏幕，这个过程产生的一系列事件，一般情况下，事件列都是以`DOWN`事件开始、`UP`事件结束，中间有0个或多个的MOVE事件。
-
-事件分发的本质：将点击事件（MotionEvent）传递到某个具体的View & 处理的整个过程
-
-事件分发的对象与顺序：
-
-![7](https://ws4.sinaimg.cn/large/006tKfTcly1g0alnqw859j30e10kfabn.jpg)
-
-​	
-
-​	
-
-事件分发中的三个重要方法：dispatchTouchEvent、onInterceptTouchEvent和onTouchEvent
-
-| 方法                                     | 方法中文名 | 解释                                                         |
-| ---------------------------------------- | ---------- | ------------------------------------------------------------ |
-| dispatchTouchEvent(MotionEvent ev)       | 事件分发   | 用来进行事件的分发。如果事件能够传递给当前View，那么此方法一定会被调用，返回结果受当前View的onTouchEvent和下级View的DispatchTouchEvent方法的影响，表示是否消耗当前事件。 |
-| onInterceptTouchEvent(MotionEvent event) | 事件拦截   | 在上述方法内部调用，用来判断是否拦截某个事件，如果当前View拦截了某个事件，那么在同一个事件序列当中，此方法不会被再次调用，返回结果表示是否拦截当前事件。 |
-| onTouchEvent(MotionEvent event)          | 事件响应   | 在dispatchTouchEvent方法中调用，用来处理点击事件，返回结果表示是否消耗当前事件，如果不消耗，则在同一个事件序列中，当前View无法再次接收到事件 |
-
-三者的关系可以总结为如下伪代码：
-
-```java
-public boolean dispatchTouchEvent(MotionEvent ev) {
-    boolean consume = false;
-    if (onInterceptTouchEvent(ev)) {
-        consume = onTouchEvent(ev);
-    } else {
-        consume = child.dispatchTouchEvent(ev);
-    }
-
-    return consume;
-}
-```
-
-一个事件序列只能被一个View拦截且消耗，不过通过事件代理`TouchDelegate`，可以将`onTouchEvent`强行传递给其他View处理。
-
-**某个View一旦决定拦截，那么这一事件序列就都只能由它来处理**。
-
-**某个View一旦开始处理事件，如果不消耗ACTION_DOWN事件（onTouchEvent返回了false），那么事件会重新交给它的父元素处理，即父元素的onTouchEvent会被调用**。
-
-完整的事件通常包括Down、Move、Up，当down事件被拦截下来以后，move和up就不再走intercept方法，而是直接被传递给当前view处理
-
-ViewGroup`默认不拦截任何事件。Android源码中`ViewGroup`的`onInterceptTouchEvent`方法默认返回false。
-
-**View没有onIntercepteTouchEvent方法，一旦有点击事件传递给它，那么它的onTouchEvent方法就会被调用**。
-
-
-
-多点触控的要点：
-
-在onTouch（Event event）中通过event.getPointerCount,可以获得触摸点的个数，通过event.getX(index)，添加索引可以获得不同控制点的坐标，然后做自己需要的事情。
-
-#### [什么时候执行ACTION_CANCEL](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2F8360d7150786)
-
-> 1. 一个点击或者活动事件包含ACTION_DOWN，ACTION_MOVE,ACTION_UP等
-> 2. 当子View处理了ACTION_DOWN事件之后，后续的ACTION_MOVE,ACTION_UP都会直接交由这个子View处理
-> 3. 如果此时父View拦截了ACTION_MOVE,ACTION_UP，那么子View会收到一个ACTION_CANCEL
-> 4. 场景举例：点击一个控件，并滑动到控件外，此时次控件会收到一个ACTION_CALNCEL
+> 1. 
 
 ## Binder
 
@@ -1785,229 +2645,6 @@ IntentService是Service的子类,由于Service里面不能做耗时的操作,所
 
 ------
 
-#### [使用](https://link.juejin.im?target=http%3A%2F%2Fliuwangshu.cn%2Fapplication%2Fnetwork%2F5-okhttp2x.html)
-
-##### 1. 在gradle中添加依赖
-
-```
-compile 'com.squareup.okhttp3:okhttp:3.9.0'
-compile 'com.squareup.okio:okio:1.13.0'
-复制代码
-```
-
-##### 2. 创建OkHttpClient，并对timeout等进行设置
-
-```
-File sdcache = getExternalCacheDir();
-int cacheSize = 10 * 1024 * 1024;
-OkHttpClient.Builder builder = new OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .writeTimeout(20, TimeUnit.SECONDS)
-        .readTimeout(20, TimeUnit.SECONDS)
-        .cache(new Cache(sdcache.getAbsoluteFile(), cacheSize));
-OkHttpClient mOkHttpClient=builder.build();
-复制代码
-```
-
-##### 3. 创建Request
-
-- get请求
-
-```
-Request request = new Request.Builder()
-            .url("http://www.baidu.com")
-            .build();
-复制代码
-```
-
-- post请求（post需要传入requsetBody）
-
-```
-RequestBody formBody = new FormEncodingBuilder()
-            .add("size", "10")
-            .build();
-    Request request = new Request.Builder()
-            .url("http://api.1-blog.com/biz/bizserver/article/list.do")
-            .post(formBody)
-            .build();
-复制代码
-```
-
-##### 4. 创建Call并执行（okHttp的返回结果并没有在ui线程）
-
-```
-Call call = mOkHttpClient.newCall(request);
-复制代码
-```
-
-- 同步执行
-
-```
-Response mResponse=call.execute();
-        if (mResponse.isSuccessful()) {     
-           return mResponse.body().string();
-       } else {
-           throw new IOException("Unexpected code " + mResponse);
-       }
-复制代码
-```
-
-- 异步执行
-
-```
-call.enqueue(new Callback() {
-        @Override
-        public void onFailure(Request request, IOException e) {
-        }
-        @Override
-        public void onResponse(Response response) throws IOException {
-            String str = response.body().string();
-            Log.i("wangshu", str);
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    Toast.makeText(getApplicationContext(), "请求成功", Toast.LENGTH_SHORT).show();
-                }
-            });
-        }
-    });
-复制代码
-```
-
-##### 5. 封装
-
-因为以下原因，所以我们需要封装：
-
-- 避免重复代码编写
-- 请求的回调改为UI线程
-- 其他需要的逻辑：例如加解密等
-
-#### OkHttp中的设计模式
-
-1. Builder模式：OkHttpClient 和Request等都是通过Builder模式创建的
-2. 责任链模式：拦截器通过责任链模式进行工作
-3. 门面模式：整体采用门面模式，OkHttpClient为门面，向子系统委派任务
-4. 享元模式：连接池等采用了享元模式
-5. 其他：工厂模式、代理模式等
-
-#### [源码分析](https://link.juejin.im?target=http%3A%2F%2Fliuwangshu.cn%2Fapplication%2Fnetwork%2F7-okhttp3-sourcecode.html)
-
-##### 1. Call
-
-- Call的实现类为RealCall
-- 在执行execute或者enqueue时，会取出okHttpClient中的Dispatcher执行对应的方法
-
-```
-client.dispatcher().enqueue(new AsyncCall(responseCallback, forWebSocket));
-复制代码
-```
-
-##### 2. Diapatcher
-
-- Diapatcher在OkHttpClient build时进行初始化
-- Dispatcher负责进行任务调度，内部维护一个线程池，处理并发请求
-- Dispatcher内部有三个队列
-
-```
-/** 将要运行的异步请求队列 */
-private final Deque<AsyncCall> readyAsyncCalls = new ArrayDeque<>();
-/**正在运行的异步请求队列 */
-private final Deque<AsyncCall> runningAsyncCalls = new ArrayDeque<>();
-/** 正在运行的同步请求队列 */
-private final Deque<RealCall> runningSyncCalls = new ArrayDeque<>();
-复制代码
-```
-
-- 执行时，线程会调用AsyncCall的excute方法
-
-##### 3. AsyncCall
-
-- AsyncCall是RealCall的一个内部类，实现了Runnalbe接口
-- AsyncCall 通过 getResponseWithInterceptorChain方法取得Response
-- 执行完毕后通过client.dispatcher().finished(this)；将自身从dispatcher队列中取出，并取出下一个加入相应队列
-
-```
-//AsyncCall 的excute方法
-@Override protected void execute() {
-  boolean signalledCallback = false;
-  try {
-    Response response = getResponseWithInterceptorChain(forWebSocket);
-    if (canceled) {
-      signalledCallback = true;
-      responseCallback.onFailure(RealCall.this, new IOException("Canceled"));
-    } else {
-      signalledCallback = true;
-      responseCallback.onResponse(RealCall.this, response);
-    }
-  } catch (IOException e) {
-    if (signalledCallback) {
-      // Do not signal the callback twice!
-      logger.log(Level.INFO, "Callback failure for " + toLoggableString(), e);
-    } else {
-      responseCallback.onFailure(RealCall.this, e);
-    }
-  } finally {
-    client.dispatcher().finished(this);
-  }
-}
-
-复制代码
-```
-
-##### 4. getResponseWithInterceptorChain
-
-getResponseWithInterceptorChain是用责任链的方式，执行拦截器，对请求和请求结果进行处理
-
-- getResponseWithInterceptorChain 中创建拦截器，并创建第一个RealInterceptorChain，执行其proceed方法
-
-```
-Response getResponseWithInterceptorChain() throws IOException {
-    // Build a full stack of interceptors.
-    List<Interceptor> interceptors = new ArrayList<>();
-    interceptors.addAll(client.interceptors());
-    interceptors.add(retryAndFollowUpInterceptor);
-    interceptors.add(new BridgeInterceptor(client.cookieJar()));
-    interceptors.add(new CacheInterceptor(client.internalCache()));
-    interceptors.add(new ConnectInterceptor(client));
-    if (!forWebSocket) {
-      interceptors.addAll(client.networkInterceptors());
-    }
-    interceptors.add(new CallServerInterceptor(forWebSocket));
-
-    Interceptor.Chain chain = new RealInterceptorChain(interceptors, null, null, null, 0,
-        originalRequest, this, eventListener, client.connectTimeoutMillis(),
-        client.readTimeoutMillis(), client.writeTimeoutMillis());
-
-    return chain.proceed(originalRequest);
-  }
-复制代码
-```
-
-- RealInterceptorChain的proceed方法中，会取出拦截器，并创建下一个Chain，将其作为参数传给拦截器的intercept方法
-
-```
-  // If there's another interceptor in the chain, call that.
-  if (index < client.interceptors().size()) {
-    Interceptor.Chain chain = new ApplicationInterceptorChain(index + 1, request, forWebSocket);
-    //从拦截器列表取出拦截器
-    Interceptor interceptor = client.interceptors().get(index);
-    Response interceptedResponse = interceptor.intercept(chain);
-
-    if (interceptedResponse == null) {
-      throw new NullPointerException("application interceptor " + interceptor
-          + " returned null");
-    }
-
-    return interceptedResponse;
-  }
-
-  // No more interceptors. Do HTTP.
-  return getResponse(request, forWebSocket);
-}
-
-复制代码
-```
-
 #### 拦截器
 
 ##### 1. [自定义拦截器](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2Fd04b463806c8)
@@ -2035,23 +2672,7 @@ Response getResponseWithInterceptorChain() throws IOException {
 
 ##### 2. StreamAllocation
 
-StreamAllocation是Connection维护的连接，以下是类内注解
-
-```
- <ul>
- *     <li><strong>Connections:</strong> physical socket connections to remote servers. These are
- *         potentially slow to establish so it is necessary to be able to cancel a connection
- *         currently being connected.
- *     <li><strong>Streams:</strong> logical HTTP request/response pairs that are layered on
- *         connections. Each connection has its own allocation limit, which defines how many
- *         concurrent streams that connection can carry. HTTP/1.x connections can carry 1 stream
- *         at a time, HTTP/2 typically carry multiple.
- *     <li><strong>Calls:</strong> a logical sequence of streams, typically an initial request and
- *         its follow up requests. We prefer to keep all streams of a single call on the same
- *         connection for better behavior and locality.
- * </ul>
-复制代码
-```
+StreamAllocation是Connection维护的连接
 
 ##### 3. ConnectionPool
 
@@ -2063,326 +2684,11 @@ ConnectionPool通过Address等来查找有没有可以复用的Connection，同�
 
 Retrofit帮助我们对OkHttp进行了封装，使网络请求更加方便
 
-#### [使用](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2Fa3e162261ab6)
-
-##### 1. 添加依赖
-
-```
-dependencies {
-    compile 'com.squareup.retrofit2:retrofit:2.0.2'
-  }
-复制代码
-```
-
-##### 2. 创建Retrofit实例
-
-```
-Retrofit retrofit = new Retrofit.Builder() 
- .baseUrl("http://fanyi.youdao.com/") // 设置网络请求的Url地址
- .addConverterFactory(GsonConverterFactory.create()) // 设置数据解析器 
- .addCallAdapterFactory(RxJavaCallAdapterFactory.create()) // 支持RxJava平台 .build();
-复制代码
-```
-
-##### 3. 创建网络接口
-
-```
-@GET("user")
-Call<User> getUser(@Header("Authorization") String authorization)
-复制代码
-```
-
-##### 4. 创建Call
-
-```
- GetRequest_Interface request = retrofit.create(GetRequest_Interface.class);
-//对 发送请求 进行封装
-Call<Reception> call = request.getCall();
-复制代码
-```
-
-##### 5. 执行Call的请求方法
-
-```
-//发送网络请求(异步) call.enqueue(new Callback<Translation>() { 
-//请求成功时回调
- @Override 
-public void onResponse(Call<Translation> call, Response<Translation> response) { 
-   //请求处理,输出结果
-    response.body().show(); 
- } 
- //请求失败时候的回调 
- @Override 
- public void onFailure(Call<Translation> call, Throwable throwable) { 
-     System.out.println("连接失败"); 
- } 
- });
- 
- // 发送网络请求（同步） Response<Reception> response = call.execute();
-
-复制代码
-```
-
-#### [源码解析](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2F0c055ad46b6c)
-
-##### 1. Retrofit
-
-Retrofit 通过builder模式创建，我们可以对其进行各种设置：
-
-- baseUrl：请求地址的头部，必填
-- callFactory：网络请求工厂（不进行设置的话默认会生成一个OkHttpClient）
-- adapterFactories：网络请求适配器工厂的集合，这里有适配器因为Retrofit不仅支持Android，还支持Ios等其他平台（不进行设置的话会根据平台自动生成）
-- converterFactories：数据转换器工厂的集合（将网络返回的数据转换成我们需要的类）
-- callbackExecutor：回调方法执行器（Android平台默认通过Handler发送到主线程执行）
-
-##### 2. Call
-
-我们的每个method对应一个Call， Call的创建分为两步：
-
-- retorfit.create(myInfterfaceClass.class)创建我们网络请求接口类的实例
-- 调用对应方法拿到对应网络请求的Call
-
-关键在第一步，第一步是通过动态代理实现的
-
-```
-public <T> T create(final Class<T> service) {
-  Utils.validateServiceInterface(service);
-  if (validateEagerly) {
-    eagerlyValidateMethods(service);
-  }
-  return (T) Proxy.newProxyInstance(service.getClassLoader(), new Class<?>[] { service },
-      new InvocationHandler() {
-        private final Platform platform = Platform.get();
-
-        @Override public Object invoke(Object proxy, Method method, Object... args)
-            throws Throwable {
-          // If the method is a method from Object then defer to normal invocation.
-          if (method.getDeclaringClass() == Object.class) {
-            return method.invoke(this, args);
-          }
-          if (platform.isDefaultMethod(method)) {
-            return platform.invokeDefaultMethod(method, service, proxy, args);
-          }
-          ServiceMethod serviceMethod = loadServiceMethod(method);//1
-          OkHttpCall okHttpCall = new OkHttpCall<>(serviceMethod, args);
-          return serviceMethod.callAdapter.adapt(okHttpCall);
-        }
-      });
-}
-复制代码
-```
-
-- 通过loadServiceMethod方法生成mehtod对应的ServiceMethod
-- 将ServiceMethod和方法参数传进OkHttpCall生成OkHttpCall
-- 调用callAdapter方法对OkHttpCall进行处理并返回
-
-##### 1. ServiceMethod
-
-loadServiceMethod方法会首先在缓存里查找是否有该method对应的ServiceMethod，没有的话调用build方法创建一个
-
-```
-ServiceMethod loadServiceMethod(Method method) {
- ServiceMethod result; 
- // 设置线程同步锁 
- synchronized (serviceMethodCache) { 
- result = serviceMethodCache.get(method);
-  // ServiceMethod类对象采用了单例模式进行创建 
-  // 即创建ServiceMethod对象前，先看serviceMethodCache有没有缓存之前创建过的网络请求实例 
-  // 若没缓存，则通过建造者模式创建 
-  serviceMethod 对象 if (result == null) { 
-  // 下面会详细介绍ServiceMethod生成实例的过程 
-  result = new ServiceMethod.Builder(this, method).build(); 
-  serviceMethodCache.put(method, result); 
-   } 
-  }
-   
-  return result;
-}
-
-复制代码
-```
-
-ServiceMethod的创建过程即是对method的解析过程，解析过程包括：对注解的解析，寻找合适的CallAdapter和Convert等
-
-##### 2. OkHttpCall
-
-OkHttpCall实现了Call接口，当执行excute或enqueue请求命令时，内部通过传入的CallFactory（OkHttpClient）执行网络请求
-
-##### 3. callAdapter
-
-如果我们没有对CallAdapter进行设置，它的值将是Android平台的默认设置，其adapt方法如下
-
-```
-public <R> Call<R> adapt(Call<R> call) { 
-    return new ExecutorCallbackCall<>(callbackExecutor, call); 
-} 
-
-
-ExecutorCallbackCall(Executor callbackExecutor, Call<T> delegate) {
-
- this.delegate = delegate; 
- // 把上面创建并配置好参数的OkhttpCall对象交给静态代理delegate 
- // 静态代理和动态代理都属于代理模式 
- // 静态代理作用：代理执行被代理者的方法，且可在要执行的方法前后加入自己的动作，进行对系统功能的拓展 
- 
- this.callbackExecutor = callbackExecutor; 
- // 传入上面定义的回调方法执行器 
- // 用于进行线程切换 }
-
-复制代码
-```
-
-ExecutorCallbackCall对OkHttpCall进行了装饰，会调用CallBackExcutor对OkHttpCall执行的返回结果进行处理，使其位于主线程
-
-#### [自定义Convert和CallAdapter](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2F308f3c54abdd)
-
 ### [Fresco](https://link.juejin.im?target=https%3A%2F%2Fwww.fresco-cn.org%2F)
 
 ------
 
 Fresco是一个图片加载库，可以帮助我们加载图片显示，控制多线程，以及管理缓存和内存等
-
-#### [Fresco使用](https://link.juejin.im?target=https%3A%2F%2Fwww.fresco-cn.org%2Fdocs%2Findex.html)
-
-引入依赖
-
-```
-dependencies {
-  // 其他依赖
-  compile 'com.facebook.fresco:fresco:0.12.0'
-   // 在 API < 14 上的机器支持 WebP 时，需要添加
-  compile 'com.facebook.fresco:animated-base-support:0.12.0'
-
-  // 支持 GIF 动图，需要添加
-  compile 'com.facebook.fresco:animated-gif:0.12.0'
-
-  // 支持 WebP （静态图+动图），需要添加
-  compile 'com.facebook.fresco:animated-webp:0.12.0'
-  compile 'com.facebook.fresco:webpsupport:0.12.0'
-
-  // 仅支持 WebP 静态图，需要添加
-  compile 'com.facebook.fresco:webpsupport:0.12.0'
-}
-
-复制代码
-```
-
-初始化
-
-```
-Fresco.initialize(Context context);
-复制代码
-```
-
-使用SimpleView
-
-```
-<com.facebook.drawee.view.SimpleDraweeView
-    android:id="@+id/my_image_view"
-    android:layout_width="130dp"
-    android:layout_height="130dp"
-    fresco:placeholderImage="@drawable/my_drawable"
-  />
-复制代码
-```
-
-加载图片
-
-```
-Uri uri = Uri.parse("https://raw.githubusercontent.com/facebook/fresco/gh-pages/static/logo.png");
-SimpleDraweeView draweeView = (SimpleDraweeView) findViewById(R.id.my_image_view);
-draweeView.setImageURI(uri);
-
-复制代码
-```
-
-
-
-以上是Fresco的基本加载流程，此外，我们可以定制加载和显示的各个环节
-
-Fresco由两部分组成，Drawees负责图片的呈现，ImagePipeline负责图片的下载解码和内存管理
-
-#### [Drawees](https://link.juejin.im?target=https%3A%2F%2Fwww.fresco-cn.org%2Fdocs%2Fconcepts.html)
-
-Drawees 负责图片的呈现。它由三个元素组成，有点像MVC模式。
-
-##### DraweeView
-
-- 继承于 View, 负责图片的显示。
-- 一般情况下，使用 SimpleDraweeView 即可。 你可以在 XML 或者在 Java 代码中使用它，通过 setImageUri 给它设置一个 URI 来使用，这里有简单的入门教学：开始使用
-- 你可以使用 XML属性来达到各式各样的效果。
-
-##### DraweeHierarchy
-
-- DraweeHierarchy 用于组织和维护最终绘制和呈现的 Drawable 对象，相当于MVC中的M。
-- 你可以通过它来在Java代码中自定义图片的展示
-
-##### DraweeController
-
-- DraweeController 负责和 image loader 交互（ Fresco 中默认为 image pipeline, 当然你也可以指定别的），可以创建一个这个类的实例，来实现对所要显示的图片做更多的控制。
-- 如果你还需要对Uri加载到的图片做一些额外的处理，那么你会需要这个类的。
-
-##### DraweeControllerBuilder
-
-- DraweeControllers 由 DraweeControllerBuilder 采用 Builder 模式创建，创建之后，不可修改。具体参见: 使用ControllerBuilder。
-
-##### Listeners
-
-- 使用 ControllerListener 的一个场景就是设置一个 Listener监听图片的下载。
-
-#### ImagePipeline
-
-- Fresco 的 Image Pipeline 负责图片的获取和管理。图片可以来自远程服务器，本地文件，或者Content Provider，本地资源。压缩后的文件缓存在本地存储中，Bitmap数据缓存在内存中。
-- 在5.0系统以下，Image Pipeline 使用 pinned purgeables 将Bitmap数据避开Java堆内存，存在ashmem中。这要求图片不使用时，要显式地释放内存
-- SimpleDraweeView自动处理了这个释放过程，所以没有特殊情况，尽量使用SimpleDraweeView，在特殊的场合，如果有需要，也可以直接控制Image Pipeline。
-- ImagePipeline加载图片流程
-
-> 1. 检查内存缓存，如有，返回
-
-1. 后台线程开始后续工作
-2. 检查是否在未解码内存缓存中。如有，解码，变换，返回，然后缓存到内存缓存中。
-3. 检查是否在磁盘缓存中，如果有，变换，返回。缓存到未解码缓存和内存缓存中。
-4. 从网络或者本地加载。加载完成后，解码，变换，返回。存到各个缓存中。
-
-#### ImagePipeline的线程池
-
-Image pipeline 默认有3个线程池:
-
-> 1. 3个线程用于网络下载
-
-1. 2个线程用于磁盘操作: 本地文件的读取，磁盘缓存操作。
-2. 2个线程用于CPU相关的操作: 解码，转换，以及后处理等后台操作。
-
-#### ImagePipeline的 缓存
-
-ImagePipeLine有三级缓存
-
-> 1. 解码后的Bitmap缓存
-> 2. 未解码图片的内存缓存
-> 3. 磁盘缓存
-
-#### [对比](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2F6729dc17586b)
-
-##### 功能
-
-Fresco 相对于Glide/Picaso等拥有更多的功能，如图片的渐进式加载/动图/圆角等，
-
-##### 性能
-
-Fresco采用三级缓存：
-
-> 1. 解码后的Bitmap缓存
-> 2. 未解码图片的内存缓存
-> 3. 磁盘缓存
-
-Glide两级缓存：
-
-> 1. 根据ImageView控件尺寸获得对应的大小的bitmap来展示，可以缓存原始数据或者resize后数据
-> 2. 磁盘缓存
-
-##### 使用
-
-Fresco通过CloseableReference管理图片，通过图片控件DraweeView来显示图片和控制图片释放，虽然扩展性高，但是扩展起来麻烦；对项目有一定侵入性
 
 ### EventBus
 
@@ -2454,7 +2760,161 @@ EventBus.getDefault().post(new MessageEvent("Hello !....."));
 1. EventBus通过反射的方式对@Subscribe方法进行解析。
 2. 默认情况下，解析是运行时进行的，但是我们也可以通过设置和加载依赖库，使其编译时形成索引，其性能会大大提升
 
+## Android项目中的res目录和asset目录的区别
+
+1. res目录下的资源文件会在R文件中生成对应的id，asset不会
+2. res目录下的文件在生成apk时，除raw（即res/raw）目录下文件不进行编译外，都会被编译成二进制文件；asset目录下的文件不会进行编译
+3. asset目录允许有子目录
+
+## Android中的APP是如何实现沙箱化的？沙箱化有什么好处？
+
+沙箱化可以提升安全性和效率
+
+Android的底层内核为Linux，因此继承了Linux良好的安全性，并对其进行了优化。在Linux中，一个用户对应一个uid，而在Android中，（通常）一个APP对应一个uid，拥有独立的资源和空间，与其他APP互不干扰。如有两个APP A和B，A并不能访问B的资源，A的崩溃也不会对B造成影响，从而保证了安全性和效率
+
+## Intent/Bundle支持传送哪种类型的数据
+
+> 1. 基本类型及其数组
+> 2. 实现了Serializable或者Parcelable的类型及其数组
+
+## dp, dip, dpi, px, sp是什么意思
+
+1. dp = dip（device independent pixels）,是设备独立像素
+2. sp:scaled pixels(放大像素)，主要用于字体显示。
+3. px（pixel）：像素
+4. dpi（dot per inch）
+
+### dp与px的换算
+
+1. px = dp*像素密度/160
+
+```java
+ public static int dp2px(Context context, float dpValue) {
+        final float scale = context.getResources().getDisplayMetrics().density;
+        return (int) (dpValue * scale + 0.5f);
+    }
+
+```
+
+### Android中layout-sw600dp、layout-w600dp和layout-h600dp的区别
+
+Android开发过程中，经常会遇到像layout-sw600dp, values-sw600dp这样的文件夹，他们和drawable-hdpi/ drawable-mdpi等的使用类似，都是为了实现适配各种Android[手机屏幕](https://www.baidu.com/s?wd=%E6%89%8B%E6%9C%BA%E5%B1%8F%E5%B9%95&tn=24004469_oem_dg&rsv_dl=gh_pl_sl_csd)而使用的，只是drawable用来管理不同大小图片资源，layout用来管理不同布局，values用来管理不同大小的值：
+
+- layout-sw600dp
+   这里的sw代表smallwidth的意思，当你的屏幕的绝对宽度大于600dp时，屏幕就会自动调用layout-sw600dp文件夹里面的布局。
+
+注意：这里的绝对宽度是指手机的**实际宽度**，即与手机是否横屏没关系，也就是手机较小的边的长度。
+
+- layout-w600dp
+
+​      当你的屏幕的相对宽度大于600dp时，屏幕就会自动调用layout-w600dp文件夹里面的布局。
+
+​      注意：这里的相对宽度是指手机相对放置的宽度；即当**手机竖屏时，为较小边的长度**；当**手机横屏时，为较长边的长度**。
+
+- layout-h600dp
+
+  与layout-w600dp的使用一样，只是这里指的是**相对的高度**。
+
+注意：这里的相对高度是指手机相对放置的高度；即当手机竖屏时，为较长边的长度；当手机横屏时，为较小边的长度。但这种方式很少使用，因为屏幕在相对高度上，即在纵向上通常能够滚动导致长度变化，而不像横向那样基本固定，因而这个方法灵活性差，google官方文档建议尽量使用这种方式。
+
+- values-sw600dp / values-w600dp
+
+ values与上面介绍的layout的使用方式是一样的
+
+##  Android 样式和主题
+
+> 1. 样式（Styles）:可以理解成是针对View或者窗口(Window)设置外观或者格式的一个属性集合
+> 2. 主题（Themes）：主题相比单个视图而言，是应用到整个 Activity 或者 application 的样式
+> 3. 区别： 
+>    1. Theme作用域是Activity或者Application，Stytle针对View或者窗口(Window)
+>    2. 某些主题样式不可以在View中使用，例如"@android:style/Theme.NoTitleBar" 等 扩展： 属性（Attributes）:你也可以将单个属性应用到 Android 样式上,通常会在自定义View 的时候，自定义属性。
+
+##  [热修复原理](https://link.juejin.im?target=https%3A%2F%2Fblog.csdn.net%2Fcsdn_lqr%2Farticle%2Fdetails%2F78534065)
+
+热修复的原理是让我们的新类替换掉原来类的加载，从而达到修复的目的，以下是一种思路：
+
+> 1. java中通过PathClassLoader和DexClassLoader来加载类，类加载的方式是双亲委派模式
+> 2. PathClassLoader和DexClassLoader都继承自BaseDexClassLoader
+> 3. BaseDexClassLoader中维护了一个dex的数组
+> 4. 我们可以通过DexClassLoader加载类，然后通过反射的机制将加载进来的数组添加到path数组的前面
+> 5. 加载的时候找到我们需要的class后，就不再继续向后找了，所以可以达到修复的目的
+
+## [如何开启多进程](https://link.juejin.im/?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2F11da30127823)?应用是否可以开启N个进程？
+
+> 1. 通过在AndroidManifest中给Activity设置process属性开启新的进程
+> 2. 可以开启N个进程，例如给webview单独开启一个进程，但要处理多进程间通信和多次初始化Handler问题
+
+### 为什么bindService可以跟Activity生命周期联动
+
+> 1. 在Activity退出时调用unbind方法，service会销毁
+> 2. 如果不调用unbind方法，service也会销毁，但是会抛出leaked serviceConnection 异常
+
+bindService 方法执行时，LoadedApk 会记录 ServiceConnection 信息，Activity 执行 finish 方法时，会通过 LoadedApk 检查 Activity 是否存在未注销/解绑的 BroadcastReceiver 和 ServiceConnection，如果有，那么会通知 AMS 注销/解绑对应的 BroadcastReceiver 和 Service，并打印异常信息，告诉用户应该主动执行注销/解绑的操作，所以bindService()启动service的生命周期和调用bindService()方法的Activity的生命周期是一致的，也就是如果Activity如果结束了，那么Service也就结束了。Service和调用bindService()方法的进程是同生共死的。好的编程习惯，都是在Activity的onStop()方法中加上unBindService(ServiceConnection conn)代码，那样就不会抛出我上面的错误了。绑定service到当前的Activity中，使service跟当前的Activity保持状态上面的一致。
+
+## 主线程如何通过Handler向子线程发送消息
+
+手动获取子线程的Looper并进行loop：
+
+```java
+public class MainActivity extends ActionBarActivity {
+
+    private String MyTag = "MyTag";
+    private int num = 0;
+
+    private TextView tvObj;
+    private Button btnObj;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        final LooperThread looperThread = new LooperThread();
+
+        looperThread.start();
+
+        btnObj.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Message message = Message.obtain();
+                message.arg1 = num;
+                tvObj.setText("主线程发送了 ："+String.valueOf(message.arg1));
+                looperThread.handler.sendMessage(message);
+                num++;
+            }
+        });
 
 
+    }
 
+    class LooperThread extends Thread {
 
+        public Handler handler;
+
+        @Override
+        public void run() {
+            super.run();
+
+            Looper.prepare();
+
+            handler = new Handler() {
+                @Override
+                public void handleMessage(Message msg) {
+                    super.handleMessage(msg);
+
+                    Toast.makeText(MainActivity.this,"LooperThread handler 收到消息 ："+msg.arg1,Toast.LENGTH_LONG).show();
+                    Log.i(MyTag, "LooperThread handler 收到消息 ：" + msg.arg1);
+                }
+            };
+
+            Looper.loop();//loop()会调用到handler的handleMessage(Message msg)方法，所以，写在下面；
+        }
+    }
+
+}
+```
+
+## Android中如何查看一个对象的回收情况
+
+> 1. 外部：通过adb shell 命令导出内存，借助工具分析
+> 2. 内部：通过将对象加入WeakReference，配合RefernceQueue观察对象是否被回收，被回收的对象会被加入到RefernceQueue中
