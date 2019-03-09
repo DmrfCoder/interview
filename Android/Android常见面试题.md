@@ -156,21 +156,47 @@ ListView最大的优点就是在于即使在ListView中加载非常非常多的�
 
 `ContentProvider`的底层是采用 `Android`中的`Binder`机制，既然已经有了binder实现了进程间通信了为什么还会需要contentProvider？
 
-contentprovider是一种进程间数据交互&共享的方式，当然它也可以进行进程内通信，但是一般不会“杀鸡用牛刀”用contentProvider作为进程内通信的方式。Android系统中，每一个应用程序只可以访问自己创建的数据。然而，有时候我们需要在不同的应用程序之间进行数据共享，例如很多程序都需要访问通讯录中的联系人信息来实现自己的业务功能。由于通讯录本身是一个独立的应用程序，因此，其他应用程序是不能直接访问它的联系人信息的，这时候就需要使用Content Provider组件来共享通讯录中的联系人信息了。从垂直的方向来看，一个软件平台至少由数据层、数据访问层、业务层构成。在Android系统中，数据层可以使用数据库、文件或者网络来实现，业务层可以使用一系列应用来实现，而数据访问层可以使用Content Provider组件来实现。在这个软件平台架构中，为了降低业务层中各个应用之间的耦合度，每一个应用都使用一个Android应用程序来实现，并且它们都是运行在独立的进层中。同样，为了降低业务层和数据层的耦合度，我们也将数据访问层即Content Provider组件运行在一个独立的应用程序进程中。通过这样的划分，Content Provider组件就可以按照自己的方式来管理平台数据，而上层的Android应用程序不需要关心它的具体实现，只要和它约定好数据访问接口就行了。
+contentprovider是一种进程间数据交互&共享的方式，当然它也可以进行进程内通信，但是一般不会“杀鸡用牛刀”用contentProvider作为进程内通信的方式。Android系统中，每一个应用程序只可以访问自己创建的数据。然而，有时候我们需要在不同的应用程序之间进行数据共享，例如很多程序都需要访问通讯录中的联系人信息来实现自己的业务功能。由于通讯录本身是一个独立的应用程序，因此，其他应用程序是不能直接访问它的联系人信息的，这时候就需要使用Content Provider组件来共享通讯录中的联系人信息了。从垂直的方向来看，一个软件平台至少由数据层、数据访问层、业务层构成。在Android系统中，数据层可以使用数据库、文件或者网络来实现，业务层可以使用一系列应用来实现，而数据访问层可以使用Content Provider组件来实现。在这个软件平台架构中，为了降低业务层中各个应用之间的耦合度，每一个应用都使用一个Android应用程序来实现，并且它们都是运行在独立的进程中。同样，为了降低业务层和数据层的耦合度，我们也将数据访问层即Content Provider组件运行在一个独立的应用程序进程中。通过这样的划分，Content Provider组件就可以按照自己的方式来管理平台数据，而上层的Android应用程序不需要关心它的具体实现，只要和它约定好数据访问接口就行了。
 
 不同的应用程序进程可以通过Binder进程间通信的机制来通信，但如果在传输的数据量很大的时候，直接使用Binder进程间通信机制传递数据，那么数据传输效率就会成为问题。不同的应用程序进程可以通过匿名共享内存来传输大数据，因为无论多大的数据，对匿名共享内存来说，需要在进程间传递的仅仅是一个文件描述符而已。这样，结合Binder进程间通信机制以及匿名共享内存机制，Content Provider组件就可以高效地将它里面的数据传递给业务层中的Android应用程序访问了。
 
 比如应用A想要暴露一部分数据给其他的应用操作，那么我们可以在应用A中自定义一个继承了contentProvider**抽象类** 的类，选择性重写其insert（增）、delete（删）、update（改）、Cursor query（查）以暴露出数据访问的接口给其他应用，然后在manifest文件中注册该contentProvider，注册的时候指定**authorities**，该**authorities**应该是全局唯一的，同时在manifest中声明一下权限，这样就完成了应用A中提供数据访问接口的工作，那么对于另外一个应用B如果想要操作A应用暴露出的数据，首先需要在manifest中声明一下权限，然后需要在其Activity中使用getContentResolver()方法获取一个contentResolver对象，该对象可以调用insert（增）、delete（删）、update（改）、Cursor query（查）四个方法，每个方法需要传入一个Uri参数，因为只有指定了Uri，该contentRecover才知道应该去访问哪一个contentProvider提供的数据访问接口，Uri的格式是固定的，一般格式是Uri uri_user = Uri.parse("content://authorities/表名/记录")，这样就实现了B访问A中的数据即跨进程通信。
 
+ContentProvider 有以下两个特点：
+
+- **封装**：对数据进行封装，提供统一的接口，使用者完全不必关心这些数据是在DB，XML、Preferences或者网络请求来的。当项目需求要改变数据来源时，使用我们的地方完全不需要修改。
+- **提供一种跨进程数据共享的方式**。
+
+`Content Provider`组件在不同应用程序之间传输数据是基于匿名共享内存机制来实现的。其主要的调用过程：
+
+1. 通过ContentResolver先查找对应给定Uri的ContentProvider，返回对应的`BinderProxy`
+
+- 如果该Provider尚未被调用进程使用过:
+  - 通过`ServiceManager`查找activity service得到`ActivityManagerService`对应`BinderProxy`
+  - 调用`BinderProxy`的transcat方法发送`GET_CONTENT_PROVIDER_TRANSACTION`命令，得到对应`ContentProvider`的`BinderProxy`。
+- 如果该Provider已被调用进程使用过，则调用进程会保留使用过provider的HashMap。此时直接从此表查询即得。
+
+2. 调用`BinderProxy`的`query()`
+
+------
+
+## 如何使用ContentProvider进行批量操作？
+
+通常进行数据的批量操作我们都会使用“事务”，但是`ContentProvider`如何进行批量操作呢？创建 `ContentProviderOperation` 对象数组，然后使用 `ContentResolver.applyBatch()` 将其分派给内容提供程序。您需将内容提供程序的授权传递给此方法，而不是特定内容 `URI`。这样可使数组中的每个 `ContentProviderOperation` 对象都能适用于其他表。调用 `ContentResolver.applyBatch()` 会返回结果数组。
+
+同时我们还可以通过`ContentObserver`对数据进行观察：
+
+1. 创建我们特定的`ContentObserver`派生类，必须重载`onChange()`方法去处理回调后的功能实现
+2. 利用`context.getContentResolover()`获得`ContentResolove`对象，接着调用`registerContentObserver()`方法去注册内容观察者，为指定的Uri注册一个`ContentObserver`派生类实例，当给定的Uri发生改变时，回调该实例对象去处理。
+3. 由于`ContentObserver`的生命周期不同步于Activity和Service等，因此，在不需要时，需要手动的调用`unregisterContentObserver()`去取消注册。
+
 ## 为什么要使用通过`ContentResolver`类从而与`ContentProvider`类进行交互，而不直接访问`ContentProvider`类？
 
 一般来说，一款应用要使用多个`ContentProvider`，若需要了解每个`ContentProvider`的不同实现从而再完成数据交互，**操作成本高 & 难度大**。所以再`ContentProvider`类上加多了一个 `ContentResolver`类对所有的`ContentProvider`进行统一管理。
 
-
-
 ## 介绍Binder机制
 
-Binder是Android中的一种跨进程通信机制，Android是基于Linux的，所有的用户线程工作在不同的用户空间下，互相不能访问，但是他们都共享内核空间，所以传统的跨进程通信可以先从A进程的用户空间拷贝数据到内核空间，再将数据从内核空间拷贝到B进程的用户空间，这样做需要拷贝两次数据，效率太低，而Binder机制应用了内存映射的原理，其通过Binder驱动（位于内核空间）将A进程、B进程以及serviceManager连接起来，通过serviceManager来管理Service的注册与查询，在Android中Binder驱动和serviceManager都属于Android基础架构即Android系统已经帮我们实现好了，我们只需要自定义A进程和B进程，使其调用注册服务、获取服务&使用服务三个步骤即可，具体的实现方法如下：
+Binder是Android中的一种跨进程通信机制，Android是基于Linux的，所有的用户线程工作在不同的用户空间下，互相不能访问，但是他们都共享内核空间，所以传统的跨进程通信可以先从A进程的用户空间拷贝数据到内核空间，再将数据从内核空间拷贝到B进程的用户空间，这样做需要拷贝两次数据，效率太低，而Binder机制应用了内存映射的原理，其通过Binder驱动（位于内核空间）将A进程、B进程以及serviceManager连接起来，通过serviceManager来管理Service的注册与查询，在Android中Binder驱动和serviceManager都属于Android基础架构即Android系统已经帮我们实现好了，我们只需要自定义A进程和B进程，使其调用注册服务、获取服务&使用服务三个步骤即可。
 
 ## 如何自定义View，如果要实现一个转盘圆形的View，需要重写View中的哪些方法？
 
@@ -253,12 +279,6 @@ return inSampleSize;
 3. nSample的值一般为2的幂次方
 
 假如 一个分辨率为2048x1536的图片，如果设置 inSampleSize 为4，那么会产出一个大约512x384大小的Bitmap。加载这张缩小的图片仅仅使用大概0.75MB的内存，如果是加载完整尺寸的图片，那么大概需要花费12MB（前提都是Bitmap的配置是 ARGB_8888.
-
-## Socket和LocalSocket
-
-## HttpClient和URLConnection的区别，怎么使用https
-
-
 
 ## 布局文件中，layout_gravity 和 gravity 以及 weight的作用。
 
@@ -416,10 +436,6 @@ static class MyHandler extends Handler {
 
 
 
-## 设计一个网络请求框架(可以参考Volley框架)
-
-## 网络图片加载框架(可以参考BitmapFun)
-
 ## Android里的LRU（Least Recently Used 最近最少使用）算法原理
 
 LRU是近期最少使用的算法，它的核心思想是当缓存满时，会优先淘汰那些近期最少使用的缓存对象。采用LRU算法的缓存有两种：LrhCache和DisLruCache，分别用于实现内存缓存和硬盘缓存，其核心思想都是LRU缓存算法。
@@ -428,17 +444,7 @@ LruCache的核心思想很好理解，就是要维护一个缓存对象队列，
 
 ## Service onBindService 和startService 启动的区别
 
-service的生命周期、service的停止方式
-
-## APK安装过程
-
-应用安装涉及到如下几个目录：
-  - **system/app**：系统自带的应用程序，无法删除
-  - **data/app**：用户程序安装的目录，有删除权限。安装时把apk文件复制到此目录
-  - **data/data**：存放应用程序的数据
-  - **data/dalvik-cache**：将apk中的dex文件安装到dalvik-cache目录下
-
-复制APK安装包到data/app目录下，解压并扫描安装包，把dex文件(Dalvik字节码)保存到dalvik-cache目录，并在data/data目录下创建对应的应用数据目录。
+service的生命周期、service的停止方式。
 
 ***
 
@@ -463,13 +469,11 @@ Android系统下数据库应该存放在 `/data/data/com.*.*(package name)/` 目
 
 **注意:**
 
-- 1:通过intent传递过去的对象是经过了序列化与反序列化的,虽然传送的对象和接收的对象内容相同,但是是不同的对象,他们的引用是不同的
-- 2:静态变量是不会经过序列化的,所以跨进程通信的时候静态变量是传送不过去的
+- 通过intent传递过去的对象是经过了序列化与反序列化的,虽然传送的对象和接收的对象内容相同,但是是不同的对象,他们的引用是不同的
+- 静态变量是不会经过序列化的,所以跨进程通信的时候静态变量是传送不过去的
 - 序列化过程中不会保存transient 修饰的属性，它是 Java 的关键字，专门用来标识不序列化的属性。
 
 Serializable`序列化不保存静态变量，可以使用`Transient`关键字对部分字段不进行序列化，也可以覆盖`writeObject`、`readObject`方法以实现序列化过程自定义。
-
-
 
 Serializable是java提供的序列化接口，使用方法是让待序列化的类实现Serializable接口即可，不需要额外实现任何方法，但是最好手动加上一个private static final long serialVersionUID变量，其作用是一个类序列化时，运行时会保存它的版本号，然后在反序列化时检查你要反序列化成的对象版本号是否一致，不一致的话就会报错：·`InvalidClassException`，如果我们不自己创建这个版本号，序列化过程中运行时会根据类的许多特点计算出一个默认版本号。然而只要你对这个类修改了一点点，这个版本号就会改变。这种情况如果发生在序列化之后，反序列化时就会导致上面说的错误，Serializable 的序列化与反序列化分别通过 ObjectOutputStream 和 ObjectInputStream 进行。
 
@@ -495,8 +499,6 @@ Parcelable:
 
 因为android不同版本`Parcelable`可能不同，所以不推荐使用`Parcelable`进行数据持久化。
 
-
-
 ***
 
 ## Android里跨进程传递数据的几种方案
@@ -509,7 +511,7 @@ Parcelable:
 
 ## 匿名共享内存，使用场景
 
-在Android系统中，提供了独特的匿名共享内存子系统`Ashmem(Anonymous Shared Memory)`，它以驱动程序的形式实现在内核空间中。它有两个特点，一是能够辅助内存管理系统来有效地管理不再使用的内存块，二是它通过Binder进程间通信机制来实现进程间的内存共享。
+在Android系统中，提供了独特的匿名共享内存子系统`Ashmem(Anonymous Shared Memory)`，它以驱动程序的形式实现在内核空间中。它有两个特点，一是能够**辅助内存管理系统来有效地管理不再使用的内存块**，二是它**通过Binder进程间通信机制来实现进程间的内存共享**。
 
 `ashmem`并不像`Binder`那样是Android重新自己搞的一套东西，而是利用了Linux的 **tmpfs文件系统**。tmpfs是一种可以基于RAM或是SWAP的高速文件系统，然后可以拿它来实现不同进程间的内存共享。
 
@@ -524,39 +526,6 @@ Parcelable:
 其实核心点就是 **创建一块共享区域，然后2个进程同时把这片区域 mmap 到本进程，然后读写就像本进程的内存一样**。这里要解释下第3步，为什么要倒腾 fd，因为在 linux 中 fd 只是对本进程是唯一的，在 Proc A 中打开一个文件得到一个 fd，但是把这个打开的 fd 直接放到 Proc B 中，Proc B 是无法直接使用的。但是文件是唯一的，就是说一个文件（file）可以被打开多次，每打开一次就有一个 fd（文件描述符），所以对于同一个文件来说，需要某种转化，把 Proc A 中的 fd 转化成 Proc B 中的 fd。这样 Proc B 才能通过 fd mmap 同样的共享内存文件。
 
 使用场景：进程间大量数据传输。
-
-***
-
-## ContentProvider实现原理
-
-ContentProvider 有以下两个特点：
-
-  - **封装**：对数据进行封装，提供统一的接口，使用者完全不必关心这些数据是在DB，XML、Preferences或者网络请求来的。当项目需求要改变数据来源时，使用我们的地方完全不需要修改。
-  - **提供一种跨进程数据共享的方式**。
-
-`Content Provider`组件在不同应用程序之间传输数据是基于匿名共享内存机制来实现的。其主要的调用过程：
-
-1. 通过ContentResolver先查找对应给定Uri的ContentProvider，返回对应的`BinderProxy`
-
-  - 如果该Provider尚未被调用进程使用过:
-    - 通过`ServiceManager`查找activity service得到`ActivityManagerService`对应`BinderProxy`
-    - 调用`BinderProxy`的transcat方法发送`GET_CONTENT_PROVIDER_TRANSACTION`命令，得到对应`ContentProvider`的`BinderProxy`。
-
-  - 如果该Provider已被调用进程使用过，则调用进程会保留使用过provider的HashMap。此时直接从此表查询即得。
-
-2. 调用`BinderProxy`的`query()`
-
-***
-
-## 如何使用ContentProvider进行批量操作？
-
-通常进行数据的批量操作我们都会使用“事务”，但是`ContentProvider`如何进行批量操作呢？创建 `ContentProviderOperation` 对象数组，然后使用 `ContentResolver.applyBatch()` 将其分派给内容提供程序。您需将内容提供程序的授权传递给此方法，而不是特定内容 `URI`。这样可使数组中的每个 `ContentProviderOperation` 对象都能适用于其他表。调用 `ContentResolver.applyBatch()` 会返回结果数组。
-
-同时我们还可以通过`ContentObserver`对数据进行观察：
-
-    1. 创建我们特定的`ContentObserver`派生类，必须重载`onChange()`方法去处理回调后的功能实现
-    2. 利用`context.getContentResolover()`获得`ContentResolove`对象，接着调用`registerContentObserver()`方法去注册内容观察者，为指定的Uri注册一个`ContentObserver`派生类实例，当给定的Uri发生改变时，回调该实例对象去处理。
-    3. 由于`ContentObserver`的生命周期不同步于Activity和Service等，因此，在不需要时，需要手动的调用`unregisterContentObserver()`去取消注册。
 
 ***
 
@@ -603,26 +572,6 @@ traceview 是Android SDK中自带的一个工具，可以 **对应用中方法�
 Systrace是Android4.1中新增的性能数据采样和分析工具。它可帮助开发者收集Android关键子系统（如`surfaceflinger`、`WindowManagerService`等Framework部分关键模块、服务）的运行信息，从而帮助开发者更直观的分析系统瓶颈，改进性能。
 
 Systrace的功能包括跟踪系统的I/O操作、内核工作队列、CPU负载以及Android各个子系统的运行状况等。
-
-***
-
-## Dalvik与ART的区别？
-
-Dalvik是Google公司自己设计用于Android平台的Java虚拟机。Dalvik虚拟机是Google等厂商合作开发的Android移动设备平台的核心组成部分之一，它可以支持已转换为.dex(即Dalvik Executable)格式的Java应用程序的运行，.dex格式是专为Dalvik应用设计的一种压缩格式，适合内存和处理器速度有限的系统。Dalvik经过优化，允许在有限的内存中同时运行多个虚拟机的实例，并且每一个Dalvik应用作为独立的Linux进程执行。独立的进程可以防止在虚拟机崩溃的时候所有程序都被关闭。
-
-ART代表`Android Runtime`,其处理应用程序执行的方式完全不同于Dalvik，**Dalvik是依靠一个Just-In-Time(JIT)编译器去解释字节码。开发者编译后的应用代码需要通过一个解释器在用户的设备上运行，这一机制并不高效，但让应用能更容易在不同硬件和架构上运行。ART则完全改变了这套做法，在应用安装的时候就预编译字节码到机器语言，这一机制叫 Ahead-Of-Time(AOT) 编译** 。在移除解释代码这一过程后，应用程序执行将更有效率，启动更快。
-
-ART优点：
-
-    1. 系统性能的显著提升
-    2. 应用启动更快、运行更快、体验更流畅、触感反馈更及时
-    3. 更长的电池续航能力
-    4. 支持更低的硬件
-
-ART缺点：
-
-    1. 更大的存储空间占用，可能会增加10%-20%
-    2. 更长的应用安装时间
 
 ***
 
@@ -685,29 +634,39 @@ public void onRequestPermissionsResult(int requestCode, @NonNull String[] permis
 
 TextView通常用来显示普通文本，但是有时候需要对其中某些文本进行样式、事件方面的设置。Android系统通过`SpannableString`类来对指定文本进行相关处理。可以通过`SpannableString`来对TextView进行富文本设置，包括但不限于文本颜色，删除线，图片，超链接，字体样式。
 
+## APK安装过程
+
+- 将apk拷贝到data/app/pkg目录下
+- 资源管理器加载资源
+- 解析manifest文件
+- 在data/data/目录下创建对应的数据资源目录
+- 对dex文件进行优化，优化后的dexopt放在dalvik-cache目录下
+- 从manifest中解析出四大组件信息注册到PackageManagerService中
+- 发送广播
+
 ***
 
 ## 描述一下Android手机启动过程和App启动过程？
 
 ### Android手机启动过程
 
-当我们开机时，首先是启动Linux内核，在Linux内核中首先启动的是init进程，这个进程会去读取配置文件`system\core\rootdir\init.rc`配置文件，这个文件中配置了Android系统中第一个进程Zygote进程。
+当我们开机时，首先是**启动Linux内核**，在Linux内核中首先启动的是**init进程**，这个进程会去读取配置文件`system\core\rootdir\init.rc`配置文件，这个文件中配置了Android系统中第一个进程Zygote进程。
 
-启动Zygote进程 --> 创建AppRuntime（Android运行环境） --> 启动虚拟机 --> 在虚拟机中注册JNI方法 --> 初始化进程通信使用的Socket（用于接收AMS的请求） --> 启动系统服务进程 --> 初始化时区、键盘布局等通用信息 --> 启动Binder线程池 --> 初始化系统服务（包括PMS，AMS等等） --> 启动Launcher
+启动**Zygote进程** --> 创建**AppRuntime**（Android运行环境） --> 启动**虚拟机** --> 在虚拟机中**注册JNI方法** --> 初始化进程通信使用的Socket（用于接收AMS的请求） --> 启动系统服务进程 --> 初始化时区、键盘布局等通用信息 --> 启动Binder线程池 --> 初始化系统服务（包括PMS，AMS等等） --> 启动Launcher
 
 ### App启动过程
 
 ![3](https://ws1.sinaimg.cn/large/006tKfTcgy1g0ipin8446j30jk0ge0te.jpg)
 
-    1. 应用的启动是从其他应用调用`startActivity`开始的。通过代理请求AMS启动Activity。
-    
-    2. AMS创建进程，并进入`ActivityThread`的main入口。在main入口，主线程初始化，并loop起来。主线程初始化，主要是实例化`ActivityThread`和`ApplicationThread`，以及`MainLooper`的创建。`ActivityThread`和`ApplicationThread`实例用于与AMS进程通信。
-    
-    3. 应用进程将实例化的`ApplicationThread`，`Binder`传递给AMS，这样AMS就可以通过代理对应用进程进行访问。
-    
-    4. AMS通过代理，请求启动Activity。`ApplicationThread`通知主线程执行该请求。然后，`ActivityThread`执行Activity的启动。
-    
-    5. Activity的启动包括，Activity的实例化，Application的实例化，以及Activity的启动流程：create、start、resume。
+1. 应用的启动是从其他应用调用`startActivity`开始的。通过代理请求AMS启动Activity。
+
+2. AMS创建进程，并进入`ActivityThread`的main入口。在main入口，主线程初始化，并loop起来。主线程初始化，主要是实例化`ActivityThread`和`ApplicationThread`，以及`MainLooper`的创建。`ActivityThread`和`ApplicationThread`实例用于与AMS进程通信。
+
+3. 应用进程将实例化的`ApplicationThread`，`Binder`传递给AMS，这样AMS就可以通过代理对应用进程进行访问。
+
+4. AMS通过代理，请求启动Activity。`ApplicationThread`通知主线程执行该请求。然后，`ActivityThread`执行Activity的启动。
+
+5. Activity的启动包括，Activity的实例化，Application的实例化，以及Activity的启动流程：create、start、resume。
 
 
 可以看到 **入口Activity其实是先于Application实例化，只是onCreate之类的流程，先于Activity的流程**。另外需要`scheduleLaunchActivity`，在`ApplicationThreaad`中，对应AMS管理Activity生命周期的方法都以`scheduleXXXActivity`，ApplicationThread在Binder线程中，它会向主线程发送消息，ActivityThread的Handler会调用相应的handleXXXActivity方法，然后会执行performXXXActivity方法，最终调用Activity的onXXX方法
@@ -856,17 +815,6 @@ fragment被称为碎片，可以作为界面来使用，在一个Activity中可�
 fragment的生命周期：onAttach——>onCreate——>onCreateView——>onViewCreated——>onActivityCreated——>onStart——>onResume——>onPause——>onStop——>onDestroyView——>onDestroy——>onDetach；
  fragment的生命周期大致就这么多，但是还有一个比较常见的就是onHiddenChanged，这个是在切换fragment的时候会执行，至于什么场景下会执行什么，我还是建议你自己动手实验一把；这里还需要注意的是，如果是通过add方法显示fragment，那么切换fragment不会执行其生命周期，只会执行onHiddenChanged方法；如果是通过replace方法显示fragment，切换fragment的时候会重新走生命周期的流程。
 
-### Android中asset和res目录的区别
-
-> 1. res目录下的资源文件会在R文件中生成对应的id，asset不会\
-> 2. res目录下的文件在生成apk时，除raw（即res/raw）目录下文件不进行编译外，都会被编译成二进制文件；asset目录下的文件不会进行编译
-> 3. asset目录允许有子目录
-
-### [Android中App 是如何沙箱化的,为何要这么做](https://link.juejin.im?target=https%3A%2F%2Fblog.csdn.net%2Fljheee%2Farticle%2Fdetails%2F53191397)
-
-> 1. 沙箱化可以提升安全性和效率
-> 2. Android的底层内核为Linux，因此继承了Linux良好的安全性，并对其进行了优化。在Linux中，一个用户对应一个uid，而在Android中，（通常）一个APP对应一个uid，拥有独立的资源和空间，与其他APP互不干扰。如有两个APP A和B，A并不能访问B的资源，A的崩溃也不会对B造成影响，从而保证了安全性和效率
-
 ### LayoutInflater，LayoutInflater.inflate()这两个是什么意思？
 
 ​     LayoutInflater是一个用来实例化XML布局文件为View对象的类
@@ -894,8 +842,6 @@ fragment的生命周期：onAttach——>onCreate——>onCreateView——>onVie
 6)使用webp图片格式,进一步压缩图片资源
 
  7)使用第三方包时把用到的代码加到项目中来,避免引用整一个第三方库
-
-
 
 ## Android当前应用跳转到三方应用
 
@@ -934,13 +880,37 @@ private boolean isApplicationInstall(String packageName){
 
 Jvm和Dalvik：JVM是java中的虚拟机即java virtual machies，而Dalvk是Google为了android定制的虚拟机，其相对jvm来说做了很多优化，使其更加适合于Android，dex格式是专门为Dalvik应用设计的一种压缩格式，适合于内存和处理器速度有限的平台。其允许同时独立运行多个进程，这样的好处是就算一个进程崩溃了也不会对其他进程产生影响，因为他们有各自独立的地址空间。
 
-Dalvik和Art：Dalvik下的应用每次运行的时候都要通过即时编译器（JIT）将字节码转化为机器码，即每次应用运行的时候都需要先编译再运行，这样的好处是应用在安装的时候会比较快，缺点就是应用启动的速度会变慢。为了解决这个问题，Google在2014年6月的IO大会上使用ART代替的Dalvik，ART的优点是在安装的时候就预编译字节码为机器代码，这样在以后应用的运行时就不用再反复编译了，提高了应用的启动速度，同时也节省了手机的能耗，缺点是应用安装的时候会比较慢，同时由于同一份代码的机器代码会比字节码大10%-20%，所以造成相同的应用在Art下的大小可能比在Dalvik下大10%左右。
+Dalvik和Art：Dalvik下的应用每次运行的时候都要通过即时编译器（Android Runtime，JIT）将字节码转化为机器码，即每次应用运行的时候都需要先编译再运行，这样的好处是应用在安装的时候会比较快，缺点就是应用启动的速度会变慢。为了解决这个问题，Google在2014年6月的IO大会上使用ART（ Ahead-Of-Time(AOT) ）代替的Dalvik，ART的优点是在安装的时候就预编译字节码为机器代码，这样在以后应用的运行时就不用再反复编译了，提高了应用的启动速度，同时也节省了手机的能耗，缺点是应用安装的时候会比较慢，同时由于同一份代码的机器代码会比字节码大10%-20%，所以造成相同的应用在Art下的大小可能比在Dalvik下大10%左右。
+
+ART优点：
+
+```
+1. 系统性能的显著提升
+2. 应用启动更快、运行更快、体验更流畅、触感反馈更及时
+3. 更长的电池续航能力
+4. 支持更低的硬件
+```
+
+ART缺点：
+
+```
+1. 更大的存储空间占用，可能会增加10%-20%
+2. 更长的应用安装时间
+```
 
 ## Android中的classLoader相比java中的classLoader有什么区别？
 
 Android中一个运行中的应用至少会有两个classLoader，一个是系统的BootClassLoader，用来加载FrameWork层级需要的东西，然后才是我们自己应用中的classLoader，当然，BootClassLoader是我们应用中classLoader的父级classLoader。在Android中classLoader是一个抽象类，在平时开发中我们一般是使用其实现类
 
 在java的jvm中可以直接通过classL来加载.class或者.jar，但是在Android的Davik/Art下，apk在安装的时候会先经过一个叫DexOpt的工具对其做优化，转化为Dalvik下的字节码文件，处理完了之后会产生ODex文件（后缀是.dex或者.odex），在运行应用的时候去加载含有dex文件的apk或者jar文件，而不是直接加载class，所以android中classLoader的工作是由BaseDexClassLoader来完成的。BaseDexClassLoader继承了classLoader抽象类，其有两个子类：DexClassLoader和PathClassLoader，DexClassLoader可以加载Sd卡上的.dex或者.jar或者.apk文件。
+
+## Socket和LocalSocket
+
+## HttpClient和URLConnection的区别，怎么使用https
+
+## 设计一个网络请求框架(可以参考Volley框架)
+
+## 网络图片加载框架(可以参考BitmapFun)
 
 # 字节跳动Android岗面试题
 
@@ -973,8 +943,6 @@ ClassLoader使用的是**双亲委托模型**来搜索类的，每个ClassLoader
 2、可考虑对象池技术生成可重用的对象，较少对象的生成。
 
  3、合理利用四种引用。
-
-
 
 ## LeakCanary的工作原理，java gc是如何回收对象的，可以作为gc根节点的对象有哪些？
 
@@ -1116,8 +1084,6 @@ mvp的问题在于view层和presenter层是通过接口连接，在复杂的界�
 
 解决办法是定义一些基类接口，把网络请求结果,toast等通用逻辑放在里面，然后供定义具体业务的接口继承。
 
-
-
 ## 安卓的混淆原理是什么？
 
 Java 是一种跨平台、解释型语言，Java 源代码编译成的class文件中有大量包含语义的变量名、方法名的信息，很容易被反编译为Java 源代码。为了防止这种现象，我们可以对Java字节码进行混淆。混淆不仅能将代码中的类名、字段、方法名变为无意义的名称，保护代码，也由于移除无用的类、方法，并使用简短名称对类、字段、方法进行重命名缩小了程序的size。
@@ -1131,8 +1097,6 @@ ProGuard由shrink、optimize、obfuscate和preverify四个步骤组成，每个�
 上面三个步骤使代码size更小，更高效，也更难被逆向工程。
 
 - **预检(Preveirfy)**: 在java平台上对处理后的代码进行预检。
-
-
 
 ## 如何设计一个安卓的画图库，做到对扩展开放，对修改封闭，同时又保持独立性。
 
@@ -1269,7 +1233,7 @@ public static interface UncaughtExceptionHandler {
       }
   ```
 
-  从注释可以得知，从整个Messge池中返回一个新的Message实例，通过obtainMessage能避免重复Message创建对象。 
+  从注释可以得知，从整个**Messge池**中返回一个新的Message实例，通过obtainMessage能避免重复Message创建对象。 
 
 - Message msg1 = handler1.obtainMessage();
 
@@ -1390,7 +1354,7 @@ Hashtable继承Dictionary类，同样是通过key-value键值对保存数据的�
 
 在onTouch（Event event）中通过event.getPointerCount,可以获得触摸点的个数，通过event.getX(index)，添加索引可以获得不同控制点的坐标，然后做自己需要的事情。
 
-## 还有onTouchEvent()、onTouch()、onClick()、onLongClick（）的先后顺序
+## onTouchEvent()、onTouch()、onClick()、onLongClick（）的先后顺序
 
 安卓中view和viewGroup在点击的时候有两个方法，onTouch和onTouchEvent
 
@@ -1428,8 +1392,6 @@ HashMap、LinkedHashMap、ConcurrentHashMap，在用法和原理上有什么差�
 
 4、Set原理，这个和HashMap考得有点类似，考hash算法相关，被问到过常用hash算法。HashSet内部用到了HashMap
 
-
-
 ## 前台切换到后台，然后再回到前台，Activity生命周期回调方法。弹出Dialog，生命值周期回调方法。
 
 resume正常前台状态
@@ -1448,7 +1410,7 @@ stop后台状态
 - 去除不必要的依赖，比如support包下有语言依赖包，去除我们不需要的语言
 - 代码混淆
 
-## 【设计题】SDK设计
+## SDK设计
 
 今日头条要提供给第三方应用开屏广告SDK（App启动闪屏时出现的全屏广告），如果你是开屏广告SDK的设计者，要求开屏广告SDK有请求网络、展示图片、点击图片跳转、定时跳过的功能，并暴露相应的接口提供给第三方使用，请问：
 
@@ -1466,7 +1428,7 @@ ViewRoot用于管理窗口的根View，并和global window manger进行交互。
 
 总之，每个窗口对应着一个Window对象，一个根View和一个ViewRoot对象。要想创建一个窗口，可以调用WindowManager的addView方法，作为参数的view将作为在该窗口上显示的根view。
 
-## 【设计题】APP路由设计
+## APP路由设计
 
 App 发展到一定程度时，页面越来越多，工程越来越大，合作开发的人也越来越多，这时就可能需要引入路由系统，实现模块间的解耦。请设计一个路由系统，使得app内页面的跳转就像浏览器访问网页一样易于管理和解耦。
 
@@ -1560,7 +1522,7 @@ ViewGroup.LayoutParams
 android中最经典的就是Handler机制，android中有三种方式可以在非UI线程更新UI：
 
 - view.post()
-- runonUi()
+- runOnUi()
 - handler
 
 其实前两种方法的底层都是通过handler机制实现的，handler维护了一个messagequeue和Loop，这里的enqueueMessage就相当于生产者，而next就相当于消费者。
@@ -1663,15 +1625,15 @@ Density independent pixels ，设备无关像素。
 
 px单位不被建议使用，因为同样100px的图片，在不同手机上显示的实际大小可能不同，如下图所示
 
-#### sx：
+#### sp：
 
 与缩放无关的抽象像素（Scale-independent Pixel）。
 
-sp和dp很类似但唯一的区别是，Android系统允许用户自定义文字尺寸大小（小、正常、大、超大等等），当文字尺寸是“正常”时1sp=1dp=0.00625英寸，而当文字尺寸是“大”或“超大”时，1sp>1dp=0.00625英寸。
+**sp和dp很类似**但唯一的区别是，Android系统允许用户自定义文字尺寸大小（小、正常、大、超大等等），当文字尺寸是“正常”时1sp=1dp=0.00625英寸，而当文字尺寸是“大”或“超大”时，1sp>1dp=0.00625英寸。
 
 类似我们在windows里调整字体尺寸以后的效果——窗口大小不变，只有文字大小改变。
 
- 
+
 
 **最佳实践，文字的尺寸一律用sp单位，非文字的尺寸一律使用dp单位**。
 

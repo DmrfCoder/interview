@@ -70,7 +70,7 @@ Android四大组件分别是`Activity`，`Service`服务,`Content Provider`内�
 
 #### onSaveInstanceState 什么时候调用
 
-> 1. 非用户主动明确结束（按back键，自定义click方法调用finish）时都会调用onSaveInstanceState： 
+> 1. 非用户主动明确结束（只要不是按back键，或者自定义click方法调用finish）时都会调用onSaveInstanceState： 
 >    1. 屏幕旋转
 >    2. 按HOME键
 >    3. 内存不足
@@ -141,27 +141,25 @@ standard，singleTop，singleTask，singleInstance，如果要使用这四种启
 
 #### TaskAffinity 属性
 
-任务相关性，标识一个Activity所需的任务栈的名字。默认情况下，所有的Activity所需的任务栈的名字是应用的包名，当然也可以单独指定TaskAffinity属性。
+任务相关性，标识一个Activity所需的任务栈的名字。默认情况下，所有的Activity所需的任务栈的名字是应用的包名，当然也可以单独指定TaskAffinity属性：`android:taskAffinity=""`。
 
 TaskAffinity属性主要和singleTask启动模式和allowTaskReparenting属性配对使用，在其他情况下使用没有意义
 
-当TaskAffinity和singleTask启动模式配对使用的时候，它是具有该模式的Activity的目前任务栈的名字，待启动的Activity会运行在名字和TaskAffinity相同的任务栈中
+- 当TaskAffinity和singleTask启动模式配对使用的时候，它是具有该模式的Activity的目前任务栈的名字，待启动的Activity会运行在名字和TaskAffinity相同的任务栈中
 
-当TaskAffinity和allowTaskReparenting结合的时候，当一个应用A启动了应用B的某个Activity C后，如果Activity C的allowTaskReparenting属性设置为true的话，那么当应用B被启动后，系统会发现Activity C所需的任务栈存在了，就将Activity C从A的任务栈中转移到B的任务栈中。
+- 当TaskAffinity和allowTaskReparenting结合的时候，当一个应用A启动了应用B的某个Activity C后，如果Activity C的allowTaskReparenting属性设置为true的话，那么当应用B被启动后，系统会发现Activity C所需的任务栈存在了，就将Activity C从A的任务栈中转移到B的任务栈中。
 
 #### 当前应用有两个Activity A和B，B的 android:launchMode 设置了singleTask模式，A是默认的standard，那么A startActivity启动B，B会新启一个Task吗？如果不会，那么startActivity的Intent加上FLAG_ACTIVITY_NEW_TASK这个参数会不会呢？
 
-- 设置了singleTask启动模式的Activity，它在启动的时会先在系统中查看属性值affinity等于它的属性值taskAffinity ( taskAffinity默认为包名 ) 的任务栈是否存在。如果存在这样的任务栈，它就会在这个任务栈中启动，否则就会在新任务栈中启动。
+- 设置了singleTask启动模式的Activity，它在启动的时会先在系统中查看属性值affinity等于它的属性值taskAffinity ( taskAffinity默认为包名 ) 的任务栈是否存在。如果存在这样的任务栈，它就会在这个任务栈中启动，否则就会在新任务栈中启动，所以要看A和B的taskAffinity属性是否是同一个值。
 
 - 当Intent对象包含`FLAG_ACTIVITY_NEW_TASK`标记时，系统在查找时仍然按Activity的taskAffinity属性进行匹配，如果找到一个任务栈的taskAffinity与之相同，就将目标Activity压入此任务栈中，如果找不到则创建一个新的任务栈。
 
 - 设置了singleTask启动模式的Activity在已有的任务栈中已经存在相应的Activity实例，再启动它时会把这个Activity实例上面的Activity全部结束掉。也就是说singleTask自带clear top的效果。
 
-
-
 #### onNewIntent调用时机
 
-一个Activity已经启动，当再次启动它时，如果他的启动模式（如SingleTask，SingleTop）标明不需要重新启动，会调用onNewIntent
+一个Activity已经启动，当再次启动它时，如果他的启动模式（如**SingleTask**，**SingleTop**）标明不需要重新启动，会调用onNewIntent
 
 #### [如何获取当前屏幕Activity的对象？](https://link.juejin.im/?target=https%3A%2F%2Fblog.csdn.net%2Fvfush%2Farticle%2Fdetails%2F51483436)
 
@@ -239,10 +237,9 @@ public void onCreate() {
 
 ### Service
 
-#### Service 和Activity 的通信方式
+####  [Service 和Activity的通信方式](https://www.cnblogs.com/JMatrix/p/8296364.html)
 
-> 1. 如上Activity和Activity的通信方式
-> 2. [bind方式启动时可以通过ServiceConnection通信](https://link.juejin.im?target=https%3A%2F%2Fwww.cnblogs.com%2FJMatrix%2Fp%2F8296364.html)：在SerVice的onBind方法中返回一个binder，该binder可以是AIDL方法产生的，也可以是Messenger方法产生的
+实例化一个ServiceConnection并重写其`onServiceConnected(ComponentName componentName, IBinder iBinder) `，在sevice的onbind方法中返回我们自定义的Binder，自定义的Bindler构造方法中传入service，然后通过在binder中设立addListener的方法就可以在activity中调用addListener并传入activity中的addListener，这样在自定义的binder中就可以同时具有service对象和activity的listener对象，这样就可以灵活通信了。
 
 #### service生命周期
 
@@ -255,12 +252,111 @@ public void onCreate() {
 
 #### [为什么有时需要在Service中创建子线程而不是Activity中](https://link.juejin.im/?target=http%3A%2F%2Fwww.cnblogs.com%2Fyejiurui%2Farchive%2F2013%2F11%2F18%2F3429451.html)
 
-这是因为Activity很难对Thread进行控制，当Activity被销毁之后，就没有任何其它的办法可以再重新获取到之前创建的子线程的实例。而且在一个Activity中创建的子线程，另一个Activity无法对其进行操作。但是Service就不同了，所有的Activity都可以与Service进行关联，然后可以很方便地操作其中的方法，即使Activity被销毁了，之后只要重新与Service建立关联，就又能够获取到原有的Service中Binder的实例。因此，使用Service来处理后台任务，Activity就可以放心地finish，完全不需要担心无法对后台任务进行控制的情况。
+这是因为Activity很难对Thread进行控制，当Activity被销毁之后，就没有任何其它的办法可以再重新获取到之前创建的子线程的实例。而且在一个Activity中创建的子线程，另一个Activity无法对其进行操作。但是Service就不同了，所有的Activity都可以与Service进行关联（通过onbindService（），同时传入ServiceConnection实现通信），然后可以很方便地操作其中的方法，即使Activity被销毁了，之后只要重新与Service建立关联，就又能够获取到原有的Service中Binder的实例。因此，使用Service来处理后台任务，Activity就可以放心地finish，完全不需要担心无法对后台任务进行控制的情况。
 
 #### [IntentService](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2F332b6daf91f0)
 
 > 1. IntentService 是继承自 Service,内部通过HandlerThread启动一个新线程处理耗时操作，可以看做是Service和HandlerThread的结合体，在完成了使命之后会自动停止，适合需要在工作线程处理UI无关任务的场景
 > 2. 如果启动 IntentService 多次，那么每一个耗时操作会以工作队列的方式在 IntentService 的 onHandleIntent 回调方法中执行，依次去执行，使用串行的方式，执行完自动结束
+
+##### Demo
+
+IntentService是Service的子类,由于Service里面不能做耗时的操作,所以Google提供了IntentService,在IntentService内维护了一个工作线程来处理耗时操作，当任务执行完后，IntentService会自动停止。另外，可以启动IntentService多次，而每一个耗时操作会以工作队列的方式在IntentService的onHandleIntent回调方法中执行，并且，每次只会执行一个工作线程，执行完第一个再执行第二个，以此类推。
+
+使用示例：
+
+```java
+public class MyService extends IntentService {
+    //这里必须有一个空参数的构造实现父类的构造,否则会报异常
+    //java.lang.InstantiationException: java.lang.Class<***.MyService> has no zero argument constructor
+    public MyService() {
+        super("");
+    }
+    
+    @Override
+    public void onCreate() {
+        System.out.println("onCreate");
+        super.onCreate();
+    }
+
+    @Override
+    public int onStartCommand(@Nullable Intent intent, int flags, int startId) {
+        System.out.println("onStartCommand");
+        return super.onStartCommand(intent, flags, startId);
+
+    }
+
+    @Override
+    public void onStart(@Nullable Intent intent, int startId) {
+        System.out.println("onStart");
+        super.onStart(intent, startId);
+    }
+
+    @Override
+    public void onDestroy() {
+        System.out.println("onDestroy");
+        super.onDestroy();
+    }
+
+    //这个是IntentService的核心方法,它是通过串行来处理任务的,也就是一个一个来处理
+    @Override
+    protected void onHandleIntent(@Nullable Intent intent) {
+        System.out.println("工作线程是: "+Thread.currentThread().getName());
+        String task = intent.getStringExtra("task");
+        System.out.println("任务是 :"+task);
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+然后看看Activity里面怎么使用这个Service
+
+```java
+public class MainActivity extends AppCompatActivity {
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        
+        Intent intent = new Intent(this,MyService.class);
+        intent.putExtra("task","播放音乐");
+        startService(intent);
+        intent.putExtra("task","播放视频");
+        startService(intent);
+        intent.putExtra("task","播放图片");
+        startService(intent);
+    }
+}
+```
+
+运行结果：
+
+```java
+14:49:31.465 18974-18974/com.dgtech.sss.intentservicedemo I/System.out: onCreate
+14:49:31.467 18974-18974/com.dgtech.sss.intentservicedemo I/System.out: onStartCommand
+14:49:31.467 18974-18974/com.dgtech.sss.intentservicedemo I/System.out: onStart
+14:49:31.467 18974-18974/com.dgtech.sss.intentservicedemo I/System.out: onStartCommand
+14:49:31.467 18974-18974/com.dgtech.sss.intentservicedemo I/System.out: onStart
+14:49:31.467 18974-18974/com.dgtech.sss.intentservicedemo I/System.out: onStartCommand
+14:49:31.467 18974-18974/com.dgtech.sss.intentservicedemo I/System.out: onStart
+14:49:31.467 18974-19008/com.dgtech.sss.intentservicedemo I/System.out: 工作线程是:IntentService[]
+14:49:31.467 18974-19008/com.dgtech.sss.intentservicedemo I/System.out: 任务是 :播放音乐
+14:49:33.468 18974-19008/com.dgtech.sss.intentservicedemo I/System.out: 工作线程是: IntentService[]
+14:49:33.468 18974-19008/com.dgtech.sss.intentservicedemo I/System.out: 任务是 :播放视频
+14:49:35.472 18974-19008/com.dgtech.sss.intentservicedemo I/System.out: 工作线程是: IntentService[]
+14:49:35.472 18974-19008/com.dgtech.sss.intentservicedemo I/System.out: 任务是 :播放图片
+14:49:37.477 18974-18974/com.dgtech.sss.intentservicedemo I/System.out: onDestroy
+
+```
+
+从结果中可以看出我们startService()执行了三次, onCreate()方法只执行了一次,说明只有一个Service实例, onStartCommand()和onStart()也执行了三次,关键是onHandleIntent()也执行了三次,而且这三次是串行的,也就是执行完一个再执行下一个,当最后一个任务执行完, onDestroy()便自动执行了
+
+不管使用多少个service，oncreat（）方法只会执行一次。
 
 #### IntentService生命周期是怎样的
 
@@ -294,24 +390,18 @@ public void onCreate() {
 
 但是，注意这两种方式在ContentProvider的方法没有执行完成前都会阻塞调用者。
 
-#### 每个ContentProvider的操作是在哪个线程中运行的呢（其实我们关心的是UI线程和工作线程）？比如我们在UI线程调用getContentResolver().query查询数据，而当数据量很大时（或者需要进行较长时间的计算）会不会阻塞UI线程呢？
-
-- ContentProvider和调用者在同一个进程，ContentProvider的方法（query/insert/update/delete等）和调用者在同一线程中
-
-- ContentProvider和调用者在不同的进程，ContentProvider的方法会运行在它自身所在进程的一个Binder线程中
-
 ### BroadcastReceiver（广播机制）
 
 接受一种或者多种Intent作触发事件，接受相关消息，做一些简单处理
 
 广播(Broadcast)机制用于进程/线程间通信，广播分为广播发送和广播接收两个过程，其中广播接收者BroadcastReceiver便是Android四大组件之一。
 
-BroadcastReceiver分为两类：
+#### BroadcastReceiver分为两类：
 
 - `静态广播接收者`：通过`AndroidManifest.xml`的标签来申明的BroadcastReceiver。
 - `动态广播接收者`：通过`AMS.registerReceiver()`方式注册的BroadcastReceiver，动态注册更为灵活，可在不需要时通过`unregisterReceiver()`取消注册。
 
-从广播发送方式可分为三类：
+#### 从广播发送方式可将广播分为三类
 
 - `普通广播`：通过Context.sendBroadcast()发送，可并行处理，完全异步的，可以在同一时刻（逻辑上）被所有接收者接收到，消息传递的效率比较高，但缺点是：接收者不能将处理结果传递给下一个接收者，并且无法终止广播Intent的传播；
 
@@ -321,7 +411,7 @@ BroadcastReceiver分为两类：
 
 - `Sticky广播`：通过Context.sendStickyBroadcast()发送，发出的广播会一直滞留（等待），以便有人注册这则广播消息后能尽快的收到这条广播。
 
-Android 中的 Broadcast 实际底层使用Binder机制。
+Android 中的 Broadcast 实际底层使用**Binder**机制。
 
 #### BroadCast的注册方式与区别
 
@@ -341,8 +431,8 @@ Android 3.1开始系统在Intent与广播相关的flag增加了参数：
 
 #### BroadCastReceiver处理耗时操作
 
-> 1. BroadcastReceiver的生命周期只有一个回调方法onReceive(Context context, Intent intent)；无法进行耗时操作，即使启动线程处理，也是出于非活动状态，有可能被系统杀掉。
-> 2. 如果需要进行耗时操作，可以启动一个service处理。
+> 1. BroadcastReceiver的生命周期只有一个回调方法**onReceive(Context context, Intent intent)**；无法进行耗时操作，即使启动线程处理，也是出于非活动状态，有可能被系统杀掉。
+> 2. 如果需要进行耗时操作，可以**启动一个service**处理。
 
 #### 广播发送和接收的原理了解吗
 
@@ -453,6 +543,13 @@ try
 1. 把数据库db文件放在res/raw下打包进apk
 2. 通过FileInputStream读取db文件，通过FileOutputStream将文件写入/data/data/包名/database下
 
+**sqlite可以执行多线程操作吗?如何保证多线程操作数据库的安全性**
+
+每当你需要使用数据库时，你需要使用DatabaseManager的openDatabase()方法来取得数据库，这个方法里面使用了单例模式，保证了数据库对象的唯一性，也就是每次操作数据库时所使用的sqlite对象都是一致得到。其次，我们会使用一个引用计数来判断是否要创建数据库对象。如果引用计数为1，则需要创建一个数据库，如果不为1，说明我们已经创建过了。
+在closeDatabase()方法中我们同样通过判断引用计数的值，如果引用计数降为0，则说明我们需要close数据库。
+
+大致的做法就是在多线程访问的情况下需要自己来封装一个DatabaseManager来管理Sqlite数据库的读写，需要同步的同步，需要异步的异步，不要直接操作数据库，这样很容易出现因为锁的问题导致加锁后的操作失败。
+
 ## View
 
 ### Android自定义view的步骤
@@ -539,6 +636,31 @@ private void performTraversals() {
 1. View的MeasureSpec由父容器的MeasureSpec和其自身的LayoutParams共同确定，
 2. 而对于DecorView是由它的MeasureSpec由窗口尺寸和其自身的LayoutParams共同确定。
 
+### View和ViewGroup的区别
+
+View是Android中所有控件的基类。
+
+ViewGroup继承自View，控件组，可以包含若干个View。
+
+View本身既可以是单个控件，也可以是由多个控件组成的一组控件。
+
+View只能操作自己。
+
+viewGroup能操作自己也可以操作孩子（通过`viewGroup.getChildAt(i).getId()`）。
+
+- View派生出的直接子类
+
+​    ImageView , ViewGroup
+
+●  View派生出的间接子类有： 
+   Button
+
+●  ViewGroup派生出的直接子类有： 
+    LinearLayout,RelativeLayout
+
+●  ViewGroup派生出的间接子类有： 
+    ListView
+
 ###  [View和ViewGroup的基本绘制流程](https://link.juejin.im?target=https%3A%2F%2Fblog.csdn.net%2Fu011155781%2Farticle%2Fdetails%2F52584044)
 
 #### View
@@ -562,13 +684,6 @@ private void performTraversals() {
 > 5. 如果需要, 绘制当前视图在滑动时的边框渐变效果
 > 6. 绘制装饰，如滚动条
 
-###  [两指缩放](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2F0c863bbde8eb)
-
-> 1. 为了解决多点触控问题，android在MotionEvent中引入了pointer概念
-> 2. 通过ACTION_DOWN、ACTION_POINTER_DOWN、ACTION_MOVE、ACTION_POINTER_UP、ACTION_UP来检测手机的动作
-> 3. 每个手指的位置可以通过getX（pointIndex）来获得，这样我们就能判断出滑动的距离
-> 4. 缩放有多种实现： 1. ImageView可以通过setImageMatrix（martix）来实现 2. 自定义View可以缩放Canvas的大小 3. 还可以设置LayoutParams来改变大小
-
 ###  [Scroller](https://link.juejin.im?target=https%3A%2F%2Fmp.weixin.qq.com%2Fs%3F__biz%3DMzIwMzYwMTk1NA%3D%3D%26mid%3D2247484893%26idx%3D1%26sn%3D5874130932d4533064e40045055d0185%26chksm%3D96cda490a1ba2d86491a65f34513e50b80a5d0ccbedae644225bc0a3d262505d43381b603310%23rd)
 
 > 1. Scroller 通常用来实现平滑的滚动
@@ -584,25 +699,13 @@ private void performTraversals() {
 
 
 
-###  View事件的分发（Android中的事件分发）
+###  Android中的事件分发（View事件的分发）
 
 > 1. 思想：委托子View处理，子View不能处理则自己处理
 > 2. 委托过程：activity -> window -> viewGroup -> view
 > 3. 处理事件方法的优先级：onTouchListener > onTouchEvent > onClickListener
 
-```java
-伪代码
-public boolean dispatchTouchEvent(MotionEvent ev){
-	boolean consume = false;
-    if(onInterceptTouchEvent(ev)){
-      consume = onTouchEvent(ev)
-    } else {
-      consume = child.dispatchTouchEvent(ev);
-    }
-    return consume;
-}
 
-```
 
 > 完整的事件通常包括Down、Move、Up，当down事件被拦截下来以后，move和up就不再走intercept方法，而是直接被传递给当前view处理
 
@@ -616,9 +719,6 @@ public boolean dispatchTouchEvent(MotionEvent ev){
 | MotionEvent.ACTION_UP     | 抬起View（与DOWN对应）     |
 | MotionEvent.ACTION_MOVE   | 滑动View                   |
 | MotionEvent.ACTION_CANCEL | 结束事件（非人为原因）     |
-
-关于ACTION_CANCEL何时被触发，系统文档有这么一种使用场景：在设计设置页面的滑动开关时，如果不监听ACTION_CANCEL，在滑动到中间时，如果你手指上下移动，就是移动到开关控件之外，则此时会触发ACTION_CANCEL，而不是ACTION_UP，造成开关的按钮停顿在中间位置。 
-意思是当滑动的时候就会触发，不知道大家搞没搞过微信的长按录音，有一种状态是“松开手指，取消发送”，这时候就会触发ACTION_CANCEL。
 
 `事件列`：从手指接触屏幕 至 手指离开屏幕，这个过程产生的一系列事件，一般情况下，事件列都是以`DOWN`事件开始、`UP`事件结束，中间有0个或多个的MOVE事件。
 
@@ -667,12 +767,6 @@ ViewGroup`默认不拦截任何事件。Android源码中`ViewGroup`的`onInterce
 
 **View没有onIntercepteTouchEvent方法，一旦有点击事件传递给它，那么它的onTouchEvent方法就会被调用**。
 
-
-
-多点触控的要点：
-
-在onTouch（Event event）中通过event.getPointerCount,可以获得触摸点的个数，通过event.getX(index)，添加索引可以获得不同控制点的坐标，然后做自己需要的事情。
-
 #### [什么时候执行ACTION_CANCEL](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2F8360d7150786)
 
 > 1. 一个点击或者活动事件包含ACTION_DOWN，ACTION_MOVE,ACTION_UP等
@@ -684,6 +778,19 @@ ViewGroup`默认不拦截任何事件。Android源码中`ViewGroup`的`onInterce
 
 > 外部拦截：重写onInterceptTouchEvent方法
 > 内部拦截：重写dispatchTouchEvent方法，同时配合requestDisAllowInterceptTouchEvent方法
+
+`requestDisAllowInterceptTouchEvent`:子view可以通过设置此方法去告诉父view不要拦截并处理点击事件，父view应该接受这个请求直到此次点击事件结束。
+
+#### [两指缩放](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2F0c863bbde8eb)
+
+> 1. 为了解决多点触控问题，android在MotionEvent中引入了pointer概念
+> 2. 通过ACTION_DOWN、ACTION_POINTER_DOWN、ACTION_MOVE、ACTION_POINTER_UP、ACTION_UP来检测手机的动作
+> 3. 每个手指的位置可以通过getX（pointIndex）来获得，这样我们就能判断出滑动的距离
+> 4. 缩放有多种实现： 1. ImageView可以通过setImageMatrix（martix）来实现 2. 自定义View可以缩放Canvas的大小 3. 还可以设置LayoutParams来改变大小
+
+多点触控的要点：
+
+在onTouch（Event event）中通过event.getPointerCount,可以获得触摸点的个数，通过event.getX(index)，添加索引可以获得不同控制点的坐标，然后做自己需要的事情。
 
 ### [RecyclerView](https://link.juejin.im?target=https%3A%2F%2Fblog.csdn.net%2Fxx326664162%2Farticle%2Fdetails%2F61199895)
 
@@ -730,6 +837,10 @@ RecyclerView 与 ListView 类似，都是通过缓存view提高性能，但是Re
 > 1. View主要适用于主动更新的情况下，而SurfaceView主要适用于被动更新，例如频繁地刷新；
 > 2. View在主线程中对画面进行刷新，而SurfaceView通常会通过一个子线程来进行页面刷新
 > 3. 而SurfaceView在底层实现机制中就已经实现了[双缓冲机制](https://link.juejin.im?target=https%3A%2F%2Fbbs.csdn.net%2Ftopics%2F390834677)
+
+双缓冲机制：SurfaceView 有两块 canvas 画布, 画布一 在显示的时候, 画布二 已经开始绘制另一个图像, 两块画布交替显示。
+
+如果绘制动画 或者 动态图片, 双缓冲会使界面更加流畅, 但是绘制连续的数据的时候会出现交替现象, 这是因为两个缓冲区是不同步的
 
 ###  view 的布局
 
@@ -1141,7 +1252,7 @@ public class Merge extends Activity {
 >    2. 优化结构，对重复资源去重
 >    3. 对依赖去重，依赖多个功能类似的sdk时，只保留一个
 >    4. 去除不需要的依赖，如语言support包可能包含多种语言，配置只保留我们需要的资源等
->    5. 开启gradle的ProGuard/Code shrinking/minifyEnabled等，自动去除不需要的资源和代码】
+>    5. 开启gradle的ProGuard/Code shrinking/minifyEnabled等，自动去除不需要的资源和代码
 > 3. 压缩已用资源 
 >    1. 选取适当的图片格式，如webp
 >    2. 对图片进行压缩
@@ -1158,7 +1269,7 @@ public class Merge extends Activity {
 
 > 1. 生命周期不一样
 > 2. Application 不能showDialog
-> 3. Application startActivity时必须new一个Task
+> 3. Application startActivity时必须new一个Task，即加上mIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 > 4. Application layoutInflate直接使用默认主题，可能与当前主题不一样
 
 ## APK的安装流程
@@ -1302,7 +1413,7 @@ process一般翻译成进程，进程是操作系统内核中的一个概念，�
 
 ## 线程（Thread）和进程（process）的区别
 
-进程和线程的主要差别在于它们是不同的操作系统资源管理方式。进程有独立的地址空间，一个进程崩溃后，在保护模式下不会对其它进程产生影响，而线程只是一个进程中的不同执行路径。线程有自己的堆栈和局部变量，但线程之间没有单独的地址空间，一个线程死掉（将地址空间写坏）就等于整个进程死掉，所以多进程的程序要比多线程的程序健壮，但在[进程切换](https://www.baidu.com/s?wd=%E8%BF%9B%E7%A8%8B%E5%88%87%E6%8D%A2&tn=24004469_oem_dg&rsv_dl=gh_pl_sl_csd)时，耗费资源较大，效率要差一些。**但对于一些要求同时进行并且又要共享某些变量的并发操作，只能用线程，不能用进程。**
+进程和线程的主要差别在于它们是**不同的操作系统资源管理方式**。进程有独立的地址空间，一个进程崩溃后，在保护模式下不会对其它进程产生影响，而线程只是**一个进程中的不同执行路径**。线程有自己的堆栈和局部变量，但线程之间没有单独的地址空间，**一个线程死掉（将地址空间写坏）就等于整个进程死掉**，所以多进程的程序要比多线程的程序健壮，但在[进程切换](https://www.baidu.com/s?wd=%E8%BF%9B%E7%A8%8B%E5%88%87%E6%8D%A2&tn=24004469_oem_dg&rsv_dl=gh_pl_sl_csd)时，耗费资源较大，效率要差一些。**但对于一些要求同时进行并且又要共享某些变量的并发操作，只能用线程，不能用进程。**
 
 **1) 简而言之,一个程序至少有一个进程,一个进程至少有一个线程.**
 
@@ -1316,7 +1427,31 @@ process一般翻译成进程，进程是操作系统内核中的一个概念，�
 
 线程和进程在使用上各有优缺点：线程执行开销小，但不利于资源的管理和保护；而进程正相反。同时，线程适合于在SMP机器上运行，而进程则可以跨机器迁移。
 
+## Android中如何停止一个线程
 
+- 设立一个volitile修饰的变量，在run中使用while循环判断该变量的值以达到停止线程的目的
+
+- 使用**interrupt()**方法中断线程，使用try catch捕获抛出的InterruptedException异常并break跳出本线程
+
+  ```java
+  public class ThreadSafe extends Thread {
+      public void run() { 
+          while (!isInterrupted()){ //非阻塞过程中通过判断中断标志来退出
+              try{
+                  Thread.sleep(5*1000)；//阻塞过程捕获中断异常来退出
+              }catch(InterruptedException e){
+                  e.printStackTrace();
+                  break;//捕获到异常之后，执行break跳出循环。
+              }
+          }
+      } 
+  } 
+  
+  ```
+
+  
+
+- 使用stop（）方法，可能会导致无法预计的后果，不推荐使用
 
 ## mvp与mvc以及mvvm三中常见架构的区别
 
@@ -1450,7 +1585,7 @@ ThreadLocal是一个线程内部的数据存储类，通过它可以在指定线
 
 ![1](https://ws4.sinaimg.cn/large/006tKfTcly1g0dwfti2lyj31dk0towgy.jpg)
 
-在上图中我们可以发现，整个ThreadLocal的使用都涉及到线程中ThreadLocalMap,虽然我们在外部调用的是ThreadLocal.set(value)方法，但本质是通过线程中的ThreadLocalMap中的set(key,value)方法，其中key为当前ThreadLocal对象，value为当前赋的值，那么通过该情况我们大致也能猜出get方法也是通过ThreadLocalMap。那么接下来我们一起来看看ThreadLocal中set与get方法的具体实现与ThreadLocalMap的具体结构。
+在上图中我们可以发现，整个ThreadLocal的使用都涉及到线程中ThreadLocalMap,虽然我们在外部调用的是ThreadLocal.set(value)方法，但本质是通过线程中的ThreadLocalMap中的set(key,value)方法，其中**key为当前ThreadLocal对象**，value为当前赋的值，那么通过该情况我们大致也能猜出get方法也是通过ThreadLocalMap。那么接下来我们一起来看看ThreadLocal中set与get方法的具体实现与ThreadLocalMap的具体结构。
 
 - ThreadLocal本质是操作线程中ThreadLocalMap来实现本地线程变量的存储的
 - ThreadLocalMap是采用数组的方式来存储数据，其中key(弱引用)指向当前ThreadLocal对象，value为设的值
@@ -1479,42 +1614,9 @@ Handler中需要Looper，没有Looper线程就会报错，通过Looper.prepare()
 
 主线程中声明一个Handler，重写其handleMessage(Message msg)方法，通过msg.what属性的值对应到其他线程发送的Message并利用该Message拿到其他线程传过来的数据。
 
-## View和ViewGroup的区别
-
-View是Android中所有控件的基类。
-
-ViewGroup继承自View，控件组，可以包含若干个View。
-
-View本身既可以是单个控件，也可以是由多个控件组成的一组控件。
-
-View只能操作自己。
-
-viewGroup能操作自己也可以操作孩子（通过`viewGroup.getChildAt(i).getId()`）。
-
-- View派生出的直接子类
-
-​    ImageView , ViewGroup
-
-●  View派生出的间接子类有： 
-   Button
-
-●  ViewGroup派生出的直接子类有： 
-    LinearLayout,RelativeLayout
-
-●  ViewGroup派生出的间接子类有： 
-    ListView
-
-
-
-## RecyclerView
-
-一个类似于listview的控件，规范化了viewholder的使用，封装了itemview的复用工作，不用像之前那样settag（）了，引入了layoutManager，方便动画编写，提供了局部item更新的接口。
-
 ## Zygote
 
-1. 
-
-> 1. 
+zygote是android系统的第一个java进程，zygote进程是所有java进程的父进程。
 
 ## Binder
 
@@ -2028,15 +2130,17 @@ Activity是一个工人，它来控制Window；Window是一面显示屏，用来
 
 再来说说代码中具体的执行流程
 
+```java
 setContentView(R.layout.main)其实就是下面内容。（注释掉本行执行下面的代码可以更直观）
 
 getWindow().setContentView(LayoutInflater.from(this).inflate(R.layout.main, null))
+```
 
 即运行程序后，Activity会调用PhoneWindow的setContentView()来生成一个Window，而此时的setContentView就是那个最底层的View。然后通过LayoutInflater.infalte()方法加载布局生成View对象并通过addView()方法添加到Window上，（一层一层的叠加到Window上）
 
 所以，Activity其实不是显示视图，View才是真正的显示视图
 
-注：一个Activity构造的时候只能初始化一个Window(PhoneWindow)，另外这个PhoneWindow有一个”ViewRoot”，这个”ViewRoot”是一个View或ViewGroup，是最初始的根视图，然后通过addView方法将View一个个层叠到ViewRoot上，这些层叠的View最终放在Window这个载体上面
+注：一个Activity构造的时候只能初始化一个`Window(PhoneWindow)`，另外这个PhoneWindow有一个”ViewRoot”，这个”ViewRoot”是一个View或ViewGroup，是最初始的根视图，然后通过addView方法将View一个个层叠到ViewRoot上，这些层叠的View最终放在Window这个载体上面
 
 ## Intent
 
@@ -2431,15 +2535,17 @@ HandlerThread的使用方法还是比较简单的，但是我们要明白一点�
 来看看HandlerThread的使用方法： 
 首先新建HandlerThread并且执行start()
 
-```
+```java
 private HandlerThread mHandlerThread;
 ......
 mHandlerThread = new HandlerThread("HandlerThread");
 handlerThread.start();
-创建Handler，使用mHandlerThread.getLooper()生成Looper：
-```
 
 ```
+
+创建Handler，使用mHandlerThread.getLooper()生成Looper：
+
+```java
     final Handler handler = new Handler(mHandlerThread.getLooper()){
         @Override
         public void handleMessage(Message msg) {
@@ -2450,7 +2556,7 @@ handlerThread.start();
 
 然后再新建一个子线程来发送消息：
 
-```
+```java
     new Thread(new Runnable() {
         @Override
         public void run() {
@@ -2466,7 +2572,7 @@ handlerThread.start();
 
 最后一定不要忘了在onDestroy释放,避免内存泄漏：
 
-```
+```java
 @Override
 protected void onDestroy() {
     super.onDestroy();
@@ -2476,104 +2582,7 @@ protected void onDestroy() {
 
 执行结果很简单，就是在控制台打印字符串：收到消息
 
-## IntentService是什么
 
-IntentService是Service的子类,由于Service里面不能做耗时的操作,所以Google提供了IntentService,在IntentService内维护了一个工作线程来处理耗时操作，当任务执行完后，IntentService会自动停止。另外，可以启动IntentService多次，而每一个耗时操作会以工作队列的方式在IntentService的onHandleIntent回调方法中执行，并且，每次只会执行一个工作线程，执行完第一个再执行第二个，以此类推。
-
-使用示例：
-
-```java
-public class MyService extends IntentService {
-    //这里必须有一个空参数的构造实现父类的构造,否则会报异常
-    //java.lang.InstantiationException: java.lang.Class<***.MyService> has no zero argument constructor
-    public MyService() {
-        super("");
-    }
-    
-    @Override
-    public void onCreate() {
-        System.out.println("onCreate");
-        super.onCreate();
-    }
-
-    @Override
-    public int onStartCommand(@Nullable Intent intent, int flags, int startId) {
-        System.out.println("onStartCommand");
-        return super.onStartCommand(intent, flags, startId);
-
-    }
-
-    @Override
-    public void onStart(@Nullable Intent intent, int startId) {
-        System.out.println("onStart");
-        super.onStart(intent, startId);
-    }
-
-    @Override
-    public void onDestroy() {
-        System.out.println("onDestroy");
-        super.onDestroy();
-    }
-
-    //这个是IntentService的核心方法,它是通过串行来处理任务的,也就是一个一个来处理
-    @Override
-    protected void onHandleIntent(@Nullable Intent intent) {
-        System.out.println("工作线程是: "+Thread.currentThread().getName());
-        String task = intent.getStringExtra("task");
-        System.out.println("任务是 :"+task);
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-}
-```
-
-然后看看Activity里面怎么使用这个Service
-
-```java
-public class MainActivity extends AppCompatActivity {
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        
-        Intent intent = new Intent(this,MyService.class);
-        intent.putExtra("task","播放音乐");
-        startService(intent);
-        intent.putExtra("task","播放视频");
-        startService(intent);
-        intent.putExtra("task","播放图片");
-        startService(intent);
-    }
-}
-```
-
-运行结果：
-
-```java
-14:49:31.465 18974-18974/com.dgtech.sss.intentservicedemo I/System.out: onCreate
-14:49:31.467 18974-18974/com.dgtech.sss.intentservicedemo I/System.out: onStartCommand
-14:49:31.467 18974-18974/com.dgtech.sss.intentservicedemo I/System.out: onStart
-14:49:31.467 18974-18974/com.dgtech.sss.intentservicedemo I/System.out: onStartCommand
-14:49:31.467 18974-18974/com.dgtech.sss.intentservicedemo I/System.out: onStart
-14:49:31.467 18974-18974/com.dgtech.sss.intentservicedemo I/System.out: onStartCommand
-14:49:31.467 18974-18974/com.dgtech.sss.intentservicedemo I/System.out: onStart
-14:49:31.467 18974-19008/com.dgtech.sss.intentservicedemo I/System.out: 工作线程是:IntentService[]
-14:49:31.467 18974-19008/com.dgtech.sss.intentservicedemo I/System.out: 任务是 :播放音乐
-14:49:33.468 18974-19008/com.dgtech.sss.intentservicedemo I/System.out: 工作线程是: IntentService[]
-14:49:33.468 18974-19008/com.dgtech.sss.intentservicedemo I/System.out: 任务是 :播放视频
-14:49:35.472 18974-19008/com.dgtech.sss.intentservicedemo I/System.out: 工作线程是: IntentService[]
-14:49:35.472 18974-19008/com.dgtech.sss.intentservicedemo I/System.out: 任务是 :播放图片
-14:49:37.477 18974-18974/com.dgtech.sss.intentservicedemo I/System.out: onDestroy
-
-```
-
-从结果中可以看出我们startService()执行了三次, onCreate()方法只执行了一次,说明只有一个Service实例, onStartCommand()和onStart()也执行了三次,关键是onHandleIntent()也执行了三次,而且这三次是串行的,也就是执行完一个再执行下一个,当最后一个任务执行完, onDestroy()便自动执行了
-
-不管使用多少个service，oncreat（）方法只会执行一次。
 
 ## AsyncTask
 
@@ -2585,40 +2594,43 @@ AsyncTask这个类，就是为了方便我们在后台线程中执行操作，�
 
 使用方法：
 
-AsyncTask有四个重要的回调方法，分别是：onPreExecute、doInBackground, onProgressUpdate 和 onPostExecute。这四个方法会在AsyncTask的不同时期进行自动调用，我们只需要实现这几个方法的内部逻辑即可。这四个方法的一些参数和返回值都是基于泛型的，而且泛型的类型还不一样，所以在AsyncTask的使用中会遇到三种泛型参数：Params, Progress 和 Result
+AsyncTask有四个重要的回调方法，分别是：`onPreExecute`、`doInBackground`, `onProgressUpdate` 和 `onPostExecute`。这四个方法会在AsyncTask的不同时期进行自动调用，我们只需要实现这几个方法的内部逻辑即可。这四个方法的一些参数和返回值都是基于泛型的，而且泛型的类型还不一样，所以在AsyncTask的使用中会遇到三种泛型参数:`Params`, `Progress `和` Result`
 
 1.Params表示用于AsyncTask执行任务的参数的类型 
 2.Progress表示在后台线程处理的过程中，可以阶段性地发布结果的数据类型 
 3.Result表示任务全部完成后所返回的数据类型
 
-onPreExecute ：运行在主线程中的。在AsyncTask执行了execute()方法后就会在UI线程上执行onPreExecute()方法，该方法在task真正执行前运行，我们通常可以在该方法中显示一个进度条，从而告知用户后台任务即将开始。
+`onPreExecute` ：运行在主线程中的。在AsyncTask执行了execute()方法后就会在UI线程上执行onPreExecute()方法，该方法在task真正执行前运行，我们通常可以在该方法中显示一个进度条，从而告知用户后台任务即将开始。
 
-doInBackground ：该方法有WorkerThread注解，表示该方法是运行在单独的工作线程中的，而不是运行在主线程中。doInBackground会在onPreExecute()方法执行完成后立即执行，该方法用于在工作线程中执行耗时任务，我们可以在该方法中编写我们需要在后台线程中运行的逻辑代码，由于是运行在工作线程中，所以该方法不会阻塞UI线程。该方法接收Params泛型参数，参数params是Params类型的不定长数组，该方法的返回值是Result泛型，由于doInBackgroud是抽象方法，我们在使用AsyncTask时必须重写该方法。在doInBackground中执行的任务可能要分解为好多步骤，每完成一步我们就可以通过调用AsyncTask的publishProgress(Progress…)将阶段性的处理结果发布出去，阶段性处理结果是Progress泛型类型。当调用了publishProgress方法后，处理结果会被传递到UI线程中，并在UI线程中回调onProgressUpdate方法。根据我们的具体需要，我们可以在doInBackground中不调用publishProgress方法，当然也可以在该方法中多次调用publishProgress方法。doInBackgroud方法的返回值表示后台线程完成任务之后的结果。
+`doInBackground` ：该方法有`WorkerThread`注解，表示该方法是运行在单独的工作线程中的，而不是运行在主线程中。doInBackground会在onPreExecute()方法执行完成后立即执行，该方法用于在工作线程中执行耗时任务，我们可以在该方法中编写我们需要在后台线程中运行的逻辑代码，由于是运行在工作线程中，所以该方法不会阻塞UI线程。该方法接收Params泛型参数，参数params是Params类型的不定长数组，该方法的返回值是Result泛型，由于doInBackgroud是抽象方法，我们在使用AsyncTask时必须重写该方法。在doInBackground中执行的任务可能要分解为好多步骤，每完成一步我们就可以通过调用AsyncTask的publishProgress(Progress…)将阶段性的处理结果发布出去，阶段性处理结果是Progress泛型类型。当调用了publishProgress方法后，处理结果会被传递到UI线程中，并在UI线程中回调onProgressUpdate方法。根据我们的具体需要，我们可以在doInBackground中不调用publishProgress方法，当然也可以在该方法中多次调用publishProgress方法。doInBackgroud方法的返回值表示后台线程完成任务之后的结果。
 
-onProgressUpdate ：当我们在doInBackground中调用publishProgress(Progress…)方法后，就会在UI线程上回调onProgressUpdate方法，该方法是在主线程上被调用的，且传入的参数是Progress泛型定义的不定长数组。如果在doInBackground中多次调用了publishProgress方法，那么主线程就会多次回调onProgressUpdate方法。
+`onProgressUpdate` ：当我们在doInBackground中调用publishProgress(Progress…)方法后，就会在UI线程上回调onProgressUpdate方法，该方法是在主线程上被调用的，且传入的参数是Progress泛型定义的不定长数组。如果在doInBackground中多次调用了publishProgress方法，那么主线程就会多次回调onProgressUpdate方法。
 
-onPostExecute ：该方法也具有MainThread注解，表示该方法是在主线程中被调用的。当doInBackgroud方法执行完毕后，就表示任务完成了，doInBackgroud方法的返回值就会作为参数在主线程中传入到onPostExecute方法中，这样就可以在主线程中根据任务的执行结果更新UI。
+`onPostExecute` ：该方法也具有MainThread注解，表示该方法是在主线程中被调用的。当doInBackgroud方法执行完毕后，就表示任务完成了，doInBackgroud方法的返回值就会作为参数在主线程中传入到onPostExecute方法中，这样就可以在主线程中根据任务的执行结果更新UI。
 
-Asynctask有什么优缺点？ 
+### Asynctask有什么优缺点？ 
+
 使用的优点: 简单快捷，过程可控 
-使用的缺点: 在使用多个异步操作和并需要进行Ui变更时,就变得复杂起来.
+使用的缺点: 
 
-AsyncTask对象必须在主线程中创建 
-AsyncTask对象的execute方法必须在主线程中调用 
-一个AsyncTask对象只能调用一次execute方法
+- 在使用多个异步操作和并需要进行Ui变更时,就变得复杂起来.
 
-可定制化程度不高，例如我们不能很方便地cancel线程
+- AsyncTask对象必须在主线程中创建 
+- AsyncTask对象的execute方法必须在主线程中调用 
+- 一个AsyncTask对象只能调用一次execute方法
 
-内存泄漏，同Handler一样，非静态内部类持有外部类的引用导致内存泄漏
-AsyncTask的生命周期和Activity是不一致的，需要在Activity的onDestory方法中调用AsyncTask的cancle方法，取消任务执行。否则可能会导致崩溃。
-结果丢失：同上一条，在屏幕旋转或者activity在内存不够时，被系统杀掉，此时AsyncTask持有的Activity已经失效，调用更新UI的方法则会失效。
+- 可定制化程度不高，例如我们不能很方便地cancel线程
+
+- 内存泄漏，同Handler一样，非静态内部类持有外部类的引用导致内存泄漏
+- AsyncTask的生命周期和Activity是不一致的，需要在Activity的onDestory方法中调用AsyncTask的cancle方法，取消任务执行。否则可能会导致崩溃。
+- 结果丢失：同上一条，在屏幕旋转或者activity在内存不够时，被系统杀掉，此时AsyncTask持有的Activity已经失效，调用更新UI的方法则会失效。
 
 并行或串行（可以调用executeOnExecutor来执行并行任务）：建议只用串行，避免多线程运行影响线程池的稳定性 。
 
 ### 原理解读
 
 比较适用于一些耗时比较短的任务，内部封装了线程池，实现原理是FutureTask+Callable +SerialExecutor （线程池）。
- 整个流程，在AsyncTask的构造方法中 ，会创建Future对象跟Callable对象，然后在execute方法中会执行onPreExecute()方法跟doInBackground方法，而doInbackground 的结果，会被封装成一个Message，再通过handler来进行线程间通信，通过message.what来识别是否需要调用onProgressUpdate，或是finish方法 。finish方法里面会调用onPostExecute方法 。
+ 整个流程，在AsyncTask的构造方法中 ，会创建Future对象跟Callable对象，然后在execute方法中会执行onPreExecute()方法跟doInBackground方法，而doInbackground 的结果，会被封装成一个Message，再通过**handler**来进行线程间通信，通过message.what来识别是否需要调用onProgressUpdate，或是finish方法 。finish方法里面会调用onPostExecute方法 。
  另外我们可以通过publishProgress()方法来主动调用onProgressUpdate()方法，内部也是通过这个方法，来发出一个这样的message去调用onProgressUpdate的。
 
 ## 常用开源框架
@@ -2763,14 +2775,14 @@ EventBus.getDefault().post(new MessageEvent("Hello !....."));
 ## Android项目中的res目录和asset目录的区别
 
 1. res目录下的资源文件会在R文件中生成对应的id，asset不会
-2. res目录下的文件在生成apk时，除raw（即res/raw）目录下文件不进行编译外，都会被编译成二进制文件；asset目录下的文件不会进行编译
+2. res目录下的文件在生成apk时，除raw（即res/raw）目录下文件**不进行编译**外，都会被编译成二进制文件；**asset目录下的文件不会进行编译**
 3. asset目录允许有子目录
 
 ## Android中的APP是如何实现沙箱化的？沙箱化有什么好处？
 
 沙箱化可以提升安全性和效率
 
-Android的底层内核为Linux，因此继承了Linux良好的安全性，并对其进行了优化。在Linux中，一个用户对应一个uid，而在Android中，（通常）一个APP对应一个uid，拥有独立的资源和空间，与其他APP互不干扰。如有两个APP A和B，A并不能访问B的资源，A的崩溃也不会对B造成影响，从而保证了安全性和效率
+Android的底层内核为Linux，因此继承了Linux良好的安全性，并对其进行了优化。在Linux中，一个用户对应一个uid，而在Android中，（通常）一个APP对应一个uid，拥有**独立的资源和空间**，与其他APP互不干扰。如有两个APP A和B，A并不能访问B的资源，A的崩溃也不会对B造成影响，从而保证了安全性和效率
 
 ## Intent/Bundle支持传送哪种类型的数据
 
@@ -2801,7 +2813,7 @@ Android的底层内核为Linux，因此继承了Linux良好的安全性，并对
 Android开发过程中，经常会遇到像layout-sw600dp, values-sw600dp这样的文件夹，他们和drawable-hdpi/ drawable-mdpi等的使用类似，都是为了实现适配各种Android[手机屏幕](https://www.baidu.com/s?wd=%E6%89%8B%E6%9C%BA%E5%B1%8F%E5%B9%95&tn=24004469_oem_dg&rsv_dl=gh_pl_sl_csd)而使用的，只是drawable用来管理不同大小图片资源，layout用来管理不同布局，values用来管理不同大小的值：
 
 - layout-sw600dp
-   这里的sw代表smallwidth的意思，当你的屏幕的绝对宽度大于600dp时，屏幕就会自动调用layout-sw600dp文件夹里面的布局。
+   这里的sw代表small width的意思，当你的屏幕的绝对宽度大于600dp时，屏幕就会自动调用layout-sw600dp文件夹里面的布局。
 
 注意：这里的绝对宽度是指手机的**实际宽度**，即与手机是否横屏没关系，也就是手机较小的边的长度。
 
@@ -2918,3 +2930,34 @@ public class MainActivity extends ActionBarActivity {
 
 > 1. 外部：通过adb shell 命令导出内存，借助工具分析
 > 2. 内部：通过将对象加入WeakReference，配合RefernceQueue观察对象是否被回收，被回收的对象会被加入到RefernceQueue中
+
+
+
+
+
+## **TCP和UPD的区别以及使用场景**
+
+### TCP与UDP基本区别
+
+1.基于连接与无连接
+
+2.TCP要求系统资源较多，UDP较少；
+3.UDP程序结构较简单
+4.流模式（TCP）与数据报模式(UDP);
+5.TCP保证数据正确性，UDP可能丢包
+6.TCP保证数据顺序，UDP不保证
+
+### UDP应用场景
+
+1.面向数据报方式
+2.网络数据大多为短消息
+3.拥有大量Client
+4.对数据安全性无特殊要求
+5.网络负担非常重，但对响应速度要求高
+
+## **字节流和字符流的区别**
+
+字节流操作的基本单元为**字节**；字符流操作的基本单元为**Unicode码元(2个字节)**。
+字节流默认**不使用缓冲区**；字符流**使用缓冲区**。
+
+字节流通常用于处理二进制数据，实际上它可以处理任意类型的数据，但它不支持直接写入或读取Unicode码元；字符流通常处理文本数据，它支持写入及读取Unicode码元。
