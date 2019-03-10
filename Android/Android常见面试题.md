@@ -1539,7 +1539,7 @@ android中最经典的就是Handler机制，android中有三种方式可以在�
 
 # 19年面试真题
 
-### Thread、Process的区别（字节跳动）
+### Thread、Process的区别（字节跳动-抖音-一面）
 
 进程和线程的主要差别在于它们是不同的操作系统资源管理方式。进程有独立的地址空间，一个进程崩溃后，在保护模式下不会对其它进程产生影响，而线程只是一个进程中的不同执行路径。线程有自己的堆栈和局部变量，但线程之间没有单独的地址空间，一个线程死掉（将地址空间写坏）就等于整个进程死掉，所以多进程的程序要比多线程的程序健壮，但在[进程切换](https://www.baidu.com/s?wd=%E8%BF%9B%E7%A8%8B%E5%88%87%E6%8D%A2&tn=24004469_oem_dg&rsv_dl=gh_pl_sl_csd)时，耗费资源较大，效率要差一些。**但对于一些要求同时进行并且又要共享某些变量的并发操作，只能用线程，不能用进程。**
 
@@ -1555,7 +1555,7 @@ android中最经典的就是Handler机制，android中有三种方式可以在�
 
 线程和进程在使用上各有优缺点：线程执行开销小，但不利于资源的管理和保护；而进程正相反。同时，线程适合于在SMP机器上运行，而进程则可以跨机器迁移。
 
-### singleThreadpool什么场景下使用，只有一个线程为什么不直接使用new Thread（）（字节跳动）
+### singleThreadpool什么场景下使用，只有一个线程为什么不直接使用new Thread（）（字节跳动-抖音-一面）
 
 Android中单线程可用于数据库操作，文件操作，应用批量安装，应用批量删除等不适合并发但可能IO阻塞性的操作。
 
@@ -1566,9 +1566,68 @@ Android中单线程可用于数据库操作，文件操作，应用批量安装�
 4、可制定拒绝策略。即任务队列已满时，后来任务的拒绝处理规则。
 以上意义对于singleThreadExecutor来说也是适用的。普通线程和线程池中创建的线程其最大的区别就是有无一个管理者对线程进行管理。
 
-### 二叉树中序遍历（字节跳动）
+### TCP三次握手、四次挥手（字节跳动-抖音-一面、二面）
 
-```
+#### 三次握手
+
+1：client：SYN=1，序列号（seq）=J（随机生成），发送完成后处于Syn_sent状态
+
+2：server：接收到client发送的报文，处于Syn_rcvd状态，然后发送回应报文，ACK=1，确认序列号（ack）=J+1，SYN=1，序列号（seq）=K（随机生成）
+
+3：client：接收到server的回应报文，处于Established状态，发送确定连接报文：ACK=1，确认序号（ack）=K+1，server接收到后处于Established状态
+
+此时client和server都处于Established状态，建立连接成功
+
+#### 四次挥手
+
+1：client：发送Fin=1，ack=A，seq=B，进入Fin_Wait_1状态
+
+2：server：发送ack=B+1，seq=A，进入Close_Wait状态
+
+3：server：发送Fin=1，ack=B，seq=D，进入Time_Wait状态
+
+4：client：发送ack=D，seq=B，进入Closed状态
+
+TCP中常见状态：
+
+**各个状态的意义如下：** 
+`LISTEN` - 侦听来自远方TCP端口的连接请求； 
+`SYN-SENT` -在发送连接请求后等待匹配的连接请求； 
+`SYN-RECEIVED` - 在收到和发送一个连接请求后等待对连接请求的确认； 
+`ESTABLISHED`- 代表一个打开的连接，数据可以传送给用户； 
+`FIN-WAIT-1` - 等待远程TCP的连接中断请求，或先前的连接中断请求的确认；
+`FIN-WAIT-2` - 从远程TCP等待连接中断请求； 
+`CLOSE-WAIT` - 等待从本地用户发来的连接中断请求； 
+`CLOSING` -等待远程TCP对连接中断的确认； 
+`LAST-ACK` - 等待原来发向远程TCP的连接中断请求的确认； 
+`TIME-WAIT` -等待足够的时间以确保远程TCP接收到连接中断请求的确认； 
+`CLOSED` - 没有任何连接状态；
+
+### 计算机网络为什么是三次握手不是两次握手？请求方式（post、get）是放在哪个部分发送出去的（考察http协议的格式）（字节跳动-抖音-一面）？
+
+第一次连接请求报文由于网络节点长时间滞留了，导致延误到连接释放后的某个时间才到达 Server。这时 Server 会再次给 Client 发送确认报文(第二次握手)，但是 Client 进程程序并不会理睬确认报文，因为 Client 没有发送连接请求。现在假如没有第三次握手就会建立连接，那么这次滞后的连接请求报文就会导致 TCP 误建立连接，而 Client 却不知已经建立连接，并不会发送数据给 Server，这样 Server 就会一直处于等待状态，这样就白白浪费了 Server 的很多资源。但有了第三次握手就会避免这种问题的发生，虽然延迟的连接请求发送到了 Server，但 Client 不会处理 Server 的确认报文，也不会再次发送确认请求报文，这样 Server 就知道了 Client 并没有真正想建立连接。
+
+#### HTTP协议的格式
+
+##### HTTP请求
+
+请求行：三个部分组成：第一部分是**请求方法**，第二部分是**请求网址**，第三部分是**HTTP版本**
+
+请求头：请求头(request header) ；普通头(general header) ；实体头(entity header)
+
+内容：通常来说，由于GET请求往往不包含内容实体，因此也不会有实体头。 第三部分内容只在POST请求中存在，因为GET请求并不包含任何实体
+
+##### HTTP响应
+
+状态行：第一部分是**HTTP版本**，**第二部分是响应状态码**，第三部分是**状态码的描述**
+
+HTTP头：响应头(response header) ；普通头(general header) ；实体头(entity header)
+
+内容：响应内容就是HTTP请求所请求的信息。这个信息可以是一个HTML，也可以是一个图片
+
+### 【算法】二叉树中序遍历（字节跳动-抖音-一面）
+
+```c
 void InOrderTraverse2(BiTree biTree) {
     if (biTree == NULL) {
         cout << "该树为空，无法遍历！" << endl;
@@ -1591,9 +1650,11 @@ void InOrderTraverse2(BiTree biTree) {
 }
 ```
 
-### 判断平衡二叉树（字节跳动）
+### 【算法】判断平衡二叉树（字节跳动-抖音-二面）
 
-### Px、dp、sp的区别
+递归求解或者层次遍历求解。
+
+### Px、dp、sp的区别（字节跳动-抖音-二面）
 
 #### **DP**
 
@@ -1633,8 +1694,6 @@ px单位不被建议使用，因为同样100px的图片，在不同手机上显�
 
 类似我们在windows里调整字体尺寸以后的效果——窗口大小不变，只有文字大小改变。
 
-
-
 **最佳实践，文字的尺寸一律用sp单位，非文字的尺寸一律使用dp单位**。
 
 例如textSize="16sp"、layout_width="60dp"；偶尔需要使用px单位，例如需要在屏幕上**画一条细的分隔线**
@@ -1661,7 +1720,7 @@ px = dp *(context.getResources().getDisplayMetrics().density ) + 0.5
 
 - 这个在Google的官方文档中有给出了解释，因为第一款Android设备（HTC的T-Mobile G1）是**属于**160dpi的。
 
-#### java中有哪几种变量修饰符，有什么区别，protected是否是包级可见的
+### java中有哪几种变量修饰符，有什么区别，protected是否是包级可见的（字节跳动-抖音-二面）
 
 - public 公有访问修饰符。该修饰符修饰的变量称为公有变量，如果公有变量又在一个公有类（被public修饰的类）中，那么这个变量可以被所有包中的所有类访问；
 
@@ -1671,7 +1730,7 @@ px = dp *(context.getResources().getDisplayMetrics().density ) + 0.5
 
 - private 私有访问修饰符。 该修饰符修饰的成员只能被他所在的类访问，任何其他的类都不能访问，包括它的子类。在实际项目中，最好把一个类的实例变量（不被static修饰的变量）设置为private，并在方法中设置setXXX() 和 getXXX()这样的方法进行访问。这样做有助于对客户隐蔽类的实现细节，减少错误，提高程序可修改性。
 
-### synchronized对普通方法、静态方法加锁有什么区别
+### synchronized对普通方法、静态方法加锁有什么区别（字节跳动-抖音-二面）
 
 Synchronized修饰非静态方法，是对调用该方法的对象加锁，俗称“对象锁”。
 这里的对象加锁并非是说执行该加锁方法的时候整个对象的所有成员都不允许其他线程访问了,
@@ -1691,7 +1750,225 @@ Synchronized修饰静态方法，是对该类对象加锁，俗称“类锁”�
 
 其实同理，锁住的不是当前实例对象，而是放入synchronized(非this对象)中的非this对象(与该非this对象的其他加锁方法共用锁)，即对该非this对象进行加锁。
 
-### 有两个View：view1和view2，view2在view1上面且比view1小，如何判断点击view1之内的屏幕是应该由view1处理事件还是由view2处理
+### Activity启动模式的解释（字节跳动-抖音-二面）
+
+- standard
+- singleTop
+- singleTask
+- singleInstance
+
+### java中保持线程同步的方式（考察锁）（字节跳动-抖音-二面）
+
+- synchronized
+- reentrantLock
+- volitile
+
+### java的四种引用（字节跳动-抖音-二面）
+
+- 强引用
+- 软引用
+- 弱引用
+- 虚引用
+
+### kotlin和java比的异同点（字节跳动-抖音-二面）
+
+kotlin相比于java的优点：
+
+- 空安全
+
+  java中经常遇到空指针的问题，如果要保证安全往往需要我们自己添加if判空，kotlin中用一个操作符“ ？”来明确指定一个对象，或者一个属性变量是否可以为空：
+
+  ```kotlin
+  var user1:User=null;//编译不通过
+  var user2：User；//编译不通过
+  var user3：User？=null；//编译通过
+  user.print();//无法编译，user可能为空，无法打印
+  user?.print();//如果user不为空才打印
+  // 智能转换. 如果我们在之前进行了空检查，则不需要使用安全调用操作符调用
+  if (users != null) {
+    users.print()
+  }
+  // 只有在确保users不是null的情况下才能这么调用，否则它会抛出异常
+   users!!.print()
+  ```
+
+- 拓展方法的支持
+
+- 我们可以给任何类添加函数，它比那些我们项目中典型的工具类更加具有可读性
+
+  比如我们想给Fragment增加一个toast方法：
+
+  ```kotlin
+  fun Fragment.toast(message: String, duration: Int = Toast.
+  LENGTH_SHORT) {
+      Toast.makeText(getActivity(), message, duration).show()
+  }
+  ```
+
+  然后我们就可以这样调用
+
+  ```kotlin
+  fragment.toast("弹个吐司看看")
+  ```
+
+- 函数式支持
+
+  java中设置点击事件一般需要实现匿名内部类（onClickListener），在kotlin中：
+
+  ```java
+  view.setOnClickListener { 
+     toast("Hello world!")
+  }
+  
+  ```
+
+kotlin相比于java的缺点：
+
+虽然很多时候方便了代码的编写、减少了代码量，但是回降低可读性，比如：
+
+java中的switch语句：
+
+```java
+private void test(int value) {
+        switch (value) {
+            case 10:
+                println("数字10");
+                break;
+            case 20:
+                println("数字20");
+                break;
+            case 30:
+                println("数字30");
+                break;
+            default:
+                println("未知数");
+       }
+}
+```
+
+kotlin中的：
+
+```java
+fun test(value: Int){
+    when(value){
+         10,20 -> println("共用一个处理逻辑");
+         30 -> println("数字30");
+        else ->{
+            println("未知数");
+        }
+    }
+}
+```
+
+### okHttp源码理解（字节跳动-抖音-二面，腾讯-微信-一面）
+
+### 数据库索引、事物的概念（字节跳动-抖音-三面Leader面）
+
+### 关系型数据库中的主键是什么（字节跳动-抖音-三面Leader面）
+
+### SQL语句的基本结构（字节跳动-抖音-三面Leader面）
+
+### java里面有没有类似c++的析构函数的东西（字节跳动-抖音-三面Leader面）
+
+java中每个类都默认有一个`protected void finalize() `方法，之所以要有finalize()，不是为了释放java资源，因为java资源有gc去处理，是由于在分配本地内存时可能采用了类似C语言中的做法，而非Java中的通常做法。这种情况主要发生在使用“本地方法”的情况下，本地方法是一种在Java中调用非Java代码的方式。本地方法目前只支持C和C++，但它们可以调用其他语言写的代码，所以实际上可以调用任何代码。在非Java代码中，也许会调用C的malloc()函数系列来分配存储空间，而且除非调用了free()函数，否则存储空间将得不到释放，从而造成内存泄露。当然，free()是C和C++中的函数，所以要在finalize()中用本地方法调用它。
+
+### c++中参数传递有哪几种方式？java呢？（字节跳动-抖音-三面Leader面）
+
+在C/C++中，参数传递分为两种：值传递和地址传递
+
+Java中不存在指针，也就不存在地址传递，Java的参数传递分为：值传递和引用传递
+
+值传递就是将实参的数值拷贝一份到栈中新的一块内存区域中传入，方法里面对这种形式传入的参数的改变均是对实参的拷贝的改变，不会影响实参的数值；
+
+引用传递，当我们使用new关键字实例化对象后，该对象是存储在堆区中的，栈区只是存储该对象的引用（地址），当我们将该对象作为实参传入方法后也会在栈中开辟一块新内存然后将实参的值拷贝进去，但是这次拷贝的是实际对象的地址（引用），所以在子方法中可以对该对象进行改变。
+
+关于深拷贝和浅拷贝：
+
+在 Java 中，除了**基本数据类型**（元类型）之外，还存在 **类的实例对象** 这个引用数据类型。而一般使用 『 **=** 』号做赋值操作的时候。对于基本数据类型，实际上是拷贝的它的值，但是对于对象而言，其实赋值的只是这个对象的引用，将原对象的引用传递过去，他们实际上还是指向的同一个对象。
+
+而浅拷贝和深拷贝就是在这个基础之上做的区分，如果在拷贝这个对象的时候，只对基本数据类型进行了拷贝，而对引用数据类型只是进行了引用的传递，而没有真实的创建一个新的对象，则认为是浅拷贝（**方法中传入的实参默认就是浅拷贝**）。反之，在对引用数据类型进行拷贝的时候，创建了一个新的对象，并且复制其内的成员变量，则认为是深拷贝。
+
+所以想要实现在java方法中传入对象的拷贝而不是引用，就应该考虑使用深拷贝：
+
+首先继承Cloneable接口，然后重写`protected Object clone() `方法，在clone方法中进行深拷贝的逻辑，如果当前类中只有基本数据类型，那么大可不用重写，如果当前类中有别的类的成员变量，那么应该在当前类的clone方法中调用子类的clone赋值给当前类的成员变量，达到深拷贝的目的。
+
+```java
+ public CloneDemoChild cloneDemoChild;
+    public int b;
+    @Override
+    protected Object clone() throws CloneNotSupportedException {
+        CloneDemo cloneDemo= (CloneDemo) super.clone();
+        cloneDemo.cloneDemoChild= (CloneDemoChild) cloneDemo.cloneDemoChild.clone();
+        return cloneDemo;
+    }
+```
+
+### c++和java有什么区别？（字节跳动-抖音-三面Leader面）
+
+关键字：在Java中，protected关键字是对所有的子类以及同一个package中的所有的其他类可见；在C++中，protected关键字只对子类是可见的。这样看来Java中protected的保护的安全性，比C++要差。
+
+析构函数：构造函数都是相同的 (即类的名字), Java没有准确意义上的的析构函数.
+
+内存管理：大体上是相同的--new 来分配， 但是 Java没有 delete，因为它有垃圾回收器。
+
+Java为解释性语言，其运行过程为：程序源代码经过Java编译器编译成**字节码**，然后由**JVM解释执行**。而C/C++为编译型语言，源代码经过编译和链接后生成**可执行的二进制代码，可直接执行**。**因此Java的执行速度比C/C++慢**，但Java能够跨平台执行，C/C++不能。
+
+C++支持多继承，java不支持多继承，但是引入了接口的概念。
+
+### Android中除了线程池还有哪些多线程的实现方式？（字节跳动-抖音-三面Leader面）
+
+- Activity.runOnUiThread(Runnable) 
+- View.post(Runnable) ;View.postDelay(Runnable , long) 
+- Handler 
+- AsyncTask
+
+### AsyncTask是否可以异步？为什么？有没有看过AsyncTask的源码？（字节跳动-抖音-三面Leader面）
+
+
+
+### 介绍一下http协议（字节跳动-抖音-三面Leader面）
+
+### http各个状态码的意义（字节跳动-抖音-三面Leader面）
+
+1 ：继续
+
+2 ：成功
+
+3 ：重定向
+
+4 ：请求错误
+
+5： 服务器内部错误
+
+### 计算机网络中的重定向是什么（字节跳动-抖音-三面Leader面）
+
+URL 重定向，也称为 URL 转发，是一种当实际资源，如单个页面、表单或者整个 Web 应用被迁移到新的 URL 下的时候，保持（原有）链接可用的技术。HTTP 协议提供了一种特殊形式的响应—— HTTP 重定向（HTTP redirects）来执行此类操作，该操作可以应用于多种多样的目标：网站维护期间的临时跳转，网站架构改变后为了保持外部链接继续可用的永久重定向，上传文件时的表示进度的页面，等等。
+
+### 【算法】DFS考察
+
+一个二维数组，数组中的内容非0即1，0代表海洋，1代表陆地，求所给二维数组代表的区域中陆地面积的最大值。
+
+### okhttp中连接池的最大数量，连接池的实现原理（腾讯-微信-一面）
+
+
+
+### 有两个View：view1和view2，view2在view1上面且比view1小，如何判断点击view1之内的屏幕是应该由view1处理事件还是由view2处理（腾讯-微信-一面）
+
+双亲委托，先分发给view2，让view2决定是否拦截，如果view2不拦截，则view1拦截，至于如何让view2决定是否拦截还没思路。
+
+### NDK是否可以加载任意目录下的so文件，so文件有几种加载方式（腾讯-微信-一面）
+
+### ndk加载so时如何考虑32位和64位的不同，如何考虑不同的arm平台（腾讯-微信-一面）
+
+### 自定义view的方法，为什么在ondraw中绘制即可产生相应效果，什么时候使用自定义view什么时候使用原生view（腾讯-微信-一面）
+
+### sqlite是不是线程同步的（腾讯-微信-一面）
+
+
+
+### 有没有对比过flutter和其他跨平台方案有什么异同点（腾讯-微信-一面）
+
+
 
 # 关于项目
 
