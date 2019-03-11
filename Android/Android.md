@@ -93,6 +93,34 @@ Android四大组件分别是`Activity`，`Service`服务,`Content Provider`内�
 
 ![image-20190307150642544](https://ws3.sinaimg.cn/large/006tKfTcgy1g0u8vpcfjrj31480u0txj.jpg)
 
+1：Launcher进程ActivityManagerProxy->startActivity to system_server.ActivityManagerService
+
+2:   system_server.ActivityManagerService->创建新进程的请求 to Zygote进程
+
+3：Zygote进程fork new proceed as newAPP
+
+4：newAPP.ActivityManagerProxy->attach Application to System_server.ActivityManagerService
+
+5:System_server.ActivityManagerService->realStartActivityLocked to ApplicationThreadProxy
+
+6:system_server.ApplicationThreadProxy->scheduleLaunchActivity to newApp.ApplicationThread
+
+7:newApp.ApplicatiionThread.Handler.send message of launch activitu to newApp.activityThread
+
+8:newApp.activityThread.handleLaunchActivity to Activity.onCreate
+
+在应用里面启动新的Activity的过程进行源码跟踪，我们发现这里面主要涉及到几个类：Activity、ActivityThread、ApplicationThread、ActivityManagerService。
+
+（1）Activity是我们发起启动新的Activity的入口，也是最后完成Activity操作结束的地方。我们通过Activity的startActivity发起启动新Activity的请求，最后通过Activity的attach方法完成Context的绑定和窗口Window的创建和绑定。
+
+（2）ActivityThread是启动Activity的处理者，也是一个中间人的角色，通过调用其他几个类完成启动Activity的任务。它首先通过Binder机制调用ActivityManagerService完成Activity相关的系统级的操作，比如任务栈，暂停其他Activity等，然后通过内部的Binder类ApplicationThread接收ActivityManagerService的进程间请求，将启动的操作重新转回到当前应用进程。接着通过调用Instrumentation和LoadApk的相关方法完成加载Activity类和Application的任务。最后调用Activity的attach方法完成一系列的绑定操作。
+
+（3）ApplicationThread是一个Binder类，用于和ActivityManagerService的进程间通信。
+
+（4）ActivityManagerService是系统的一个服务，用于管理Activity的状态和相关信息，比如任务栈等。
+
+如果是直接点击桌面的应用图标启动应用呢？其实这个过程和启动Activity类似，都是需要启动一个Activity。不过启动应用启动的是应用的入口Activity，同时是从桌面应用启动另一个应用程序的Activity，所以过程肯定会多一些步骤，比如要找到应用中的入口Activity，创建新的应用程序进程，要创建任务栈，要移除桌面的焦点等。等这些准备工作都好了以后，后面就相当于是启动一个Activity的过程了。
+
 #### [Activity之间的通信方式](https://juejin.im/post/5a9509ef6fb9a06337575d4b)
 
 > 1. Intent
@@ -211,8 +239,6 @@ public void onCreate() {
 
 这样就能获取到Activity对象了。
 
-
-
 #### Fragment
 
 ##### Fragment生命周期
@@ -256,7 +282,7 @@ public void onCreate() {
 
 #### [IntentService](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2F332b6daf91f0)
 
-> 1. IntentService 是继承自 Service,内部通过HandlerThread启动一个新线程处理耗时操作，可以看做是Service和HandlerThread的结合体，在完成了使命之后会自动停止，适合需要在工作线程处理UI无关任务的场景
+> 1. IntentService 是继承自 Service,内部通过**HandlerThread**启动一个新线程处理耗时操作，可以看做是Service和HandlerThread的结合体，在完成了使命之后会自动停止，适合需要在工作线程处理UI无关任务的场景
 > 2. 如果启动 IntentService 多次，那么每一个耗时操作会以工作队列的方式在 IntentService 的 onHandleIntent 回调方法中执行，依次去执行，使用串行的方式，执行完自动结束
 
 ##### Demo
@@ -356,7 +382,7 @@ public class MainActivity extends AppCompatActivity {
 
 从结果中可以看出我们startService()执行了三次, onCreate()方法只执行了一次,说明只有一个Service实例, onStartCommand()和onStart()也执行了三次,关键是onHandleIntent()也执行了三次,而且这三次是串行的,也就是执行完一个再执行下一个,当最后一个任务执行完, onDestroy()便自动执行了
 
-不管使用多少个service，oncreat（）方法只会执行一次。
+**不管使用多少个service，oncreat（）方法只会执行一次。**
 
 #### IntentService生命周期是怎样的
 
@@ -377,7 +403,7 @@ public class MainActivity extends AppCompatActivity {
 #### ContentProvider、ContentResolver与ContentObserver之间的关系是什么？
 
 > 1. ContentProvider：管理数据，提供数据的增删改查操作，数据源可以是数据库、文件、XML、网络等，ContentProvider为这些数据的访问提供了统一的接口，可以用来做进程间数据共享。
-> 2. ContentResolver：ContentResolver可以不同URI操作不同的ContentProvider中的数据，外部进程可以通过ContentResolver与ContentProvider进行交互。
+> 2. ContentResolver：ContentResolver可以根据不同URI操作不同的ContentProvider中的数据，外部进程可以通过ContentResolver与ContentProvider进行交互。
 > 3. ContentObserver：观察ContentProvider中的数据变化，并将变化通知给外界。
 
 每个ContentProvider的操作是在哪个线程中运行的呢（其实我们关心的是UI线程和工作线程）？比如我们在UI线程调用getContentResolver().query查询数据，而当数据量很大时（或者需要进行较长时间的计算）会不会阻塞UI线程呢？
@@ -388,7 +414,7 @@ public class MainActivity extends AppCompatActivity {
 
 2：ContentProvider和调用者在不同的进程，ContentProvider的方法会运行在它自身所在进程的一个Binder线程中。
 
-但是，注意这两种方式在ContentProvider的方法没有执行完成前都会阻塞调用者。
+但是，注意这两种方式在ContentProvider的方法**没有执行完成前都会阻塞调用者**。
 
 ### BroadcastReceiver（广播机制）
 
@@ -439,7 +465,7 @@ Android 3.1开始系统在Intent与广播相关的flag增加了参数：
 > 1. 继承BroadcastReceiver，重写onReceive()方法。
 > 2. 通过Binder机制向ActivityManagerService注册广播。
 > 3. 通过Binder机制向ActivityMangerService发送广播。
-> 4. ActivityManagerService查找符合相应条件的广播（主要是通过在Intent中设置IntentFilter/Permission中的属性来定位广播）的BroadcastReceiver，将广播发送到BroadcastReceiver所在的消息队列中。
+> 4. ActivityManagerService查找符合相应条件的广播的BroadcastReceiver（主要是通过在Intent中设置IntentFilter/Permission中的属性来定位广播），将广播发送到BroadcastReceiver所在的消息队列中。
 > 5. BroadcastReceiver所在消息队列拿到此广播后，回调它的onReceive()方法。
 
 #### 广播传输的数据是否有限制，是多少，为什么要限制？
@@ -472,9 +498,9 @@ Android 3.1开始系统在Intent与广播相关的flag增加了参数：
 
 ### SharedPreference是否是进程同步的？如何实现进程同步？
 
-SharedPreference是线程同步的，内部用了很多synchronized锁来实现线程同步；
+SharedPreference**不是进程同步**的，实现进程同步可以通过设置模式`MODE_MULTI_PROCESS`，但该模式不安全，Google官方推荐使用ContentProvider来实现SharedPreference的进程同步，ContentProvider中有一个`Bundle call(String method, String arg, Bundle extras)`方法，我们可以重写该方法，根据传入的不同参数实现对sp的增删改查。
 
-SharedPreference不是进程同步的，实现进程同步可以通过设置模式`MODE_MULTI_PROCESS`，但该模式不安全，Google官方推荐使用ContentProvider来实现SharedPreference的进程同步，ContentProvider中有一个`Bundle call(String method, String arg, Bundle extras)`方法，我们可以重写该方法，根据传入的不同参数实现对sp的增删改查。
+SharedPreference是线程同步的，内部用了很多synchronized锁来实现线程同步；
 
 ### SharedPreferences commit和apply的区别
 
@@ -501,7 +527,7 @@ SharedPreference不是进程同步的，实现进程同步可以通过设置模�
 ### SqLite
 
 1. SQLite每个数据库都是以单个文件（.db）的形式存在，这些数据都是以B-Tree的数据结构形式存储在磁盘上。
-2. 使用SQLiteDatabase的insert，delete等方法或者execSQL方法默认都开启了事务，如果操作顺利完成才会更新.db数据库。事务的实现是依赖于名为rollback journal文件，借助这个临时文件来完成原子操作和回滚功能。在/data/data//databases/目录下看到一个和数据库同名的.db-journal文件。
+2. 使用SQLiteDatabase的insert，delete等方法或者execSQL方法默认都开启了事务，**如果操作顺利完成才会更新.db数据库**。事务的实现是依赖于名为rollback journal文件，借助这个临时文件来完成原子操作和回滚功能。在/data/data//databases/目录下看到一个和数据库同名的.db-journal文件。
 
 #### 如何对SqLite数据库中进行大量的数据插入？
 
@@ -610,7 +636,7 @@ save 和 restore 要配对使用( restore 可以比 save 少，但不能多)，�
 
 ### view的绘制流程
 
-整个View树的绘图流程是在ViewRootImpl类的performTraversals()方法（这个方法巨长）开始的，该函数做的执行过程主要是根据之前设置的状态，判断是否重新计算视图大小(measure)、是否重新放置视图的位置(layout)、以及是否重绘 (draw)，其核心也就是通过判断来选择顺序执行这三个方法中的哪个，如下：
+整个View树的绘图流程是在`ViewRootImpl`类的`performTraversals()`方法（这个方法巨长）开始的，该函数做的执行过程主要是根据之前设置的状态，判断是否重新计算视图大小(`measure`)、是否重新放置视图的位置(`layout`)、以及是否重绘 (`draw`)，其核心也就是通过判断来选择顺序执行这三个方法中的哪个，如下：
 
 ```java
 private void performTraversals() {
@@ -696,8 +722,6 @@ viewGroup能操作自己也可以操作孩子（通过`viewGroup.getChildAt(i).g
 
 > 1. 滑动时会调用onScrollChange方法，在该方法中监听状态
 > 2. 判断childView.getMeasureHeight（总高度） == getScrollY（滑动的高度） + chilView.getHeight(可见高度)
-
-
 
 ###  Android中的事件分发（View事件的分发）
 
@@ -872,7 +896,7 @@ RecyclerView 与 ListView 类似，都是通过缓存view提高性能，但是Re
 
 ####  [postDelayed原理](https://link.juejin.im?target=https%3A%2F%2Fblog.csdn.net%2Fqingtiantianqing%2Farticle%2Fdetails%2F72783952)
 
-> 1. 不管是view的postDelayed方法，还是Handler的post方法，通过包装后最终都会走Handler的sendMessageAtTime方法
+> 1. 不管是view的postDelayed方法，还是Handler的post方法，通过包装后最终都会走Handler的**sendMessageAtTime**方法
 > 2. 随后会通过MessageQueue的enqueueMessage方法将message加入队列，加入时按时间排序，我们可以理解成Message是一个有序队列，时间是其排序依据
 > 3. 当Looper从MessageQueue中调用next方法取出message时，如果还没有到时间，就会阻塞等待
 > 4. 2中当有新的message加完成后，会检查当前有没有3中设置的阻塞，需不需要唤起，如果需要唤起则唤起
@@ -997,7 +1021,7 @@ class ExceptionHandler implements UncaughtExceptionHandler
 
 > 1. 出现运行时异常（如nullpointer/数组越界等），而我们又没有try catch捕获，可能造成Force Close
 > 2. 避免：需要我们在编程时谨慎处理逻辑，提高代码健壮性。如对网络传过来的未知数据先判空，再处理；此外还可以通过静态代码检查来帮助我们提高代码质量
-> 3. 此外，我们还可以在Application初始化时注册[UncaultExceptionHandler](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2F84eba8efa45e)，来捕捉这些异常重启我们的程序
+> 3. 此外，我们还可以在Application初始化时注册[UncaughtExceptionHandler](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2F84eba8efa45e)，来捕捉这些异常重启我们的程序
 
 
 
@@ -1089,7 +1113,7 @@ titleTextView.setText("new Title");
 
 #### ViewStub
 
-其实ViewStub就是一个宽高都为0的一个View，它默认是不可见的，只有通过调用setVisibility函数或者Inflate函数才会将其要装载的目标布局给加载出来，从而达到延迟加载的效果，这个要被加载的布局通过android:layout属性来设置。例如我们通过一个ViewStub来惰性加载一个消息流的评论列表，因为一个帖子可能并没有评论，此时我可以不加载这个评论的ListView，只有当有评论时我才把它加载出来，这样就去除了加载ListView带来的资源消耗以及延时，示例如下 :
+其实ViewStub就是一个宽高都为0的一个View，它默认是不可见的，只有通过调用setVisibility函数或者Inflate函数才会将其要装载的目标布局给加载出来，从而达到**延迟加载**的效果，这个要被加载的布局通过android:layout属性来设置。例如我们通过一个ViewStub来惰性加载一个消息流的评论列表，因为一个帖子可能并没有评论，此时我可以不加载这个评论的ListView，只有当有评论时我才把它加载出来，这样就去除了加载ListView带来的资源消耗以及延时，示例如下 :
 
 ```xml
 <ViewStub  
@@ -1419,7 +1443,7 @@ process一般翻译成进程，进程是操作系统内核中的一个概念，�
 
 2) 线程的划分尺度小于进程，使得多线程程序的并发性高。
 
-3) 另外，进程在执行过程中拥有独立的内存单元，而多个线程共享内存，从而极大地提高了程序的运行效率。
+3) 另外，进程在执行过程中拥有**独立的内存单元**，而多个线程共享内存，从而极大地提高了程序的运行效率。
 
 4) 线程在执行过程中与进程还是有区别的。每个独立的线程有一个程序运行的入口、顺序执行序列和程序的出口。**但是线程不能够独立执行，**必须依存在应用程序中，由应用程序提供多个线程执行控制。
 
@@ -2787,7 +2811,7 @@ Android的底层内核为Linux，因此继承了Linux良好的安全性，并对
 ## Intent/Bundle支持传送哪种类型的数据
 
 > 1. 基本类型及其数组
-> 2. 实现了Serializable或者Parcelable的类型及其数组
+> 2. 实现了Serializable或者Parcelable的类及其数组
 
 ## dp, dip, dpi, px, sp是什么意思
 
@@ -2929,9 +2953,7 @@ public class MainActivity extends ActionBarActivity {
 ## Android中如何查看一个对象的回收情况
 
 > 1. 外部：通过adb shell 命令导出内存，借助工具分析
-> 2. 内部：通过将对象加入WeakReference，配合RefernceQueue观察对象是否被回收，被回收的对象会被加入到RefernceQueue中
-
-
+> 2. 内部：通过将对象加入WeakReference，配合ReferenceQueue观察对象是否被回收，被回收的对象会被加入到RefernceQueue中
 
 
 
