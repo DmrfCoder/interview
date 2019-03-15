@@ -903,8 +903,8 @@ Java虚拟机通过装载、连接和初始化一个类型，使该类型可以�
 1. 装载：把二进制形式的Java类型读入Java虚拟机中。
 2. 连接：把装载的二进制形式的类型数据合并到虚拟机的运行时状态中去。
            	 1. 验证：确保Java类型数据格式正确并且适合于Java虚拟机使用。
-        	 2. 准备：负责为该类型**分配它所需内存**。
-        	 3. 解析：把常量池中的**符号引用**转换为**直接引用**。(可推迟到运行中的程序真正使用某个符号引用时再解析)
+                       	 2. 准备：负责为该类型**分配它所需内存**。
+                       	 3. 解析：把常量池中的**符号引用**转换为**直接引用**。(可推迟到运行中的程序真正使用某个符号引用时再解析)
 3. 初始化：为类变量赋适当的初始值
 
 所有Java虚拟机实现必须在每个类或接口**首次主动使用**时初始化。以下六种情况符合主动使用的要求：
@@ -1641,11 +1641,8 @@ Jdk1.8中：
 
 ```
 static final int hash(Object key) {
-
         int h;
-
         return (key == null) ? 0 : (h =key.hashCode()) ^ (h >>> 16);
-
     }
 
 ```
@@ -1668,7 +1665,7 @@ static final int hash(Object key) {
 
 1. 对key的hashCode做hash操作（高16bit不变，低16bit和高16bit做了一个异或）； 
 
-  　　2. h & (length-1); //通过位操作得到下标index。
+    　　2. h & (length-1); //通过位操作得到下标index。
 
 　　还有数字分析法、平方取中法、分段叠加法、 除留余数法、 伪随机数法。
 
@@ -1729,4 +1726,16 @@ size：HashMap的大小，它是HashMap保存的键值对的数量。
 ####  能否让HashMap同步？
 
 HashMap可以通过下面的语句进行同步：Map m = Collections.synchronizeMap(hashMap);
+
+## ArrayList和LinkedList的区别？各自的使用场景？
+
+- ArrayList是一个可以处理**变长数组**的类型，可以存放任意类型的对象。ArrayList的所有方法都是默认在单一线程下进行的，因此ArrayList不具有线程安全性。
+
+- LinkedList可以看做为一个双向链表，LinkedList也是线程不安全的，在LinkedList的内部实现中，并不是用普通的数组来存放数据的，而是使用结点\<Node\>来存放数据的，有一个指向链表头的结点first和一个指向链表尾的结点last。LinkedList的**插入**方法的效率要高于ArrayList，但是**查询**的效率要低一点。
+
+- Vector也是一个类似于ArrayList的可变长度的数组类型，它的内部也是使用数组来存放数据对象的。值得注意的是Vector与ArrayList唯一的区别是，Vector是线程安全的。在扩展容量的时候，Vector是扩展为原来的2倍，而ArrayList是扩展为原来的1.5倍。
+
+
+
+
 

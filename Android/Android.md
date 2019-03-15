@@ -245,6 +245,18 @@ public void onCreate() {
 
 > onAttach -> onCreate  -> onCreateView -> onActivityCreate -> onStart -> onResume -> onPause -> onStop -> onDestoryView -> onDestory -> onDetach
 
+1. 把Fragment对象跟Activity关联时，调用onAttach(Activity)方法；
+
+2. Fragment对象的初始创建时，调用onCreate(Bundle)方法；
+
+3. onCreateView(LayoutInflater, ViewGroup, Bundle)方法用于创建和返回跟Fragment关联的View对象；
+
+4. onActivityCreate(Bundle)方法会告诉Fragment对象，它所依附的Activity对象已经完成了Activity.onCreate()方法的执行；
+
+5. onStart()方法会让Fragment对象显示给用户（在包含该Fragment对象的Activity被启动后）；
+
+6. onResume()会让Fragment对象跟用户交互（在包含该Fragment对象的Activity被启恢复后）。
+
 ##### 遇到过哪些关于Fragment的问题，如何处理的
 
 > 举例：getActivity()空指针：这种情况一般发生在在异步任务里调用getActivity()，而Fragment已经onDetach()。
@@ -2142,7 +2154,98 @@ public class GrayService extends Service {
 }
 ```
 
+## Android中的内存管理
 
+从操作系统的角度来说，内存就是一块数据存储区域，是可被操作系统调度的资源。在多任务（进程）的OS中，内存管理尤为重要，OS需要为每一个进程合理的分配内存资源。所以可以从OS对内存和回收两方面来理解内存管理机制。
+
+- 分配机制：为每一个任务（进程）分配一个合理大小的内存块，保证每一个进程能够正常的运行，同时确保进程不会占用太多的内存。
+- 回收机制：当系统内存不足的时候，需要有一个合理的回收再分配机制，以保证新的进程可以正常运行。回收时杀死那些正在占用内存的进程，OS需要提供一个合理的杀死进程机制。
+
+同样作为一个多任务的操作系统，Android系统对内存管理有有一套自己的方法，手机上的内存资源比PC更少，需要更加谨慎的管理内存。理解Android的内存分配机制有助于我们写出更高效的代码，提高应用的性能。
+
+下面分别从 **分配** 和 **回收** 两方面来描述Android的内存管理机制：
+
+### 分配机制
+
+Android为每个进程分配内存时，采用弹性的分配方式，即刚开始并不会给应用分配很多的内存，而是给每一个进程分配一个“够用”的内存大小。这个大小值是根据每一个设备的实际的物理内存大小来决定的。随着应用的运行和使用，Android会为进程分配一些额外的内存大小。但是分配的大小是有限度的，系统不可能为每一个应用分配无限大小的内存。
+
+总之，Android系统需要**最大限度的让更多的进程存活在内存中**，以保证用户再次打开应用时减少应用的启动时间，提高用户体验。
+
+### 回收机制
+
+Android对内存的使用方式是“尽最大限度的使用”，只有当内存不足的时候，才会杀死其它进程来回收足够的内存。但Android系统否可能随便的杀死一个进程，它也有一个机制杀死进程来回收内存。
+
+Android杀死进程有两个参考条件：
+
+**1. 进程优先级**
+
+Android为每一个进程分配了优先组的概念，优先组越低的进程，被杀死的概率就越大。根据进程的重要性，划分为5级：
+
+1）前台进程(Foreground process)
+
+用户当前操作所必需的进程。通常在任意给定时间前台进程都为数不多。只有在内存不足以支持它们同时继续运行这一万不得已的情况下，系统才会终止它们。
+
+2）可见进程(Visible process)
+
+没有任何前台组件、但仍会影响用户在屏幕上所见内容的进程。可见进程被视为是极其重要的进程，除非为了维持所有前台进程同时运行而必须终止，否则系统不会终止这些进程。
+
+3）服务进程(Service process)
+
+尽管服务进程与用户所见内容没有直接关联，但是它们通常在执行一些用户关心的操作（例如，在后台播放音乐或从网络下载数据）。因此，除非内存不足以维持所有前台进程和可见进程同时运行，否则系统会让服务进程保持运行状态。
+
+4）后台进程(Background process)
+
+后台进程对用户体验没有直接影响，系统可能随时终止它们，以回收内存供前台进程、可见进程或服务进程使用。 通常会有很多后台进程在运行，因此它们会保存在 **LRU 列表**中，以确保包含用户最近查看的 Activity 的进程最后一个被终止。如果某个 Activity 正确实现了生命周期方法，并保存了其当前状态，则终止其进程不会对用户体验产生明显影响，因为当用户导航回该 Activity 时，Activity 会恢复其所有可见状态。
+
+5）空进程(Empty process)
+
+不含任何活动应用组件的进程。保留这种进程的的唯一目的是用作缓存，以缩短下次在其中运行组件所需的启动时间。 为使总体系统资源在进程缓存和底层内核缓存之间保持平衡，系统往往会终止这些进程。
+
+通常，前面三种进程不会被杀死。
+
+**2. 回收收益**
+
+当Android系统开始杀死LRU缓存中的进程时，系统会判断每个进程杀死后带来的回收收益。因为Android总是倾向于杀死一个能**回收更多内存的进程**，从而可以杀死更少的进程，来获取更多的内存。杀死的进程越少，对用户体验的影响就越小。
+
+### 为什么App要符合内存管理机制？
+
+在Android系统中，符合内存管理机制的App，对Android系统和App来说，是一个双赢的过程。如何每一个App都遵循这个规则，那么Android系统会更加流畅，也会带来更好的用户体验，App也可以更长时间的驻留在内存中。
+
+如果真的需要很多内存，可以采用**多进程**的方式。
+
+### 如何编写符合Android内存管理机制的App？
+
+一个遵循Android内存管理机制的App应该具有以下几个特点：
+
+1）更少的占用内存；
+
+2）在合适的时候，合理的释放系统资源。
+
+3）在系统内存紧张的情况下，能释放掉大部分不重要的资源，来为Android系统提供可用的内存。
+
+4）能够很合理的在特殊生命周期中，保存或者还原重要数据，以至于系统能够正确的重要恢复该应用。
+
+因此，在开发过程中要做到：
+
+- 避免创建不必要的对象。
+- 在合适的生命周期中，合理的管理资源。
+- 在系统内存不足时，主动释放更多的资源。
+
+### 开发时，应该如何注意App的内存管理呢？
+
+1）减少内存资源占用
+
+比如，使用StringBuffer，int等更少内存占用的数据结构。
+
+2）内存溢出
+
+主要是Bitmap。解决办法是：减少每个对象占用的内存，如图片压缩等；申请大内存。
+
+3）内存泄露
+
+内存泄露是指**本来该被GC回收后还给系统的内存，并没有被GC回收**。多数是因为不合理的对象引用造成的。
+
+解决这种问题：1、通过各种内存分析工具，比如MAT，分析运行时的内存映像文件，找出造成内存泄露的代码，并修改。2、适当的使用WeakReference。
 
 ## Activity、View及Window之间关系
 
@@ -2904,11 +3007,8 @@ public class MainActivity extends ActionBarActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         final LooperThread looperThread = new LooperThread();
-
         looperThread.start();
-
         btnObj.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -2919,25 +3019,18 @@ public class MainActivity extends ActionBarActivity {
                 num++;
             }
         });
-
-
     }
 
     class LooperThread extends Thread {
-
         public Handler handler;
-
         @Override
         public void run() {
             super.run();
-
             Looper.prepare();
-
             handler = new Handler() {
                 @Override
                 public void handleMessage(Message msg) {
                     super.handleMessage(msg);
-
                     Toast.makeText(MainActivity.this,"LooperThread handler 收到消息 ："+msg.arg1,Toast.LENGTH_LONG).show();
                     Log.i(MyTag, "LooperThread handler 收到消息 ：" + msg.arg1);
                 }
@@ -2954,8 +3047,6 @@ public class MainActivity extends ActionBarActivity {
 
 > 1. 外部：通过adb shell 命令导出内存，借助工具分析
 > 2. 内部：通过将对象加入WeakReference，配合ReferenceQueue观察对象是否被回收，被回收的对象会被加入到RefernceQueue中
-
-
 
 ## **TCP和UPD的区别以及使用场景**
 
