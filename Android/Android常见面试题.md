@@ -481,6 +481,8 @@ Parcelable 是 Android 特有的序列化接口，方法是实现Parcelable接�
 
 区别：
 
+两者最大的区别在于 **存储媒介的不同**，`Serializable` 使用 **I/O 读写存储在硬盘上**，而 `Parcelable` 是直接 **在内存中读写**。很明显，内存的读写速度通常大于 IO 读写，所以在 Android 中传递数据优先选择 `Parcelable`。
+
 Serializable:
 
 1.Serializable是java提供的可序列化接口
@@ -498,6 +500,12 @@ Parcelable:
 2.Serializable: 对象序列化到存储设备中、在网络中传输等，在需要保存或网络传输数据时选择
 
 因为android不同版本`Parcelable`可能不同，所以不推荐使用`Parcelable`进行数据持久化。
+
+## 在两个 Activity 之间传递对象还需要注意什么呢？
+
+两个Activity之间一般采用 `Intent.putXXX()` 就可以实现各种轻量级数据的传递。对于自定义的 Object ，
+
+直接使用 `Bundle` 的 `putSerializable()` 或者Bundle.putParcelable()即可，当然对象实现 `Serializable` 或者Parcelable接口，最后使用 `Intent.putExtras(Bundle)` 把数据放进 `Intent` 即可，一般用Parcleable比较高效，需要注意的是**对象的大小**，`Intent` 中的 `Bundle` 是使用 `Binder` 机制进行数据传送的。能使用的 Binder 的缓冲区是有大小限制的（有些手机是 2 M），而一个进程默认有 16 个 `Binder` 线程，所以一个线程能占用的缓冲区就更小了（ 有人以前做过测试，大约一个线程可以占用 128 KB）。所以当你看到 `The Binder transaction failed because it was too large` 这类 `TransactionTooLargeException` 异常时，你应该知道怎么解决了。
 
 ***
 
@@ -839,7 +847,7 @@ fragment的生命周期：onAttach——>onCreate——>onCreateView——>onVie
 
 5)使用tinypng进行图片压缩 
 
-6)使用webp图片格式,进一步压缩图片资源
+6)**使用webp图片格式,进一步压缩图片资源**
 
  7)使用第三方包时把用到的代码加到项目中来,避免引用整一个第三方库
 
@@ -1924,8 +1932,6 @@ C++支持多继承，java不支持多继承，但是引入了接口的概念。
 
 ### AsyncTask是否可以异步？为什么？有没有看过AsyncTask的源码？（字节跳动-抖音-三面Leader面）
 
-
-
 ### 介绍一下http协议（字节跳动-抖音-三面Leader面）
 
 ### http各个状态码的意义（字节跳动-抖音-三面Leader面）
@@ -1948,9 +1954,16 @@ URL 重定向，也称为 URL 转发，是一种当实际资源，如单个页�
 
 一个二维数组，数组中的内容非0即1，0代表海洋，1代表陆地，求所给二维数组代表的区域中陆地面积的最大值。
 
+### android中如何计算当前view的子view的数量？（字节跳动-抖音-四面）
+
+```java
+ViewGroup viewGroup= (ViewGroup) view;
+viewGroup.getChildCount();
+```
+
+先转化为viewGroup，再调用其getChildCount方法。
+
 ### okhttp中连接池的最大数量，连接池的实现原理（腾讯-微信-一面）
-
-
 
 ### 有两个View：view1和view2，view2在view1上面且比view1小，如何判断点击view1之内的屏幕是应该由view1处理事件还是由view2处理（腾讯-微信-一面）
 
@@ -2171,6 +2184,122 @@ Android为每一个进程分配了优先组的概念，优先组越低的进程�
 ### ArrayList和LinkedList的区别？各自的使用场景？（蚂蚁金服-支付宝-一面）
 
 ### Java gc机制介绍（蚂蚁金服-支付宝-一面）
+
+### 如何对APK瘦身?(腾讯-音视频实验室-一面)
+
+- 使用混淆
+
+- 删除无用的语言资源(删除国际化文件) 
+
+- **使用webp图片格式,进一步压缩图片资源**
+
+- 使用第三方包时把用到的代码加到项目中来,避免引用整一个第三方库
+- 通过网络下载个别资源
+
+### java和c/c++在编译运行上有什么异同点？(腾讯-音视频实验室-一面)
+
+任何一门计算机高级语言都会最终编成**机器码**（也就是二进制）以后，才会被计算机所识别。其中，与机器码最为接近的就是汇编了，而Java和C++都会直接或间接的变成汇编之后，然后在运行。
+
+对于像c,c++这类高级计算机语言来说，它们的编译器（例如：Unix的CC命令，Windows的CL命令）都是直接把源码**直接编译成计算机可以认识的机器码**，如exe，dll之类的文件，然后直接运行即可。
+
+Java语言的跨平台是它的最大亮点之一，为了达到平台惯性，它就不得不多一个中间步骤，也就是生成**字节码文件**。对于一个Java源文件来说，需要用javac命令把源文件编译成class文件，这个class文件是计算机无法直接识别的，但是却可以被Java虚拟机所认识，所以在运行一个Java程序的时候，肯定是要启动一个Java虚拟机，然后在由虚拟机去加载这些class文件，如图所示：
+
+![1](https://ws4.sinaimg.cn/large/006tKfTcgy1g14nbug5s8j30l00a1747.jpg)
+
+
+
+注意：class文件指的是字节码文件，而不专指类编译后的文件，不管是类，接口，枚举或其他类型，都是编译成class文件的。
+
+所以：
+
+c++源码编译以后，生成的是特定机器可以直接运行的文件，而Java源码经过编译后，生成的是中间的字节码文件，这些字节码文件是需要放在JVM中运行的，而JVM是有多个平台版本的。因此，Java是具有跨平台的，而C++没有。
+
+### String类为什么具有不可变性？其如何实现不可变性的？
+
+首先明确什么是不可变对象：
+
+如果一个对象在创建之后就不能再改变它的状态，那么这个对象是不可变的（Immutable）。不能改变状态的意思是，不能改变对象内的成员变量，包括基本数据类型变量的值不能改变，引用类型的变量不能指向其他的对象，引用类型指向的对象的状态也不能改变。
+
+关于final关键字的特性：
+
+如果要创建一个不可变对象，关键一步就是要将所有的成员变量声明为final类型。所以下面简单回顾一下final关键字的作用：
+
+- final修饰类，表示该类不能被继承，俗称断子绝孙类，该类的所有方法自动地成为final方法
+- final修饰方法，表示子类不可重写该方法
+- final修饰基本数据类型变量，表示该变量为常量，值不能再修改
+- final修饰引用类型变量，表示该引用在构造对象之后不能指向其他的对象，但该引用指向的对象的状态可以改变
+
+我们可能经常会看到这样的代码：
+
+```java
+String s = "abc";    //(1)
+System.out.println("s = " + s);
+
+s = "123";    //(2)
+System.out.println("s = " + s);
+```
+
+嗯？s被重新赋值了？不是说不可变吗？其实不可变性说的是String本身，并不是s，s只是一个指向String类型的引用，对s二次赋值底层其实是又new了一个String然后让s指向新new出来的String对象，String不可变指的是String对象被创建后其内部的成员变量的值都不能再改变了，在这里主要就是char[] value中的内容不可再改变。
+
+那么String不可变是如何实现的？
+
+- 将String类修饰为final的，保证其不能被继承，防止由于继承破坏其不可变性
+- 将所有成员变量都修饰为private final的，private保证了外部不可修改，final保证了内部也不能修改value指向的引用，但是value内部的值还是可以被改变的鸭？所以String通过在所有方法里都不去主动修改valu中值这个原则来保证String的不可变性
+
+事实上，我们可以通过反射机制来破坏String的不可变性：
+
+```java
+String s = "Hello World";
+System.out.println("s = " + s);
+
+//获取String类中的value属性
+Field valueField = String.class.getDeclaredField("value");
+
+//改变value属性的访问权限
+valueField.setAccessible(true);
+
+//获取s对象上的value属性的值
+char[] value = (char[]) valueField.get(s);
+
+//改变value所引用的数组中的第6个字符
+value[5] = '_';
+System.out.println("s = " + s);
+```
+
+String不可变有什么好处？
+
+- 运行时常量池的需要，java中，比如先创建了String a=“11“，然后创建了String b=”11“，这时java不会去新开辟一块内存，而是会把b指向和a一样的地址空间，如果String可变，那么当a改变之后会影响b的值，这样不安全
+- 由于String是不可变的，所以是线程安全的，同一个String可以被多个线程共享
+- 允许String缓存hashCode，String源码中有一个hashCode的属性，作用是缓存器hash值，如果String值改变了，之前缓存的hash值就没有意义了。
+- 安全性，比如用户名密码等都是String，如果由于人为不小心改变导致用户密码错误会引发安全性。
+
+### String是object的子类，那么String[]是不是Object的子类？为什么？
+
+String[]也是Object的子类，如果调用b.getClass().getSuperclass()会打印出Object。
+
+### 自定义View的流程？
+
+
+
+### 屏幕上有view1 view2 view3，其绘制流程？
+
+### 如何实现一个圆，其下四分之一加上蒙层的效果？（path）
+
+### 在AThread中调用BThread.sleep()，休眠的是哪个线程？
+
+### java中类的某些成员变量没有被用到，是否可以随意删除？
+
+### NDK中的局部变量如果不手动释放一定没问题吗？
+
+### 链表的反转
+
+### 20亿个qq号码，如何判断其中是否存在某一个？
+
+### ndk中的external c有什么用？
+
+### ndk中的attachCurrentThread有什么用？
+
+### invalidate()和postInvalidate() 以及requestLayout（）的区别
 
 # 关于项目
 

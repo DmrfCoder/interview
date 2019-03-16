@@ -275,6 +275,10 @@ public void onCreate() {
 
 ### Service
 
+可以将 Service 在 `AndroidMenifest.xml` 文件中配置成私有的，不允许其他应用访问，即将 `android:exported` 属性设为 false，表示不允许其他应用程序启动本应用的组件，即便是显式 Intent 也不行（even when using an explicit intent）。这可以防止其他应用程序启动您的 Service 组件。
+
+Service 运行在主线程中，它并不是一个新的线程，也不是新的进程，所以并不能执行耗时操作。
+
 ####  [Service 和Activity的通信方式](https://www.cnblogs.com/JMatrix/p/8296364.html)
 
 实例化一个ServiceConnection并重写其`onServiceConnected(ComponentName componentName, IBinder iBinder) `，在sevice的onbind方法中返回我们自定义的Binder，自定义的Bindler构造方法中传入service，然后通过在binder中设立addListener的方法就可以在activity中调用addListener并传入activity中的addListener，这样在自定义的binder中就可以同时具有service对象和activity的listener对象，这样就可以灵活通信了。
@@ -294,8 +298,9 @@ public void onCreate() {
 
 #### [IntentService](https://link.juejin.im?target=https%3A%2F%2Fwww.jianshu.com%2Fp%2F332b6daf91f0)
 
-> 1. IntentService 是继承自 Service,内部通过**HandlerThread**启动一个新线程处理耗时操作，可以看做是Service和HandlerThread的结合体，在完成了使命之后会自动停止，适合需要在工作线程处理UI无关任务的场景
-> 2. 如果启动 IntentService 多次，那么每一个耗时操作会以工作队列的方式在 IntentService 的 onHandleIntent 回调方法中执行，依次去执行，使用串行的方式，执行完自动结束
+> `IntentService` 继承于 `Service`，若 Service 不需要同时处理多个请求，那么使用 `IntentService` 将是最好选择。你只需要重写 `onHandleIntent()` 方法，该方法接收一个回调的 Intent 参数，你可以在方法内进行耗时操作，因为它默认开启了一个子线程，操作执行完成后也无需手动调用 `stopSelf()` 方法，`onHandleIntent()` 将会自动调用该方法。
+>
+> 如果启动 IntentService 多次，那么每一个耗时操作会以工作队列的方式在 IntentService 的 onHandleIntent 回调方法中执行，依次去执行，使用串行的方式，执行完自动结束
 
 ##### Demo
 
@@ -899,6 +904,34 @@ RecyclerView 与 ListView 类似，都是通过缓存view提高性能，但是Re
 > 1. invalidate 会调用onDraw进行重绘，只能在主线程
 > 2. postInvalidate 可以在其他线程
 > 3. requestLayout会调用onLayout和onMeasure，不一定会调用onDraw
+
+
+
+### Activity、View及Window之间关系
+
+![image-20190315211152295](https://ws2.sinaimg.cn/large/006tKfTcgy1g13sf5mfzcj30r010yk1t.jpg)
+
+**每个 Activity 包含了一个 Window 对象，这个对象是由 PhoneWindow 做的实现。而 PhoneWindow 将 DecorView 作为了一个应用窗口的根 View，这个 DecorView 又把屏幕划分为了两个区域：一个是 TitleView，一个是 ContentView，而我们平时在 Xml 文件中写的布局正好是展示在 ContentView 中的。**
+
+而当我们运行程序的时候，有一个setContentView()方法，Activity其实不是显示视图（直观上感觉是它），实际上Activity调用了PhoneWindow的setContentView()方法，然后加载视图，将视图放到这个Window上，而Activity其实构造的时候初始化的是Window（PhoneWindow），Activity其实是个控制单元，即可视的人机交互界面。
+
+打个比喻：
+
+Activity是一个工人，它来控制Window；Window是一面显示屏，用来显示信息；View就是要显示在显示屏上的信息，这些View都是层层重叠在一起（通过infalte()和addView()）放到Window显示屏上的。而LayoutInfalter就是用来生成View的一个工具，XML布局文件就是用来生成View的原料
+
+再来说说代码中具体的执行流程
+
+```java
+setContentView(R.layout.main)其实就是下面内容。（注释掉本行执行下面的代码可以更直观）
+
+getWindow().setContentView(LayoutInflater.from(this).inflate(R.layout.main, null))
+```
+
+即运行程序后，Activity会调用PhoneWindow的setContentView()来生成一个Window，而此时的setContentView就是那个最底层的View。然后通过LayoutInflater.infalte()方法加载布局生成View对象并通过addView()方法添加到Window上，（一层一层的叠加到Window上）
+
+所以，Activity其实不是显示视图，View才是真正的显示视图
+
+注：一个Activity构造的时候只能初始化一个`Window(PhoneWindow)`，另外这个PhoneWindow有一个”ViewRoot”，这个”ViewRoot”是一个View或ViewGroup，是最初始的根视图，然后通过addView方法将View一个个层叠到ViewRoot上，这些层叠的View最终放在Window这个载体上面
 
 ### 更新UI方式
 
@@ -1575,8 +1608,6 @@ ListView的实现离不开Adapter。可以这么理解：ListView中给出了数
 
 Android的UI控件不是线程安全的，在多线程中并发访问可能出现问题，比如A线程在t时刻想让textview1显示`demoa`，B线程并发地同时在t时刻想让textview1显示`demob`，这个时候就不知道该听谁的，所以索性都不给他们更新UI的权利，想要更新UI必须向UI线程发起请求，这样就不会出现并发访问的矛盾问题了。
 
-
-
 ## Android中的Handler机制（Android消息机制）
 
 Android消息机制主要是指Handler的运行机制及Handler所附带的MessageQueue和Looper的工作过程
@@ -2069,7 +2100,7 @@ Android 系统将尽量长时间地保持应用进程，但为了新建进程或
 
 #### 可见进程
 
-没有任何前台组件，但仍会影响用户在屏幕上所见内容的进程。 可见进程是一些不再前台，但用户依然可见的进程，举个例来说：widget、输入法等，都属于visible。这 部分进程虽然不在前台，但与我们的使用也密切相关，我们也不希望它们被终止（你肯定不希望时钟、天气，新闻等widget被终止，那它们将无法同步，你也 不希望输入法被终止，否则你每次输入时都需要重新启动输入法）
+没有任何前台组件，但仍会影响用户在屏幕上所见内容的进程。 可见进程是一些不在前台，但用户依然可见的进程，举个例来说：widget、输入法等，都属于visible。这 部分进程虽然不在前台，但与我们的使用也密切相关，我们也不希望它们被终止（你肯定不希望时钟、天气，新闻等widget被终止，那它们将无法同步，你也 不希望输入法被终止，否则你每次输入时都需要重新启动输入法）
 
 可见进程被视为是极其重要的进程，除非为了维持所有前台进程同时运行而必须终止，否则系统不会终止这些进程。
 
@@ -2246,28 +2277,6 @@ Android为每一个进程分配了优先组的概念，优先组越低的进程�
 内存泄露是指**本来该被GC回收后还给系统的内存，并没有被GC回收**。多数是因为不合理的对象引用造成的。
 
 解决这种问题：1、通过各种内存分析工具，比如MAT，分析运行时的内存映像文件，找出造成内存泄露的代码，并修改。2、适当的使用WeakReference。
-
-## Activity、View及Window之间关系
-
-而当我们运行程序的时候，有一个setContentView()方法，Activity其实不是显示视图（直观上感觉是它），实际上Activity调用了PhoneWindow的setContentView()方法，然后加载视图，将视图放到这个Window上，而Activity其实构造的时候初始化的是Window（PhoneWindow），Activity其实是个控制单元，即可视的人机交互界面。
-
-打个比喻：
-
-Activity是一个工人，它来控制Window；Window是一面显示屏，用来显示信息；View就是要显示在显示屏上的信息，这些View都是层层重叠在一起（通过infalte()和addView()）放到Window显示屏上的。而LayoutInfalter就是用来生成View的一个工具，XML布局文件就是用来生成View的原料
-
-再来说说代码中具体的执行流程
-
-```java
-setContentView(R.layout.main)其实就是下面内容。（注释掉本行执行下面的代码可以更直观）
-
-getWindow().setContentView(LayoutInflater.from(this).inflate(R.layout.main, null))
-```
-
-即运行程序后，Activity会调用PhoneWindow的setContentView()来生成一个Window，而此时的setContentView就是那个最底层的View。然后通过LayoutInflater.infalte()方法加载布局生成View对象并通过addView()方法添加到Window上，（一层一层的叠加到Window上）
-
-所以，Activity其实不是显示视图，View才是真正的显示视图
-
-注：一个Activity构造的时候只能初始化一个`Window(PhoneWindow)`，另外这个PhoneWindow有一个”ViewRoot”，这个”ViewRoot”是一个View或ViewGroup，是最初始的根视图，然后通过addView方法将View一个个层叠到ViewRoot上，这些层叠的View最终放在Window这个载体上面
 
 ## Intent
 
