@@ -1,5 +1,123 @@
 # Java
 
+## java中的数据类型
+
+变量就是申请内存来存储值。也就是说，当创建变量的时候，需要在内存中申请空间。
+
+内存管理系统根据变量的类型为变量分配存储空间，分配的空间只能用来储存该类型数据。
+因此，通过定义不同类型的变量，可以在内存中储存整数、小数或者字符。
+
+Java的两大数据类型:
+
+### 内置数据类型(基本数据类型)
+
+　　1 六种数字类型 ( byte, short, int, long, float, double)      +   void
+
+　　　　　　　　　     8      16     32   64     32     64    位
+
+　　2 一种字符类型  char
+
+　　　　　　　　　　16位Unicode字符
+
+　　3 一种布尔型    boolean
+
+　　　　　　　　　　1位
+
+### 关于Integer
+
+对于两个非new生成的Integer对象，进行比较时，如果两个变量的值在区间-128到127之间，则比较结果为true，如果两个变量的值不在此区间，则比较结果为false
+
+```java
+Integer i = 100;
+Integer j = 100;
+System.out.print(i == j); //true
+
+Integer i = 128;
+Integer j = 128;
+
+System.out.print(i == j); //false
+```
+
+ java在编译Integer i = 100 ;时，会翻译成为Integer i = Integer.valueOf(100)。而java API中对Integer类型的valueOf的定义如下，对于-128到127之间的数，会进行缓存，Integer i = 127时，会将127进行缓存，下次再写Integer j = 127时，就会直接从缓存中取，就不会new了。
+
+```java
+public static Integer valueOf(int i){
+    assert IntegerCache.high >= 127;
+    if (i >= IntegerCache.low && i <= IntegerCache.high){
+        return IntegerCache.cache[i + (-IntegerCache.low)];
+    }
+    return new Integer(i);
+
+}
+```
+
+
+
+### 引用数据类型
+
+　　引用类型变量由类的构造函数创建，可以使用它们访问所引用的对象。这些变量在声明时被指定为一个特定的类型。变量一旦声明后，类型就不能被改变了。
+
+对象、数组都是引用数据类型，所有引用类型的默认值都是null。
+
+ 基本数据类型只能按值传递，而封装类按引用传递。
+
+ Void无返回值类型，作为伪类型对应类的对象，也被认为是 基本数据类型
+
+## java中的修饰符
+
+![image-20190317190424510](https://ws4.sinaimg.cn/large/006tKfTcgy1g15zy29r4oj30hu0b4jsn.jpg)
+
+## 关于static
+
+static修饰符表示静态的，在类加载时Jvm会把它放到**方法区**，被本类以及本类的所有实例所共用。在编译后所分配的内存会**一直存在**，直到程序退出内存才会释放这个空间。如果一个被所有实例共用的方法被申明为static，那么就可以节省空间，不用每个实例初始化的时候都被分配到内存。
+
+java类被加载过程：
+
+类装载器把一个类装入Java虚拟机中，要经过三个步骤来完成：
+
+ ①加载（以二进制形式来生成Class对象） 
+
+ ②链接（又分为验证、准备和解析） 　　　　
+
+ 	校验：检查导入类或接口的二进制数据的正确性； 　　　　
+
+​	 准备：**给类的静态变量分配并初始化存储空间**； 　　　　
+
+​	 解析：将符号引用转成直接引用； 
+
+③初始化（**激活类的静态变量和静态代码块**、初始化Java代码）
+
+- 静态变量
+
+- 静态方法
+
+- 静态代码块
+
+  静态代码块就是在类加载器加载对象时，要执行的一组语句。静态块只会在类加载到内存中的时候执行一次，位置可以随便放，如果static代码块有多个，JVM将按照它们在类中出现的先后顺序依次执行它们，每个代码块只会被执行一次。
+
+  ```
+  static{
+      //在类被加载的时候用于初始化资源，仅能访问静态变量和静态方法
+      System.out.println("StaticExample static block");
+  }
+  ```
+
+- 静态类
+
+  **只能在内部类中定义静态类**，静态内部类与外层类绑定，即使没有创建外层类的对象，它一样存在。静态类的方法可以是静态的方法也可以是非静态的方法，静态的方法可以在外层通过静态类调用，而非静态的方法必须要创建类的对象之后才能调用。只能引用外部类的static成员变量（也就是类变量），当然前提是满足修饰关键字（public等）的可见性要求。
+
+  　　如果一个内部类不是被定义成静态内部类，那么**在定义成员变量或者成员方法的时候，是不能够被定义成静态的。** 　　
+
+  ```java
+  public class OuterClass {  
+      public static class InnerClass{  
+          InnerClass(){  
+              System.out.println("静态内部类");  
+          }  
+      }  
+  }  
+  ```
+
 ## 面向对象基础
 
 面向对象三要素：封装、继承、多态
@@ -106,6 +224,18 @@ Java中接口是用interface修饰的类。
 
 PS: 接口就是虚到极点的抽象类。
 
+### 抽象类和接口的区别
+
+接口不是类，抽象类是一个功能不齐全的类，都不能实例化对象。
+
+一个类可以实现（implements）多个接口。一个类只能继承（extends）一个抽象类。
+
+接口没有构造函数，所有方法都是 public abstract的，一般不定义成员变量。（所有的成员变量都是 static final ，而且必须显示初始化）。 　　抽象类除了不能实例化对象之外，类的其它功能依然存在，成员变量、成员方法和构造方法的访问方式和普通类一样。
+
+一个实现接口的类，必须实现接口内所描述的所有方法（**所有方法都是抽象的方法**），否则就必须声明为抽象类。　 　　
+
+如果一个类包含抽象方法，那么该类必须是抽象类。任何子类必须重写父类的抽象方法，或者声明自身为抽象类。
+
 ###  小结
 
 C++虚函数    ==  Java普通函数
@@ -151,9 +281,53 @@ C++虚基类    ==  Java接口
 | = += -= *= /= %= &= \|= ^= <<= >>= >>= | 从右向左 |
 | ，                                     | 从左到右 |
 
+## Object有哪些公用方法？**
+
+`protected Object clone() `创建并返回此对象的一个副本。
+
+`boolean equals(Object obj) `指示其他某个对象是否与此对象“相等”。
+
+`protected void finalize() `当垃圾回收器确定不存在对该对象的更多引用时，由对象的垃圾回收器调用此方法。
+
+`Class getClass()` 返回此 Object 的运行时类。
+
+`int	hashCode() `返回该对象的哈希码值。
+
+`void	notify() `唤醒在此对象监视器上等待的单个线程。
+
+`void	notifyAll() `唤醒在此对象监视器上等待的所有线程。
+
+`String	toString() `返回该对象的字符串表示。
+
+`void	wait() `在其他线程调用此对象的 notify() 方法或 notifyAll() 方法前，导致当前线程等待。
+
+`void	wait(long timeout) `在其他线程调用此对象的 notify() 方法或 notifyAll() 方法，或者超过指定的时间量前，导致当前线程等待。
+
+`void	wait(long timeout, int nanos)` 在其他线程调用此对象的 notify() 方法或 notifyAll() 方法，或者其他某个线程中断当前线程，或者已超过某个实际时间量前，导致当前线程等待。
+
+## Java和C++的对比**
+
+- 多继承
+- 内存管理
+- Java 没有函数，作为一个比 C++更纯的面向对象的语言。Java 强迫开发人员把所有例行程序包括在类中。事实上，用方法实现例行程序可激励开发人员更好地组织编码
+- goto语句
+- 数据类型转换，在 C 和 C++中，有时出现数据类型的隐含转换，这就涉及了自动强制类型转换问题。例如，在 C++中可将一个浮点值赋予整型变量，并去掉其尾数。Java 不支持 C++中的自动强制类型转换，如果需要，必须由程序显式进行强制类型转换。 
+
 ## 集合框架
 
-Java集合框架提供了数据持有对象的方式，提供了对数据集合的操作。Java集合框架位于`java.util`包下，主要有三个大类：`Collection`、`Map`接口以及对集合进行操作的工具类。
+java集合框架的组成部分：
+
+![2](https://ws3.sinaimg.cn/large/006tKfTcgy1g15n7q3wgzj30s10g4dhp.jpg)
+
+### Collection和Collections的区别
+
+Collection：
+
+![1](https://ws2.sinaimg.cn/large/006tKfTcgy1g15n3fl6rfj30h2067q31.jpg)
+
+Collection是集合继承结构中的顶层接口（interface），其是Iterable的子类。
+
+Collections 是提供了对集合进行操作的强大方法的工具类 ，它包含有各种有关集合操作的静态多态方法。此类不能实例化（其构造函数是private的，该类中的方法都是static的可以直接调用）
 
 ### Collection
 
@@ -346,6 +520,84 @@ public void wildcard(List<?> list) {
 - **当泛型类的类型声明中使用了通配符的时候，其子类型可以在两个维度上分别展开**。如对`Collection<? extends Number>`来说，其子类型可以在`Collection`这个维度上展开，即`List<? extends Number>`和`Set<? extends Number>`等；也可以在`Number`这个层次上展开，即`Collection<Double>`和`Collection<Integer>`等。如此循环下去，`ArrayList<Long>`和 `HashSet<Double>`等也都算是`Collection<? extends Number>`的子类型。
 - 如果泛型类中包含多个类型参数，则对于每个类型参数分别应用上面的规则。
 
+## ==和equals的区别
+
+== 是一个运算符。 equals则是string对象的方法。
+
+java中 **值类型**的变量（即基本的诸如int、float等） 是存储在内存中的**栈**中。 而**引用类型**（对象）在栈中仅仅是存储引用类型变量的地址，而其本身则存储在**堆**中。所以字符串的内容相同，引用地址不一定相同，有可能创建了多个对象。
+
+String类是不可变类
+String s = "Hello";   //--1
+String s1=new String("World");//---2
+方式1是申请的变量存放在常量池中的，这是java的性能优化所做的。也就是说每创建一个字符串，虚拟机就要创建一个新的对象，因为String是不可变类，因此，虚拟机做出优化，将字符串放入常量池，实现对不同字符串的引用。
+第二种方法是使用new创建的对象，那么会在堆区申请内存，对于大量的这样的操作，这个开销是很大的，所以不建议使用第二种方式。
+
+所以对于：
+
+```
+String a = "123";
+String b = "123";
+System.out.println(a == b);
+System.out.println(a.equals(b));
+```
+
+会输出两个true
+
+但是对于：
+
+```
+String a = new String("123");
+String b = new String("123");
+System.out.println(a == b);
+System.out.println(a.equals(b));
+```
+
+会输出false和true。
+
+## try..catch..finally中如果try或者catch中进行了return，finally是否还会执行？
+
+- 如果try中**没有异常**且try中**有return** （执行顺序）
+
+```
+try ---- finally --- return
+```
+
+- 如果try中**有异常**并且try中**有return**
+
+```
+try----catch---finally--- return
+```
+
+总之 finally 永远执行！
+
+- try中有异常，try-catch-finally里都没有return ，finally 之后有个return
+
+```
+try----catch---finally
+```
+
+try中有异常以后，根据java的异常机制先执行catch后执行finally，此时错误异常已经抛出，程序因异常而终止，所以**你的return是不会执行的**
+
+- 当 try和finally中都有return时，finally中的return会覆盖掉其它位置的return（多个return会报unreachable code，编译不会通过）。
+
+- 当finally中不存在return，而catch中存在return，但finally中要修改catch中return 的变量值时
+
+```
+int ret = 0;
+try{ 
+	throw new Exception();
+}
+catch(Exception e)
+{
+	ret = 1;  return ret;
+}
+finally{
+	ret = 2;
+} 
+```
+
+最后返回值是1，因为return的值在执行finally之前已经确定下来了
+
 ## Java线程
 
 Java 给多线程编程提供了内置的支持。 一条线程指的是进程中一个单一顺序的控制流，一个进程中可以并发多个线程，每条线程并行执行不同的任务。
@@ -393,18 +645,20 @@ Thread.run()和Thread.start()的区别：
 - start（）方法来启动线程，真正实现了多线程运行。这时无需等待run方法体代码执行完毕，可以直接继续执行下面的代码；通过调用Thread类的start()方法来启动一个线程， 这时此线程是处于就绪状态， 并没有运行。 然后通过此Thread类调用方法run()来完成其运行操作的， 这里方法run()称为线程体，它包含了要执行的这个线程的内容， Run方法运行结束， 此线程终止。然后CPU再调度其它线程。
 - run（）方法当作普通方法的方式调用。程序还是要顺序执行，要等待run方法体执行完毕后，才可继续执行下面的代码； 程序中只有主线程这一个线程， 其程序执行路径还是只有一条， 这样就没有达到写线程的目的。
 
-wait和sleep的区别：
+### wait和sleep的区别
 
-Thread有一个sleep()静态方法，它也能使线程暂停一段时间。sleep与wait的不同点是：sleep并不释放锁，并且sleep的暂停和wait暂停是不一样的。obj.wait会使线程进入obj对象的等待集合中并等待唤醒。 
+这两个方法来自不同的类：sleep来自Thread类，而wait来自Object类。 sleep是Thread的**静态方法**，谁调用的谁去睡觉，即使在a线程里调用b的sleep方法，实际上还是a去睡觉，要让b线程睡觉要在b的代码中调用sleep。
 
-但是wait()和sleep()都可以通过interrupt()方法打断线程的暂停状态，从而使线程立刻抛出InterruptedException。 
+对锁: 最主要是sleep方法没有释放锁，而wait方法释放了锁，使得其他线程可以使用同步控制块或者方法。　　 sleep不出让系统资源；wait是进入线程等待池等待，让出系统资源，其他线程可以占用CPU。一般wait不会加时间限制，因为如果wait线程的运行资源不够，再出来也没用，要等待其他线程调用notify/notifyAll唤醒等待池中的所有线程，才会进入就绪队列等待OS分配系统资源。sleep(milliseconds)可以用时间指定使它自动唤醒过来，如果时间不到只能调用interrupt()强行打断。 Thread.sleep(0)的作用是“触发操作系统立刻重新进行一次CPU竞争”。
 
-如果线程A希望立即结束线程B，则可以对线程B对应的Thread实例调用interrupt方法。如果此刻线程B正在wait/sleep/join，则线程B会立刻抛出InterruptedException，在catch() {} 中直接return即可安全地结束线程。 
+使用范围：wait，notify和notifyAll只能在同步控制方法或者同步控制块（synchronized）里面使用，而sleep可以在任何地方使用：
 
-需要注意的是，InterruptedException是线程自己从内部抛出的，并不是interrupt()方法抛出的。对某一线程调用interrupt()时，如果该线程正在执行普通的代码，那么该线程根本就不会抛出InterruptedException。
-
-sleep是线程类（Thread）的方法，导致此线程暂停执行指定时间，给执行机会给其他线程，但是监控状态依然保持，到时后会自动恢复 。**调用sleep不会释放对象锁**。 
-wait是Object类的方法，对此对象调用wait方法导致**本线程放弃对象锁**，进入等待此对象的等待锁定池，只有针对此对象发出notify方 法（或notifyAll）后本线程才进入对象锁定池准备获得对象锁进入运行状态。
+```
+   synchronized(x){ 
+      x.notify() 
+     //或者wait() 
+   }
+```
 
 ### 线程的优先级
 
@@ -596,11 +850,13 @@ public class CallableThreadTest implements Callable<Integer> {
 
 ### 使用线程池的好处
 
-- 减少了创建和销毁线程的次数，每个工作线程都可以被重复利用，可执行多个任务。
+（1）降低资源消耗。通过重复利用已创建的线程降低线程创建和销毁造成的消耗(**每个线程需要大约1MB内存**，线程开的越多，消耗的内存也就越大，最后死机)。； 
 
-- 运用线程池能有效的**控制线程最大并发数**，可以根据系统的承受能力，调整线程池中工作线线程的数目，防止因为消耗过多的内存，而把服务器累趴下(**每个线程需要大约1MB内存**，线程开的越多，消耗的内存也就越大，最后死机)。
+（2）提高响应速度。当任务到达时，任务可以不需要等到线程创建就能立即执行； 
 
-- 对线程进行一些简单的管理，比如：延时执行、定时循环执行的策略等，运用线程池都能进行很好的实现
+（3）提高线程的可管理性。线程是稀缺资源，如果无限制的创建，不仅会消耗系统资源，还会降低系统的稳定性，使用线程池可以进行统一的分配，调优和监控。
+
+（4）对线程进行一些简单的管理，比如：延时执行、定时循环执行的策略等，运用线程池都能进行很好的实现
 
 一个线程池包括以下四个基本组成部分：
 
@@ -731,6 +987,10 @@ ThreadPoolExecutor.CallerRunsPolicy() 重试添加当前的任务，他会自动
   - 所有任务按照指定顺序执行，即遵循队列的入队出队规则
 
   newSingleThreadExecutor创建一个单线程化的线程池，它只会用唯一的工作线程来执行任务，**保证所有任务按照指定顺序(FIFO, LIFO, 优先级)执行**，如果这个唯一的线程因为异常结束，那么会有一个新的线程来替代它。此线程池保证所有任务的执行顺序按照任务的提交顺序执行
+
+### 线程池的监控
+
+通过继承线程池并重写线程池的beforeExecute，afterExecute和terminated方法，我们可以在任务执行前，执行后和线程池关闭前干一些事情。如监控任务的平均执行时间，最大执行时间和最小执行时间等。这几个方法在线程池里是空方法。
 
 ## Jvm架构
 
@@ -1242,7 +1502,7 @@ if(JVM内存不足) {
     str = null;
 ```
 
-如果一个对象是偶尔(很少)的使用，并且希望在使用时随时就能获取到，但又不想影响此对象的垃圾收集，那么你应该用Weak Reference来记住此对象。
+如果一个对象是偶尔(很少)的使用，并且希望在使用时随时就能获取到，但又不想影响此对象的垃圾收集，那么你应该用Weak Reference来记住此对象。一个使用弱引用的例子是WeakHashMap，它是除HashMap和TreeMap之外，Map接口的另一种实现。WeakHashMap有一个特点：map中的键值(keys)都被封装成弱引用，也就是说一旦强引用被删除，WeakHashMap内部的弱引用就无法阻止该对象被垃圾回收器回收。
 
 下面的代码会让一个**弱引用**再次变为一个**强引用**：
 
@@ -1273,6 +1533,14 @@ Threadlocal中的`ThreadLocalMap`的成员变量，`ThreadLocalMap `内部采用
 ```
 
 程序可以通过判断引用**队列**中是否已经加入了**虚引用**，来了解被引用的对象是否将要进行**垃圾回收**。如果程序发现某个虚引用已经被加入到引用队列，那么就可以在所引用的对象的**内存被回收之前**采取必要的行动。
+
+### Android中软引用/弱引用的使用场景
+
+在Android应用的开发中，为了防止内存溢出，在处理一些占用内存大而且声明周期较长的对象时候，可以尽量应用软引用和弱引用技术。 下面以使用软引用为例来详细说明。弱引用的使用方式与软引用是类似的。
+
+假设我们的应用会用到大量的默认图片，比如应用中有默认的头像，默认游戏图标等等，这些图片很多地方会用到。如果每次都去读取图片，由于读取文件需要硬件操作，速度较慢，会导致性能较低。所以我们考虑将图片缓存起来，需要的时候直接从内存中读取。但是，由于图片占用内存空间比较大，缓存很多图片需要很多的内存，就可能比较容易发生OutOfMemory异常。这时，我们可以考虑使用软引用技术来避免这个问题发生。
+
+使用软引用以后，在OutOfMemory异常发生之前，这些缓存的图片资源的内存空间可以被释放掉的，从而避免内存达到上限，避免Crash发生。 需要注意的是，在垃圾回收器对这个Java对象回收前，SoftReference类所提供的get方法会返回Java对象的强引用，一旦垃圾线程回收该Java对象之后，get方法将返回null。所以在获取软引用对象的代码中，一定要判断是否为null，以免出现NullPointerException异常导致应用崩溃，同理也是用这个方法去判断是否需要重新加载资源。
 
 ## 锁
 
@@ -1574,6 +1842,8 @@ ReentrantLock相比synchronized的高级功能:
 
 有一点要注意：对于synchronized方法或者synchronized代码块，当出现异常时，**JVM会自动释放当前线程占用的锁，因此不会由于异常导致出现死锁现象。**
 
+synchronized 的缺陷：若将一个大的方法声明为synchronized 将会大大影响效率，典型地，若将线程类的方法 run() 声明为　synchronized ，由于在线程的整个生命期内它一直在运行，因此将导致它对本类任何 synchronized 方法的调用都永远不会成功。解决的方法是使用synchronized 块来替代synchronized方法
+
 #### Lock
 
 1）Lock是一个接口，而synchronized是Java中的关键字，synchronized是内置的语言实现；
@@ -1585,6 +1855,63 @@ ReentrantLock相比synchronized的高级功能:
 4）通过**Lock**可以知道**有没有成功获取锁**，而synchronized却无法办到。
 
 5）**Lock**可以提高多个线程进行**读操作的效率**。
+
+Lock 接口实现提供了比使用 synchronized 方法和语句可获得的更广泛的锁定操作。此实现允许更灵活的结构，可以具有差别很大的属性，可以支持多个相关的 Condition 对象。在硬件层面依赖特殊的CPU指令实现同步更加灵活。
+
+> 什么是Condition ？ Condition 接口将 Object 监视器方法（wait、notify 和 notifyAll）分解成截然不同的对象，以便通过将这些对象与任意 Lock 实现组合使用，为每个对象提供多个等待 set（wait-set）。其中，Lock 替代了 synchronized 方法和语句的使用，Condition 替代了 Object 监视器方法的使用。
+
+虽然 synchronized 方法和语句的范围机制使得使用监视器锁编程方便了很多，而且还帮助避免了很多涉及到锁的常见编程错误，但有时也需要以更为灵活的方式使用锁。例如，某些遍历并发访问的数据结果的算法要求使用 "hand-over-hand" 或 "chain locking"：获取节点 A 的锁，然后再获取节点 B 的锁，然后释放 A 并获取 C，然后释放 B 并获取 D，依此类推。Lock 接口的实现允许锁在不同的作用范围内获取和释放，并允许以任何顺序获取和释放多个锁，从而支持使用这种技术，当然，有利就有弊，Lock必须手动在finally块中释放锁。
+
+在java.util.concurrent.locks包中有很多Lock的实现类，常用的有ReentrantLock、ReadWriteLock（实现类ReentrantReadWriteLock）.它们是具体实现类，不是java语言关键字。
+
+#### ReentrantLock
+
+一个可重入的互斥锁 Lock，它具有与使用 synchronized 方法和语句所访问的**隐式监视器锁**相同的一些基本行为和语义，但功能更强大。
+
+重入性：指的是同一个线程多次试图获取它所占有的锁，请求会成功。当释放锁的时候，直到重入次数清零，锁才释放完毕。
+
+ReentrantLock 的lock机制有2种，**忽略中断锁（即忽略掉中断，lock）**和**响应中断锁（即响应中断，lockInterruptibly）**
+
+ReentrantLock相对于synchronized多了三个高级功能： 　　
+
+- 等待可中断
+- 可实现公平锁
+- 绑定多个Condition ：通过多次newCondition可以获得多个Condition对象,可以简单的实现比较复杂的线程同步的功能.通过await(),signal()
+
+synchronized是托管给JVM执行的，而lock是java写的控制锁的代码。 　 　synchronized原始采用的是CPU**悲观锁**机制，即线程获得的是**独占锁**。独占锁意味着其他线程只能依靠阻塞来等待线程释放锁。而在CPU转换线程阻塞时会引起线程上下文切换，当有很多线程竞争锁的时候，会引起CPU频繁的上下文切换导致效率很低。　 　 　Lock用的是**乐观锁**方式。每次不加锁而是假设没有冲突而去完成某项操作，如果因为冲突失败就重试，直到成功为止。
+
+ReentrantLock必须在finally中释放锁，否则后果很严重，编码角度来说使用synchronized更加简单，不容易遗漏或者出错。
+
+　ReentrantLock提供了可轮询的锁请求，他可以尝试的去取得锁，如果取得成功则继续处理，取得不成功，可以等下次运行的时候处理，所以不容易产生死锁，而synchronized则一旦进入锁请求要么成功，要么一直阻塞，所以更容易产生死锁。
+
+　synchronized的话，锁的范围是整个方法或synchronized块部分；而Lock因为是方法调用，可以跨方法，灵活性更大
+
+　一般情况下都是用synchronized原语实现同步，除非下列情况使用ReentrantLock：
+
+ 　①某个线程在等待一个锁的控制权的这段时间需要中断 　　　
+
+​     ②需要分开处理一些wait-notify，ReentrantLock里面的Condition应用，能够控制notify哪个线程 　　　 
+
+​     ③具有公平锁功能，每个到来的线程都将排队等候
+
+### 方法锁（synchronized修饰方法时）
+
+每个类对应的对象对应一把锁，每个 synchronized 方法都必须获得调用该方法的类实例的锁方能执行，否则所属线程阻塞，**方法一旦执行，就独占该锁**，直到从该方法返回时才将锁释放，此后被阻塞的线程方能获得该锁，重新进入可执行状态。这种机制确保了同一时刻对于每一个对象，其所有声明为 synchronized 的成员函数中**至多只有一个**处于可执行状态，从而有效避免了类成员变量的访问冲突。
+
+（方法锁也是对象锁）
+
+### 对象锁（synchronized修饰方法或代码块）
+
+java的所有对象都含有1个互斥锁，这个锁由JVM自动获取和释放。线程进入synchronized方法的时候获取该对象的锁，当然如果已经有线程获取了这个对象的锁，那么当前线程会等待；synchronized方法正常返回或者抛异常而终止，JVM会自动释放对象锁。这里也体现了用synchronized来加锁的1个好处，**方法抛异常的时候，锁仍然可以由JVM来自动释放。**　
+
+### 类锁(synchronized 修饰静态的方法或代码块)
+
+由于一个class不论被实例化多少次，其中的静态方法和静态变量在内存中都**只有一份**。所以，一旦一个静态的方法被申明为synchronized。此类所有的实例化对象在调用此方法，共用同一把锁，我们称之为类锁。 　 　　 　　**对象锁是用来控制实例方法之间的同步，类锁是用来控制静态方法（或静态变量互斥体）之间的同步。**　 　　 　　类锁只是一个概念上的东西，并不是真实存在的，它只是用来帮助我们理解锁定实例方法和静态方法的区别的。java类可能会有很多个对象，但是只有1个Class对象，也就是说类的不同实例之间共享该类的Class对象。Class对象其实也仅仅是1个java对象，只不过有点特殊而已。由于每个java对象都有1个互斥锁，而类的静态方法是需要Class对象。所以所谓的类锁，不过是Class对象的锁而已。获取类的Class对象有好几种，最简单的就是［类名.class］的方式。
+
+```java
+public static synchronized void Method1()
+synchronized (Test.class){}
+```
 
 ## HashMap&HashTable
 
@@ -1601,75 +1928,29 @@ HashMap 是一个散列表，它存储的内容是键值对(key-value)映射。 
 　　HashMap是基于hashing的原理，底层使用哈希表（数组 + 链表）实现。里边最重要的两个方法put、get，使用put(key, value)存储对象到HashMap中，使用get(key)从HashMap中获取对象。 
 　　存储对象时，我们将K/V传给put方法时，它调用hashCode计算hash，然后根据hash调用indexfor（hash，length）方法从而得到bucket位置，进一步存储，HashMap会根据当前bucket的占用情况自动调整容量(超过Load Facotr则resize为原来的2倍)。获取对象时，我们将K传给get，它调用hashCode计算hash从而得到bucket位置，并进一步调用equals()方法确定键值对。如果发生碰撞的时候，Hashmap通过链表将产生碰撞冲突的元素组织起来，在Java 8中，如果一个bucket中碰撞冲突的元素超过某个限制(默认是8)，则使用**红黑树**来替换链表，从而提高速度。
 
-string类对应的hashCode实现算法：
-
-```
-计算String str = "yangcq";的hashcode：
-// 第一步 = (int)'y'
-    	// 第二步 = (31 * (int)'y') + (int)'a'
-    	// 第三步 = 31 * ((31 * (int)'y') + (int)'a') + (int)'n'
-    	// 第四步 = 31 * (31 * ((31 * (int)'y') + (int)'a') + (int)'n') + (int)'g'
-    	// 第五步 = 31 * (31 * (31 * ((31 * (int)'y') + (int)'a') + (int)'n') + (int)'g') + (int)'c'
-    	// 第六步 = 31 * (31 * (31 * (31 * ((31 * (int)'y') + (int)'a') + (int)'n') + (int)'g') + (int)'c') + (int)'q'
-    	
-    	// 上面的过程，也可以用下面的方式表示
-    	
-    	// 第一步 = (int)'y'
-    	// 第二步 = 31 * (第一步的计算结果) + (int)'a'
-    	// 第三步 = 31 * (第二步的计算结果) + (int)'n'
-    	// 第四步 = 31 * (第三步的计算结果) + (int)'g'
-    	// 第五步 = 31 * (第四步的计算结果) + (int)'c'
-    	// 第六步 = 31 * (第五步的计算结果) + (int)'q'
-
-```
-
-不同的类实现的hashcode算法不一样，比如Integer实现的hashcode是直接返回key的值，这也是map中不能用int只能用integer的原因，因为int这种基本的数据类型没实现hashCode（）方法
-
-indexfor（hash，length）方法在jdk1.7中：
-
-```
-static int indexFor(int h, int length) {    
-
-     return h & (length-1);    
-
- }  
-
- 
-```
-
-Jdk1.8中：
-
-```
-static final int hash(Object key) {
-        int h;
-        return (key == null) ? 0 : (h =key.hashCode()) ^ (h >>> 16);
-    }
-
-```
-
-
-
 #### 1.3 HashMap 中 put 方法过程？
 
-1.对key的hashCode做hash操作，然后再计算在bucket中的index（1.5 HashMap的哈希函数）； 
-2.如果没碰撞直接放到bucket里； 
-3.如果碰撞了，以链表的形式存在buckets后； 
-4.如果节点已经存在就替换old value(保证key的唯一性) 
-5.如果bucket满了(超过阈值，阈值=loadfactor*current capacity，load factor默认0.75)，就要resize。
+如果key不为null，则先求出key的hash值，根据hash值得出在table中的索引，而后遍历对应的单链表，如果单链表中存在与目标key相等的键值对，则**将新的value覆盖旧的value**，并**将旧的value返回**，如果找不到与目标key相等的键值对，或者该单链表为空，则将该键值对**插入到改单链表的头结点位置**（每次新插入的节点都是放在头结点的位置），该操作是有addEntry方法实现的。
 
-#### get()方法的工作原理？
+#### get()方法的工作原理
 
-　　通过对key的hashCode()进行hashing，并计算下标( n-1 & hash)，从而获得buckets的位置。如果产生碰撞，则利用key.equals()方法去链表中查找对应的节点。
+　　如果key不为null，则先求的key的hash值，根据hash值找到在table中的索引，在该索引对应的单链表中查找是否有键值对的key与目标key相等，有就返回对应的value，没有则返回null。 　　如果key为null，则直接从哈希表的第一个位置table[0]对应的链表上查找。记住，key为null的键值对永远都放在以table[0]为头结点的链表中，当然不一定是存放在头结点table[0]中。 
+
+#### resize的过程
+
+如果bucket的数量超过了阈值（阈值=loadfactor*current capacity，load factor默认0.75），就需要resize。
+
+新建了一个HashMap的底层数组（Entry[]），而后调用transfer方法，将就HashMap的全部元素添加到新的HashMap中（要**重新计算元素在新的数组中的索引位置**）。 扩容是需要进行数组复制的，非常消耗性能的操作，所以如果我们已经预知HashMap中元素的个数，那么预设元素的个数能够有效的提高HashMap的性能。
 
 #### HashMap中hash函数怎么是是实现的？还有哪些 hash 的实现方式？
 
 1. 对key的hashCode做hash操作（高16bit不变，低16bit和高16bit做了一个异或）； 
 
-    　　2. h & (length-1); //通过位操作得到下标index。
+2. h & (length-1); //通过位操作得到下标index。
 
 　　还有数字分析法、平方取中法、分段叠加法、 除留余数法、 伪随机数法。
 
-#### 1.6 HashMap 怎样解决冲突？
+####  HashMap 怎样解决冲突？
 
 　　HashMap中处理冲突的方法实际就是链地址法，内部数据结构是数组+单链表。
 
@@ -1716,24 +1997,42 @@ size：HashMap的大小，它是HashMap保存的键值对的数量。
 #### 2.1 区别
 
 　　1.HashMap继承于AbstractMap，而Hashtable继承于Dictionary； 
-　　2.线程安全不同。Hashtable的几乎所有函数都是同步的，即它是线程安全的，支持多线程。而HashMap的函数则是非同步的，它不是线程安全的。若要在多线程中使用HashMap，需要我们额外的进行同步处理； 
+　　2.线程安全不同。Hashtable的几乎所有函方法都通过（synchronized）进行了同步的，即它是线程安全的，支持多线程。而HashMap的函数则是非同步的，它不是线程安全的。若要在多线程中使用HashMap，需要我们额外的进行同步处理； 
 　　3.null值。HashMap的key、value都可以为null。**Hashtable的key、value都不可以为null**； 
 　　4.迭代器(Iterator)。**HashMap的迭代器(Iterator)是fail-fast迭代器，而Hashtable的enumerator迭代器不是fail-fast的。**所以当有其它线程改变了HashMap的结构（增加或者移除元素），将会抛出ConcurrentModificationException。 
 　　5.容量的初始值和增加方式都不一样：**HashMap默认的容量大小是16；增加容量时，每次将容量变为“原始容量x2”。Hashtable默认的容量大小是11；增加容量时，每次将容量变为“原始容量x2 + 1”；** 
-　　6.添加key-value时的hash值算法不同：HashMap添加元素时，是使用自定义的哈希算法。Hashtable没有自定义哈希算法，而直接采用的key的hashCode()。 
+　　6.添加key-value时的hash值算法不同：HashMap添加元素时，是使用自定义的哈希算法。Hashtable没有自定义哈希算法，而直接采用的key的hashCode()。，所以在检测是否含有key时，HashMap内部需要将key的hash码重新计算一边再检测，而hashtable直接用key内部的hashCode（）值即可，不用重复计算。
 　　7.速度。由于Hashtable是线程安全的也是synchronized，所以在单线程环境下它比HashMap要慢。如果你不需要同步，只需要单一线程，那么使用HashMap性能要好过Hashtable。
 
 ####  能否让HashMap同步？
 
 HashMap可以通过下面的语句进行同步：Map m = Collections.synchronizeMap(hashMap);
 
-## ArrayList和LinkedList的区别？各自的使用场景？
+HashMap和ConcurrentHashMap的区别
 
-- ArrayList是一个可以处理**变长数组**的类型，可以存放任意类型的对象。ArrayList的所有方法都是默认在单一线程下进行的，因此ArrayList不具有线程安全性。
+　　ConcurrentHashMap是在hashMap的基础上，将数据分为多个segment(类似hashtable)，默认16个（concurrency level），然后在每一个分段上都用锁进行保护，从而让锁的粒度更精细一些，并发性能更好。？？
 
-- LinkedList可以看做为一个双向链表，LinkedList也是线程不安全的，在LinkedList的内部实现中，并不是用普通的数组来存放数据的，而是使用结点\<Node\>来存放数据的，有一个指向链表头的结点first和一个指向链表尾的结点last。LinkedList的**插入**方法的效率要高于ArrayList，但是**查询**的效率要低一点。
+## ArrayList、LinkedList、Vector的区别？各自的使用场景？
 
-- Vector也是一个类似于ArrayList的可变长度的数组类型，它的内部也是使用数组来存放数据对象的。值得注意的是Vector与ArrayList唯一的区别是，Vector是线程安全的。在扩展容量的时候，Vector是扩展为原来的2倍，而ArrayList是扩展为原来的1.5倍。
+![1](https://ws3.sinaimg.cn/large/006tKfTcgy1g15mq3j98bj30h2067q31.jpg)
+
+首先看三者的类声明：
+
+```java
+//ArrayList
+public class ArrayList<E> extends AbstractList<E>
+        implements List<E>, RandomAccess, Cloneable, java.io.Serializable
+//Vector
+public class Vector<E> extends AbstractList<E> implements List<E>, RandomAccess, Cloneable, java.io.Serializable
+//LinkedList
+public class LinkedList<E> extends AbstractSequentialList<E> implements List<E>, Deque<E>, Cloneable, java.io.Serializable
+```
+
+可见，ArrayList和Vector的父类以及实现的接口都是一模一样的，但是对于他们各自实现的方法，Vector对主要的方法加了Synchronized锁来保证其是线程安全的，而ArrayList没有做任何线程安全的处理，这也就决定了Vector开销比ArrayList要大。如果我们的程序本身是线程安全的，那么使用ArrayList是更好的选择。 Vector和ArrayList在更多元素添加进来时会请求更大的空间。Vector每次请求其大小的双倍空间，而ArrayList每次对size增长50%.
+
+ArrayList适用于无频繁增删的情况 ,比数组效率低，如果不是需要可变数组，可考虑使用数组 ,**非线程安全**.
+
+对于LinkedList，其可视为一个双向链表，在LinkedList的内部实现中，并不是用普通的数组来存放数据的，而是使用结点\<Node\>来存放数据的，有一个指向链表头的结点first和一个指向链表尾的结点last。LinkedList的**插入**方法的效率要高于ArrayList，但是**查询**的效率要低一点，而且没做任何线程安全的处理，所以适用于 ：没有大规模的随机读取，大量的增加/删除操作.**随机访问很慢，增删操作很快**，不耗费多余资源 ,允许null元素,**非线程安全.**。
 
 ## String、StringBuilder、StringBuffer的异同点
 
@@ -1757,35 +2056,16 @@ String、StringBuffer是线程安全的，StringBuilder是线程不安全的（�
 
 3.StringBuilder与StringBuffer有公共父类AbstractStringBuilder(抽象类)
 
-## java中的数据类型
 
-变量就是申请内存来存储值。也就是说，当创建变量的时候，需要在内存中申请空间。
 
-内存管理系统根据变量的类型为变量分配存储空间，分配的空间只能用来储存该类型数据。
-因此，通过定义不同类型的变量，可以在内存中储存整数、小数或者字符。
+  Integer A=1 
 
-Java的两大数据类型:
+​       Integer B=1 
 
-### 内置数据类型(基本数据类型)
+​       Integer C=new Integer(1); 
 
-　　1 六种数字类型 ( byte, short, int, long, float, double)      +   void
+​       Integer D=129 
 
-　　　　　　　　　     8      16     32   64     32     64    位
+​       Integer E=129 
 
-　　2 一种字符类型  char
-
-　　　　　　　　　　16位Unicode字符
-
-　　3 一种布尔型    boolean
-
-　　　　　　　　　　1位
-
-### 引用数据类型
-
-　　引用类型变量由类的构造函数创建，可以使用它们访问所引用的对象。这些变量在声明时被指定为一个特定的类型。变量一旦声明后，类型就不能被改变了。
-
-对象、数组都是引用数据类型，所有引用类型的默认值都是null。
-
- 基本数据类型只能按值传递，而封装类按引用传递。
-
- Void无返回值类型，作为伪类型对应类的对象，也被认为是 基本数据类型
+D==E的返回结果

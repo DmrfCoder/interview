@@ -16,6 +16,22 @@
 *安卓系统结构示意图:*
 ![2](https://ws2.sinaimg.cn/large/006tKfTcly1g0dzkgl481j30i20czta7.jpg)
 
+## 如何退出APP
+
+- 在application中定义一个单例模式的Activity栈来管理所有Activity。并提供退出所有Activity的方法。
+
+- 使用ActivityManager
+
+- ```
+  ActivityManager am= (ActivityManager) this .getSystemService(Context.ACTIVITY_SERVICE); am.killBackgroundProcesses(this.getPackageName());
+  ```
+
+-  Dalvik VM的本地方法 android.os.Process.killProcess(android.os.Process.myPid()) //获取PID System.exit(0); //常规java、c#的标准退出法，返回值为0代表正常退出
+
+- Android的窗口类提供了历史栈，我们可以通过stack的原理来巧妙的实现，这里我们在A窗口打开B窗口时在Intent中直接加入标 志 Intent.FLAG_ACTIVITY_CLEAR_TOP，这样开启B时将会清除该进程空间的所有Activity，即在A窗口中使用下面的代码调用B窗口：`Intent intent = new Intent(); intent.setClass(this, B.class); intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);` //注意本行的FLAG设置 startActivity(intent); 接下来在B窗口中需要退出时直接使用finish方法即可全部退出。
+
+  
+
 ## Android四大组件
 
 Android四大组件分别是`Activity`，`Service`服务,`Content Provider`内容提供者，`BroadcastReceiver`广播接收器。
@@ -239,6 +255,12 @@ public void onCreate() {
 
 这样就能获取到Activity对象了。
 
+#### 如何加速Activity启动
+
+- 减小主线程的阻塞时间　
+- 优化布局文件 如果我们的布局层次过多,那么在我们用findViewById的时间必然会变多，一个变多可能不要紧，但是有很多调用必然会影响性能。
+- 提高Adapter和AdapterView的效率 (1)重用已生成过的Item View (2) 添加ViewHolder (3) 缓存Item的数据 (4)分段显示　
+
 #### Fragment
 
 ##### Fragment生命周期
@@ -246,16 +268,15 @@ public void onCreate() {
 > onAttach -> onCreate  -> onCreateView -> onActivityCreate -> onStart -> onResume -> onPause -> onStop -> onDestoryView -> onDestory -> onDetach
 
 1. 把Fragment对象跟Activity关联时，调用onAttach(Activity)方法；
-
 2. Fragment对象的初始创建时，调用onCreate(Bundle)方法；
-
-3. onCreateView(LayoutInflater, ViewGroup, Bundle)方法用于创建和返回跟Fragment关联的View对象；
-
-4. onActivityCreate(Bundle)方法会告诉Fragment对象，它所依附的Activity对象已经完成了Activity.onCreate()方法的执行；
-
+3. onCreateView(LayoutInflater, ViewGroup, Bundle)方法用于创建和返回跟Fragment关联的View对象，将本身的布局构建到activity中去（fragment作为activity界面的一部分） 
+4. onActivityCreate(Bundle)方法会告诉Fragment对象，它所依附的Activity对象已经完成了Activity.onCreate()方法的执行即当activity的onCreate()函数返回时被调用。
 5. onStart()方法会让Fragment对象显示给用户（在包含该Fragment对象的Activity被启动后）；
-
 6. onResume()会让Fragment对象跟用户交互（在包含该Fragment对象的Activity被启恢复后）。
+7. onDestroyView()当与fragment关联的视图体系正被移除时被调用。
+8. onDetach()当fragment正与activity解除关联时被调用。
+
+fragment所生存的activity生命周期直接影响着fragment的生命周期，由此针对activity的每一个生命周期回调都会引发一个fragment类似的回调。例如，当activity接收到onPause()时，这个activity之中的每个fragment都会接收到onPause()。 　
 
 ##### 遇到过哪些关于Fragment的问题，如何处理的
 
@@ -420,8 +441,51 @@ public class MainActivity extends AppCompatActivity {
 #### ContentProvider、ContentResolver与ContentObserver之间的关系是什么？
 
 > 1. ContentProvider：管理数据，提供数据的增删改查操作，数据源可以是数据库、文件、XML、网络等，ContentProvider为这些数据的访问提供了统一的接口，可以用来做进程间数据共享。
+>
 > 2. ContentResolver：ContentResolver可以根据不同URI操作不同的ContentProvider中的数据，外部进程可以通过ContentResolver与ContentProvider进行交互。
-> 3. ContentObserver：观察ContentProvider中的数据变化，并将变化通知给外界。
+>
+> 3. ContentObserver：观察ContentProvider中的数据变化，并将变化通知给外界。在ContentProvider发生数据变化时调用 getContentResolver().notifyChange(uri, null)来通知注册在此URI上的访问者。
+>
+>    ```java
+>    //注册观察者Observser    
+>    this.getContentResolver().registerContentObserver(Uri.parse("content://sms"),true,new SMSObserver(new Handler()));
+>     
+>        private final class SMSObserver extends ContentObserver {
+>     
+>          
+>         
+>            @Override
+>            public void onChange(boolean selfChange) {
+>     
+>     Cursor cursor = MainActivity.this.getContentResolver().query(
+>    Uri.parse("content://sms/inbox"), null, null, null, null);
+>     
+>                while (cursor.moveToNext()) {
+>                    StringBuilder sb = new StringBuilder();
+>     
+>                    sb.append("address=").append(
+>                            cursor.getString(cursor.getColumnIndex("address")));
+>     
+>                    sb.append(";subject=").append(
+>                            cursor.getString(cursor.getColumnIndex("subject")));
+>     
+>                    sb.append(";body=").append(
+>                            cursor.getString(cursor.getColumnIndex("body")));
+>     
+>                    sb.append(";time=").append(
+>                            cursor.getLong(cursor.getColumnIndex("date")));
+>     
+>                    System.out.println("--------has Receivered SMS::" + sb.toString());
+>     
+>                     
+>                }
+>     
+>            }
+>     
+>        }
+>    ```
+>
+>    
 
 每个ContentProvider的操作是在哪个线程中运行的呢（其实我们关心的是UI线程和工作线程）？比如我们在UI线程调用getContentResolver().query查询数据，而当数据量很大时（或者需要进行较长时间的计算）会不会阻塞UI线程呢？
 
@@ -502,6 +566,23 @@ Android 3.1开始系统在Intent与广播相关的flag增加了参数：
 > 3. 当调用LocalBroadcastManager的sendBroadcast方法时，会从2中的map找到合适的receiver，让后加到待执行的队列mPendingBroadcasts，并通过Handler发送一个空消息（此Handler运行在主线程中，是创建manager时创建的）
 > 4. handler 的handle方法收到消息，从mPendingBroadcasts取出receiver并调用onreceive方法
 >     其他：删除方法是通过一个辅助的hashmap实现的，hashmap存储了receiver和receiverRecord
+
+#### 总结
+
+- 静态广播接收的处理器是由PackageManagerService负责，当手机启动或者新安装了应用的时候，PackageManagerService会扫描手机中所有已安装的APP应用，将AndroidManifest.xml中有关注册广播的信息解析出来，存储至一个全局静态变量当中。
+- 动态广播接收的处理器是由ActivityManagerService负责，当APP的服务或者进程起来之后，执行了注册广播接收的代码逻辑，即进行加载，最后会存储在一个另外的全局静态变量中。需要注意的是：
+
+　　 1、 这个并非是一成不变的，当程序被杀死之后，已注册的动态广播接收器也会被移出全局变量，直到下次程序启动，再进行动态广播的注册，当然这里面的顺序也已经变更了一次。
+
+　　 2、这里也并没完整的进行广播的排序，只记录的注册的先后顺序，并未有结合优先级的处理。
+
+- 广播发出的时候，广播接收者接收的顺序如下：
+
+　　１．当广播为**普通广播**时，有如下的接收顺序：
+
+　　无视优先级 　　动态优先于静态 　　同优先级的动态广播接收器，**先注册的大于后注册的** 　　同优先级的静态广播接收器，**先扫描的大于后扫描的**　
+
+　　２．如果广播为**有序广播**，那么会将动态广播处理器和静态广播处理器合并在一起处理广播的消息，最终确定广播接收的顺序：　 　　 　　优先级高的先接收　 　　同优先级的动静态广播接收器，**动态优先于静态** 　　同优先级的动态广播接收器，**先注册的大于后注册的** 　　同优先级的静态广播接收器，**先扫描的大于后扫描的**　
 
 ## 存储
 
@@ -775,11 +856,11 @@ viewGroup能操作自己也可以操作孩子（通过`viewGroup.getChildAt(i).g
 
 事件分发中的三个重要方法：dispatchTouchEvent、onInterceptTouchEvent和onTouchEvent
 
-| 方法                                     | 方法中文名 | 解释                                                         |
-| ---------------------------------------- | ---------- | ------------------------------------------------------------ |
-| dispatchTouchEvent(MotionEvent ev)       | 事件分发   | 用来进行事件的分发。如果事件能够传递给当前View，那么此方法一定会被调用，返回结果受当前View的onTouchEvent和下级View的DispatchTouchEvent方法的影响，表示是否消耗当前事件。 |
-| onInterceptTouchEvent(MotionEvent event) | 事件拦截   | 在上述方法内部调用，用来判断是否拦截某个事件，如果当前View拦截了某个事件，那么在同一个事件序列当中，此方法不会被再次调用，返回结果表示是否拦截当前事件。 |
-| onTouchEvent(MotionEvent event)          | 事件响应   | 在dispatchTouchEvent方法中调用，用来处理点击事件，返回结果表示是否消耗当前事件，如果不消耗，则在同一个事件序列中，当前View无法再次接收到事件 |
+| 方法                                     | 方法中文名 | 解释                                                         | 返回值                                                       |
+| ---------------------------------------- | ---------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| dispatchTouchEvent(MotionEvent ev)       | 事件分发   | 用来进行事件的分发。如果事件能够传递给当前View，那么此方法一定会被调用，返回结果受当前View的onTouchEvent和下级View的DispatchTouchEvent方法的影响，表示是否消耗当前事件。 | return true ：表示该View内部消化掉了所有事件。 <br />return false ：事件在本层不再继续进行分发，并交由**上层**控件的onTouchEvent方法进行消费（如果本层控件已经是Activity，那么事件将被系统消费或处理）。<br />如果事件分发返回系统默认的 super.dispatchTouchEvent(ev)，事件将分发给本层的事件拦截onInterceptTouchEvent 方法进行处理 |
+| onInterceptTouchEvent(MotionEvent event) | 事件拦截   | 在上述方法内部调用，用来判断是否拦截某个事件，如果当前View拦截了某个事件，那么在同一个事件序列当中，此方法不会被再次调用，返回结果表示是否拦截当前事件。 | return true ：表示将事件进行拦截，并将拦截到的事件交由本层控件 的 onTouchEvent 进行处理；<br />return false ：则表示不对事件进行拦截，事件得以成功分发到子View。并由子View的dispatchTouchEvent进行处理。　 <br />如果返回super.onInterceptTouchEvent(ev)，默认表示拦截该事件，并将事件传递给当前View的onTouchEvent方法，和return true一样。 |
+| onTouchEvent(MotionEvent event)          | 事件响应   | 在dispatchTouchEvent方法中调用，用来处理点击事件，返回结果表示是否消耗当前事件，如果不消耗，则在同一个事件序列中，当前View无法再次接收到事件 |                                                              |
 
 三者的关系可以总结为如下伪代码：
 
@@ -795,6 +876,8 @@ public boolean dispatchTouchEvent(MotionEvent ev) {
     return consume;
 }
 ```
+
+![image-20190317201917010](https://ws4.sinaimg.cn/large/006tKfTcgy1g1623xrewwj312g0u0wl2.jpg)
 
 一个事件序列只能被一个View拦截且消耗，不过通过事件代理`TouchDelegate`，可以将`onTouchEvent`强行传递给其他View处理。
 
@@ -1621,9 +1704,138 @@ Android消息机制主要是指Handler的运行机制及Handler所附带的Messa
 子线程中默认是没有Looper的，如果要使用Handler就必须为子线程创建Looper。如果当前线程没有Looper就会报错：`Can’t create handler inside thread that has not called Looper.prepare() `
 主线程(UI线程)即是ActivityThread，ActivityThread被创建时会初始化Looper，所以在主线程中直接可以使用Handler。
 
-### Handler机制的作用
+### Handler的作用
 
-Handler 可以将一个任务切换到Handler所在线程中去执行，Handler的主要作用是更新UI,有时候需要在子线程进行耗时的I/O操作(读取文件或者访问网络)，当耗时任务完成后，需要在UI线程中做一些改变，由于我们不能在子线程中访问UI控件，否则会发生异常，通过Handler就可以将跟新UI操作切换到主线程中执行，即Handler解决了在子线程中无法访问UI的矛盾。 
+#### 让线程延时执行
+
+主要用到的两个方法：
+
+- final boolean postAtTime(Runnable r, long uptimeMillis)
+- final boolean postDelayed(Runnable r, long delayMillis)
+
+#### 让任务在其他线程中执行并返回结果
+
+分为两个步骤：
+
+- 在新启动的线程中发送消息
+
+　　使用Handler对象的sendMessage()方法或者SendEmptyMessage()方法发送消息。
+
+- 在主线程中获取处理消息
+
+　　重写Handler类中处理消息的方法（void handleMessage(Message msg)），当新启动的线程发送消息时，消息发送到与之关联的MessageQueue。而Hanlder不断地从MessageQueue中获取并处理消息。
+
+### Handler的构造方法
+
+> ①　public　Handler() ②　public　Handler(Callbackcallback) ③　public　Handler(Looperlooper) ④　public　Handler(Looperlooper, Callbackcallback) 　
+
+ 第①个和第②个构造函数都没有传递Looper，这两个构造函数都将通过调用Looper.myLooper()获取当前线程绑定的Looper对象，然后将该Looper对象保存到名为mLooper的成员字段中。 　 　　下面来看①②个函数源码： 
+
+```java
+public Handler() {
+        this(null, false);
+    }
+ public Handler(Looper looper) {
+        this(looper, null, false);
+    }
+//他们会调用Handler的内部构造方法：
+public Handler(Callback callback, boolean async) {
+        if (FIND_POTENTIAL_LEAKS) {
+            final Class<? extends Handler> klass = getClass();
+            if ((klass.isAnonymousClass() || klass.isMemberClass() || klass.isLocalClass()) &&
+                    (klass.getModifiers() & Modifier.STATIC) == 0) {
+                Log.w(TAG, "The following Handler class should be static or leaks might occur: " +
+                    klass.getCanonicalName());
+            }
+        }
+/************************************重点：
+        mLooper = Looper.myLooper();
+        if (mLooper == null) {
+            throw new RuntimeException(
+                "Can't create handler inside thread " + Thread.currentThread()
+                        + " that has not called Looper.prepare()");
+        }
+        mQueue = mLooper.mQueue;
+        mCallback = callback;
+        mAsynchronous = async;
+    }
+```
+
+通过Looper.myLooper()获取了当前线程保存的Looper实例，又通过这个Looper实例获取了其中保存的MessageQueue（消息队列）。**每个Handler 对应一个Looper对象，产生一个MessageQueue** 　　
+
+- 第③个和第④个构造函数传递了Looper对象，这两个构造函数会将该Looper保存到名为mLooper的成员字段中。 　　下面来看③④个函数源码：
+
+  ```java
+   public Handler(Looper looper, Callback callback) {
+          this(looper, callback, false);
+      }
+  public Handler(Looper looper) {
+          this(looper, null, false);
+      }
+  public Handler(Looper looper, Callback callback, boolean async) {
+          mLooper = looper;
+          mQueue = looper.mQueue;
+          mCallback = callback;
+          mAsynchronous = async;
+      }
+  ```
+
+  
+
+第②个和第④个构造函数还传递了Callback对象，Callback是Handler中的内部接口，需要实现其内部的handleMessage方法，Callback代码如下:
+
+```java
+public interface Callback {
+        /**
+         * @param msg A {@link android.os.Message Message} object
+         * @return True if no further handling is desired
+         */
+        public boolean handleMessage(Message msg);
+    }
+```
+
+Handler.Callback是用来处理Message的一种手段，如果没有传递该参数，那么就应该重写Handler的handleMessage方法，也就是说为了使得Handler能够处理Message，我们有两种办法： 　　 　
+
+1. 向Hanlder的构造函数传入一个Handler.Callback对象，并实现Handler.Callback的handleMessage方法 　 
+2. 无需向Hanlder的构造函数传入Handler.Callback对象，但是需要重写Handler本身的handleMessage方法 　
+
+也就是说无论哪种方式，我们都得通过某种方式实现handleMessage方法，这点与Java中对Thread的设计有异曲同工之处。
+
+Handler发送消息的方式：
+
+![image-20190317204904611](https://ws2.sinaimg.cn/large/006tKfTcgy1g162yxv41yj318u0o6djf.jpg)
+
+我们可以看出他们最后都调用了sendMessageAtTime（），然后返回了enqueueMessage方法，下面看一下此方法源码：
+
+```java
+public boolean sendMessageAtTime(Message msg, long uptimeMillis) {
+        MessageQueue queue = mQueue;
+        if (queue == null) {
+            RuntimeException e = new RuntimeException(
+                    this + " sendMessageAtTime() called with no mQueue");
+            Log.w("Looper", e.getMessage(), e);
+            return false;
+        }
+        return enqueueMessage(queue, msg, uptimeMillis);
+    }
+```
+
+```java
+private boolean enqueueMessage(MessageQueue queue, Message msg, long uptimeMillis) {
+        msg.target = this;
+        if (mAsynchronous) {
+            msg.setAsynchronous(true);
+        }
+        return queue.enqueueMessage(msg, uptimeMillis);
+    }
+```
+
+这里有两点需要注意：
+
+- msg.target = this，该代码将Message的target绑定为当前的Handler
+- queue.enqueueMessage ，变量queue表示的是Handler所绑定的消息队列MessageQueue，通过调用queue.enqueueMessage(msg, uptimeMillis)我们将Message放入到消息队列中。
+
+
 
 ### Handler的工作过程
 
@@ -1673,13 +1885,163 @@ next：是一个无限循环的方法，如果没有消息，next方法就一直
 
 #### Looper的工作原理
 
-Looper扮演着消息循环的角色，不停的从消息队列MessageQueue中查看是否具有消息，如果有消息就会立刻处理，否则就一直阻塞在那里
+##### Looper.prepare()
 
-Handler中需要Looper，没有Looper线程就会报错，通过Looper.prepare()就可以为当前线程创建一个Looper，通过Looper.loop()来开启消息循环。
+```java
+ public static void prepare() {
+        prepare(true);
+    }
+
+    private static void prepare(boolean quitAllowed) {
+        if (sThreadLocal.get() != null) {
+            throw new RuntimeException("Only one Looper may be created per thread");
+        }
+        sThreadLocal.set(new Looper(quitAllowed));
+    }
+
+```
+
+该方法会调用Looper构造函数同时实例化出MessageQueue和当前thread:
+
+```java
+private Looper(boolean quitAllowed) {
+        mQueue = new MessageQueue(quitAllowed);
+        mThread = Thread.currentThread();
+    }
+```
+
+prepare()方法中通过ThreadLocal对象实现Looper实例与线程的绑定。
+
+##### Looper.loop()
+
+```java
+public static void loop() {
+        final Looper me = myLooper();
+        if (me == null) {
+            throw new RuntimeException("No Looper; Looper.prepare() wasn't called on this thread.");
+        }
+        final MessageQueue queue = me.mQueue;
+        ...
+            
+        for (;;) {
+            Message msg = queue.next(); // might block
+            if (msg == null) {
+                // No message indicates that the message queue is quitting.
+                return;
+            }
+            ...
+            try {
+                //***重点：******
+                msg.target.dispatchMessage(msg);
+                dispatchEnd = needEndTime ? SystemClock.uptimeMillis() : 0;
+            } finally {
+                if (traceTag != 0) {
+                    Trace.traceEnd(traceTag);
+                }
+            }
+            
+            msg.recycleUnchecked();
+        }
+    }
+```
+
+首先looper对象不能为空，就是说loop()方法调用必须在prepare()方法的后面。
+
+　Looper一直在不断的从消息队列中通过MessageQueue的next方法获取Message，然后通过代码msg.target.dispatchMessage(msg)让该msg所绑定的Handler（Message.target）执行dispatchMessage方法以实现对Message的处理。
+
+
+
+##### Handler.dispatchMessage()
+
+```java
+public void dispatchMessage(Message msg) {
+        if (msg.callback != null) {
+            handleCallback(msg);
+        } else {
+            if (mCallback != null) {
+                if (mCallback.handleMessage(msg)) {
+                    return;
+                }
+            }
+            handleMessage(msg);
+        }
+    }
+```
+
+我们可以看到Handler提供了三种途径处理Message，而且处理有前后优先级之分：首先尝试让postXXX中传递的Runnable执行，其次尝试让Handler构造函数中传入的Callback的handleMessage方法处理，最后才是让Handler自身的handleMessage方法处理Message。
+
+### 如何在子线程使用Handler
+
+```java
+class Rub implements Runnable {  
+  
+        public Handler myHandler;  
+        // 实现Runnable接口的线程体 
+        @Override  
+        public void run() {  
+        	
+         /*①、调用Looper的prepare()方法为当前线程创建Looper对象并，
+          创建Looper对象时，它的构造器会自动的创建相对应的MessageQueue*/
+            Looper.prepare();  
+            
+            /*.②、创建Handler子类的实例，重写HandleMessage()方法，该方法处理除当前线程以外线程的消息*/
+             myHandler = new Handler() {  
+                @Override  
+                public void handleMessage(Message msg) {  
+                    String ms = "";  
+                    if (msg.what == 0x777) {  
+                     
+                    }  
+                }  
+  
+            };  
+            //③、调用Looper的loop()方法来启动Looper让消息队列转动起来
+            Looper.loop();  
+        }
+    }
+```
+
+
+
+分三步：
+
+１．调用Looper的prepare()方法为当前线程创建Looper对象，创建Looper对象时，它的构造器会创建与之配套的MessageQueue。 　
+
+２．有了Looper之后，创建Handler子类实例，重写HanderMessage()方法，该方法负责处理来自于其他线程的消息。 　
+
+３．调用Looper的looper()方法启动Looper。
+
+　　然后使用这个handler实例在任何其他线程中发送消息，最终处理消息的代码都会在你创建Handler实例的线程中运行。
+
+
 
 ### Handler的使用套路
 
 主线程中声明一个Handler，重写其handleMessage(Message msg)方法，通过msg.what属性的值对应到其他线程发送的Message并利用该Message拿到其他线程传过来的数据。
+
+### 总结
+
+**Handler**：
+
+- 发送消息，它能把消息发送给Looper管理的MessageQueue。 　　　　　　
+
+- 处理消息，并负责处理Looper分给它的消息。 
+
+**Message**：Handler接收和处理的消息对象。
+
+ **Looper**： 每个线程只有一个Looper，它负责管理对应的MessageQueue，会不断地从MessageQueue取出消息，并将消息分给对应的Hanlder处理。 　 　　　　　　 　　　　　　
+
+主线程中，系统已经初始化了一个Looper对象，因此可以直接创建Handler即可，就可以通过Handler来发送消息、处理消息。 程序自己启动的子线程，程序必须自己创建一个Looper对象，并启动它，调用Looper.prepare()方法。
+
+prapare()方法：保证每个线程最多只有一个Looper对象。 　
+
+looper()方法：启动Looper，使用一个死循环不断取出MessageQueue中的消息，并将取出的消息分给对应的Handler进行处理。 　
+
+MessageQueue：由Looper负责管理，它采用先进先出的方式来管理Message。　
+
+Handler的构造方法，会首先得到当前线程中保存的Looper实例，进而与Looper实例中的MessageQueue想关联。　 　　 　　
+
+Handler的sendMessage方法，会给msg的target赋值为handler自身，然后加入MessageQueue中。
 
 ## Zygote
 
@@ -1818,14 +2180,13 @@ Android系统会监控程序的响应状况，一旦出现下面两种情况，�
 
 ### OOM（Out Of Memory）
 
+当内存占有量超过了虚拟机的分配的最大值时就会产生内存溢出（VM里面分配不出更多的page）。 一般出现情况：加载的图片太多或图片过大时、分配特大的数组、内存相应资源过多没有来不及释放。
+
 #### 常见的内存泄漏（举例）
 
 > 1. 不恰当的使用static变量（或者向static集合中添加数据却忘了必要时移除数据）
 > 2. 忘记关闭各种连接，如IO流等
 > 3. [不恰当的内部类](https://link.juejin.im?target=https%3A%2F%2Fgithub.com%2Ffrancistao%2FLearningNotes%2Fblob%2Fmaster%2FPart1%2FAndroid%2FHandler%25E5%2586%2585%25E5%25AD%2598%25E6%25B3%2584%25E6%25BC%258F%25E5%2588%2586%25E6%259E%2590%25E5%258F%258A%25E8%25A7%25A3%25E5%2586%25B3.md)：因为内部类持有外部类的引用，当内部类存活时间较长时，导致外部类也不能正确的回收（常发生在使用Handler的时候）
-> 4. 不恰当的单例模式：例如错误的将某个Activity给单例持有，或者在不该使用单例的地方使用了单例
-> 5. 使用错误的Context：Application 和 Activity的context生命周期不一样
-> 6. webview造成的内存泄漏
 
 #### OOM异常是否可以被try...catch捕获
 
@@ -1835,13 +2196,70 @@ Android系统会监控程序的响应状况，一旦出现下面两种情况，�
 
 #### 如何避免内存泄漏
 
-- `内部类引用导致Activity的泄漏`：最典型的场景是Handler导致的Activity泄漏，如果Handler中有延迟的任务或者是等待执行的任务队列过长，都有可能因为Handler继续执行而导致Activity发生泄漏。
-- `Activity Context被传递到其他实例中，这可能导致自身被引用而发生泄漏`。
-- 考虑使用Application Context而不是Activity Context
-- 注意临时Bitmap对象的及时回收
-- 注意监听器的注销
-- 注意缓存容器中的对象泄漏：不使用的对象要将引用置空。
-- 注意Cursor对象是否及时关闭
+- 在内存引用上做处理
+
+  > 软引用是主要用于内存敏感的高速缓存。在jvm报告内存不足之前会清除所有的软引用，这样以来gc就有可能收集软引用可及的对象，可能解决内存吃紧问题，避免内存溢出。什么时候会被收集取决于gc的算法和gc运行时可用内存的大小。
+
+- 对图片做边界压缩，配合软引用使用 　
+
+  > ```
+  > if(bitmapObject.isRecycled()==false) //如果没有回收   
+  >          bitmapObject.recycle();  
+  > ```
+
+- 显式的调用GC来回收内存　 　
+
+- 优化Dalvik虚拟机的堆内存分配
+
+  堆（HEAP）是VM中占用内存最多的部分，通常是动态分配的。堆的大小不是一成不变的，通常有一个分配机制来控制它的大小。比如初始的HEAP是4M大，当4M的空间被占用超过75%的时候，重新分配堆为8M大；当8M被占用超过75%，分配堆为16M大。倒过来，当16M的堆利用不足30%的时候，缩减它的大小为8M大。重新设置堆的大小，尤其是压缩，一般会涉及到内存的拷贝，所以变更堆的大小对效率有不良影响。
+
+  一般涉及到三个参数：max heap size, min heap size, heap utilization（堆利用率）
+
+  Max Heap Size，是堆内存的上限值，Android的缺省值是16M（某些机型是24M），对于普通应用这是不能改的。函数setMinimumHeapSize其实只是改变了堆的下限值，它可以防止过于频繁的堆内存分配，当**设置最小堆内存大小超过上限值时仍然采用堆的上限值**，对于内存不足没什么作用。
+
+  setTargetHeapUtilization(float newTarget) 可以设定内存利用率的百分比，当实际的利用率偏离这个百分比的时候，虚拟机会在GC的时候调整堆内存大小，让实际占用率向个百分比靠拢。
+
+  - 增强程序堆内存的处理效率 
+
+    ```java
+    //在程序onCreate时就可以调用 即可 
+    private final static floatTARGET_HEAP_UTILIZATION = 0.75f;  
+    
+    VMRuntime.getRuntime().setTargetHeapUtilization(TARGET_HEAP_UTILIZATION); //设置堆内存的利用率为75%
+    
+    ```
+
+  - 设置堆内存的大小
+
+    ```java
+    private final static int CWJ_HEAP_SIZE = 6* 1024* 1024 ; 
+     //设置最小heap内存为6MB大小 
+    VMRuntime.getRuntime().setMinimumHeapSize(CWJ_HEAP_SIZE); 
+    ```
+
+- 用LruCache 和 AsyncTask<>解决
+
+  >  从cache中去取Bitmap，如果取到Bitmap，就直接把这个Bitmap设置到ImageView上面。 　　如果缓存中不存在，那么启动一个task去加载（可能从文件来，也可能从网络）。
+
+### SOF
+
+SOF即堆栈溢出 StackOverflow
+
+StackOverflowError 的定义： 当应用程序递归太深而发生堆栈溢出时，抛出该错误。
+
+因为栈一般默认为1-2M，一旦出现死循环或者是大量的递归调用，在不断的压栈过程中，造成栈容量超过1m而导致溢出。
+
+栈溢出的原因：
+
+```
+递归调用
+
+大量循环或死循环
+
+全局变量是否过多
+
+数组、List、map数据过大
+```
 
 ### 如何减小内存的使用
 
@@ -2518,147 +2936,11 @@ minSdkVersion (lowest possible) <=
 
 ### 综述
 
-Android中的动画分为补间动画(Tweened Animation)和逐帧动画(Frame-by-Frame Animation)。没有意外的，补间动画是在几个关键的节点对对象进行描述由系统进行填充。而逐帧动画是在固定的时间点以一定速率播放一系列的drawable资源。下面对两种动画进行分别简要说明。
+Android中的动画分为补间动画(Tweened Animation)和逐帧动画(Frame-by-Frame Animation)。没有意外的，补间动画是在几个关键的节点对对象进行描述由系统进行填充。而逐帧动画是在固定的时间点以一定速率播放一系列的drawable资源。
 
-### 补间动画
+View Animation（Tween Animation）：补间动画，给出两个关键帧，通过一些算法将给定属性值在给定的时间内在两个关键帧间渐变。 　　View animation只能应用于View对象，而且只支持一部分属性，这种实现方式可以使视图组件移动、放大、缩小以及产生透明度的变化.
 
-补间动画分为如下种
-
-- Alpha 淡入淡出
-- Scale 缩放
-- Rotate 旋转
-- Translate 平移
-
-这些动画是可以同时进行和顺次进行的。需要用到AnimationSet来实现。调用AnimationSet.addAnimation()即可。 实现方法举例:
-
-```java
-(Button)btn = (Button)findViewById(...);
-AnimationSet as = new AnimationSet(false);//新建AnimationSet实例
-TranslateAnimation ta = new TranslateAnimation(//新建平移动画实例，在构造函数中传入平移的始末位置
-        Animation.RELATIVE_TO_SELF, 0f,
-        Animation.RELATIVE_TO_SELF, 0.3f,
-        Animation.RELATIVE_TO_SELF, 0f,
-        Animation.RELATIVE_TO_SELF, 0.3f);
-ta.setStartOffset(0);//AnimationSet被触发后立刻执行
-ta.setInterpolator(new AccelerateDecelerateInterpolator());//加入一个加速减速插值器
-ta.setFillAfter(true);//动画结束后保持该状态
-ta.setDuration(700);//设置动画时长
-
-ScaleAnimation sa = new ScaleAnimation(1f, 0.1f, 1f, 0.1f,//构造一个缩放动画实例，构造函数参数传入百分比和缩放中心
-        ScaleAnimation.RELATIVE_TO_SELF, 0.5f, 
-        ScaleAnimation.RELATIVE_TO_SELF, 0.5f);
-sa.setInterpolator(new AccelerateDecelerateInterpolator());//加入一个加速减速插值器
-sa.setDuration(700);//设置时长
-sa.setFillAfter(true);//动画结束后保持该状态
-sa.setStartOffset(650);//AnimationSet触发后650ms启动动画
-
-AlphaAnimation aa = new AlphaAnimation(1f, 0f);//构造一个淡出动画，从100%变为0%
-aa.setDuration(700);//设置时长
-aa.setStartOffset(650);//AnimationSet触发后650ms启动动画
-aa.setFillAfter(true);//动画结束后保持该状态
-
-as.addAnimation(ta);
-as.addAnimation(sa);
-as.addAnimation(aa);//将动画放入AnimationSet中
-
-btn.setOnClickListener(new OnClickListener(){
-  public void onClick(View view){
-    btn.startAnimation(as);//触发动画
-  }
-}
-```
-
-该段代码实现了先平移，然后边缩小边淡出。
-
-具体的代码实现需要注意各个参数所代表的含义，比较琐碎，建议阅读文档熟悉。在这里不做过多讲解，文档说的已经很清楚了。
-文档链接<http://developer.android.com/reference/android/view/animation/Animation.html>
-
-### 逐帧动画
-
-这一部分只涉及非常基础的知识。逐帧动画适用于更高级的动画效果，原因可想而知。我们可以将每帧图片资源放到drawable下然后代码中canvas.drawBitmap(Bitmap, Matrix, Paint)进行动画播放，但这样就将动画资源与代码耦合，如果哪天美工说我要换一下效果就呵呵了。因此我们要做的是将资源等信息放入配置文件然后教会美工怎么改配置文件，这样才有时间去刷知乎而不被打扰^_^。 大致分为两种方法：
-
-- 每一帧是一张png图片中
-- 所有动画帧都存在一张png图片中
-
-当然还有的专门的游戏公司有自己的动画编辑器，这里不加说明。
-
-#### 每一帧是一张png
-
-说的就是这个效果：
-![每一帧是一张png例图](https://github.com/HIT-Alibaba/interview/blob/master/img/android-animation-eachpng.jpg?raw=true)
-
-在animation1.xml文件中进行如下配置：
-
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<animation-list
-  xmlns:android="http://schemas.android.com/apk/res/android"
-  android:oneshot="true"<!-- true表示只播放一次，false表示循环播放 -->
-  >
-    <item android:drawable="@drawable/hero_down_a" android:duration="70"></item>
-    <item android:drawable="@drawable/hero_down_b" android:duration="70"></item>
-    <item android:drawable="@drawable/hero_down_c" android:duration="70"></item>
-    <item android:drawable="@drawable/hero_down_d" android:duration="70"></item>
-</animation-list>
-```
-
-在JAVA文件中我们进行如下加载：
-
-```java
-ImageView animationIV;
-AnimationDrawable animationDrawable;
-
-animationIV.setImageResource(R.drawable.animation1);
-animationDrawable = (AnimationDrawable) animationIV.getDrawable();
-animationDrawable.start();
-```
-
-注意动画的播放是按照xml文件中的顺序顺次播放，如果要考虑到循环播放的时候应该写两个xml一个正向一个反向才能很好地循环播放。
-
-#### 所有动画在一张png中
-
-说的就是这个效果：
-![所有动画放在一张png中](https://github.com/HIT-Alibaba/interview/blob/master/img/android-animation-onepng.jpg?raw=true) animation.xml的配置：
-
-```xml
-<key>010001.png</key>
-<dict>
-    <key>frame</key>
-    <string>{{378, 438}, {374, 144}}</string>
-    <key>offset</key>
-    <string>{-2, 7}</string>
-    <key>sourceColorRect</key>
-    <string>{{61, 51}, {374, 144}}</string>
-    <key>sourceSize</key>
-    <string>{500, 260}</string>
-</dict>
-<key>010002.png</key>
-<dict>
-    <key>frame</key>
-    <string>{{384, 294}, {380, 142}}</string>
-    <key>offset</key>
-    <string>{1, 7}</string>
-    <key>sourceColorRect</key>
-    <key>rotate</key>
-    <false/>
-    <string>{{61, 52}, {380, 142}}</string>
-    <key>sourceSize</key>
-    <string>{500, 260}</string>
-</dict>
-…
-```
-
-其中：
-
-- frame 指定在原图中截取的框大小；
-- offeset 指定原图中心与截图中心偏移的向量；
-- rotate若为true顺时针旋转90°；
-- sourceColorRect 截取原图透明部分的大小
-- sourceSize 原图大小
-
-JAVA的加载方式与第一种方法相同。
-
-在使用过程中一定要注意内存资源的回收和drawable的压缩，一不小心可能爆掉。
+　　Frame动画，传统的动画方法，通过顺序的播放排列好的图片来实现，类似电影补间动画和帧动画。 补间动画和Frame动画的定义： 　　所谓补间动画，是指通过指定View的初末状态和变化时间、方式，对View的内容完成一系列的图形变换来实现动画效果。主要包括四种效果：Alpha、Scale、Translate和Rotate。 帧动画就是Frame动画，即指定每一帧的内容和停留时间，然后播放动画
 
 ## HandlerThread和Tread的区别
 
@@ -2724,11 +3006,25 @@ protected void onDestroy() {
 
 在android中实现异步任务有两种方法：一种为通过多线程Thread配合Handler实现，另一种就是通过android为我们提供的AsyncTask来实现。AsyncTask使得编写异步任务更加简单。
 
+我们把耗时的操作（例如网络请求、数据库操作、复杂计算）放到单独的子线程中操作，以避免主线程的阻塞。但是在子线程中不能更新ＵＩ界面，这时候需要使用handler。
+
+　　但如果耗时的操作太多，那么我们需要开启太多的子线程，这就会给系统带来巨大的负担，随之也会带来性能方面的问题。在这种情况下我们就可以考虑使用类AsyncTask来异步执行任务，不需要子线程和handler，就可以完成异步操作和刷新UI。
+
+　　不要随意使用AsyncTask,除非你必须要与UI线程交互.默认情况下使用Thread即可,要注意需要将线程优先级调低.AsyncTask适合处理短时间的操作,长时间的操作,比如下载一个很大的视频,这就需要你使用自己的线程来下载,不管是断点下载还是其它的.
+
+### 使用AsyncTask需要注意的地方
+
+- AsnycTask内部的Handler需要和主线程交互，所以AsyncTask的实例必须在UI线程中创建
+- AsyncTaskResult的doInBackground(mParams)方法执行异步任务运行在子线程中，其他方法运行在主线程中，可以操作UI组件。
+- 一个AsyncTask任务只能被执行一次。
+- 运行中可以随时调用AsnycTask对象的cancel(boolean)方法取消任务，如果成功，调用isCancelled()会返回true，并且不会执行 onPostExecute() 方法了，而是执行 onCancelled() 方法。
+- 对于想要立即开始执行的异步任务，要么直接使用Thread，要么单独创建线程池提供给AsyncTask。默认的AsyncTask不一定会立即执行你的任务，除非你提供给他一个单独的线程池。如果不与主线程交互，直接创建一个Thread就可以了。
+
 AsyncTask这个类，就是为了方便我们在后台线程中执行操作，然后将结果发送给主线程，从而在主线程中进行UI更新等操作。在使用AsyncTask时，我们无需关注ThreadHandler。AsyncTask内部会对其进行管理，这样我们就只需要关注于我们的业务逻辑即可。
 
 **默认是一个串行的线程池SerialExecutor**
 
-使用方法：
+### 使用方法
 
 AsyncTask有四个重要的回调方法，分别是：`onPreExecute`、`doInBackground`, `onProgressUpdate` 和 `onPostExecute`。这四个方法会在AsyncTask的不同时期进行自动调用，我们只需要实现这几个方法的内部逻辑即可。这四个方法的一些参数和返回值都是基于泛型的，而且泛型的类型还不一样，所以在AsyncTask的使用中会遇到三种泛型参数:`Params`, `Progress `和` Result`
 

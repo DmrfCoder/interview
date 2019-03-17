@@ -711,6 +711,40 @@ TextView通常用来显示普通文本，但是有时候需要对其中某些文
 
 > res/raw不可以有目录结构，而assets则可以有目录结构，也就是assets目录下可以再建立文件夹
 
+读取res/raw下的文件资源，通过以下方式获取输入流来进行写操作
+
+```
+ InputStream is =getResources().openRawResource(R.id.filename);  
+```
+
+读取assets下的文件资源，通过以下方式获取输入流来进行写操作
+
+```
+/**  
+	 * 从assets中读取图片  
+	 */  
+	private Bitmap getImageFromAssetsFile(String fileName)  
+	  {  
+	      Bitmap image = null;  
+	      AssetManager am = getResources().getAssets();  
+	      try  
+	      {  
+	          InputStream is = am.open(fileName);  
+	          image = BitmapFactory.decodeStream(is);  
+	          is.close();  
+	      }  
+	      catch (IOException e)  
+	      {  
+	          e.printStackTrace();  
+	      }   
+	      return image;  
+	  }  
+```
+
+注意1：Google的Android系统处理Assert有个bug，在AssertManager中不能处理单个超过1MB的文件，不然会报异常，raw没这个限制可以放个4MB的Mp3文件没问题。　
+
+注意2：assets 文件夹是存放不进行编译加工的原生文件，即该文件夹里面的文件不会像 xml， java 文件被预编译，可以存放一些图片，html，js, css 等文件。
+
 ***
 
 ## System.gc && Runtime.gc
@@ -1544,6 +1578,22 @@ android中最经典的就是Handler机制，android中有三种方式可以在�
 ## Android进程分类
 
 ## Activity的启动模式
+
+### 有了解过注解么？（了解过，注释是给人看的，注解给机器看的，override，压制警告之类的）
+
+### 自定义注解？（@interface）  具体的实现原理（不知道） 源代码阶段还是编译时还是运行时（我说编译时，好像不对？）
+
+## 消息机制实现
+
+## ReentrantLock的内部实现
+
+二叉树，给出根节点和目标节点，找出从根节点到目标节点的路径。手写算法
+
+断点续传的实现
+
+逻辑地址与物理地址，为什么使用逻辑地址
+
+前台切换到后台，然后再回到前台，Activity生命周期回调方法。弹出Dialog，生命值周期回调方法。
 
 # 19年面试真题
 
