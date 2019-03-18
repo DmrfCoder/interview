@@ -1,20 +1,18 @@
-#1．概述
+# 概述
 
 　　Fragment是Activity中用户界面的一个行为或者是一部分。主要是支持在大屏幕上动态和更为灵活的去组合或是交换UI组件，通过将activity的布局分割成若干个fragment，可以在运行时编辑activity的呈现，并且那些变化会被保存在由activity管理的后台栈里面。
 
-　　**Fragment必须总是被嵌入到一个activity之中**，并且fragment的生命周期直接受其宿主activity的生命周期的影响。你可以认为fragment是activity的一个模块零件，它有自己的生命周期，接收它自己的输入事件，并且可以在activity运行时添加或者删除。
+　　**Fragment必须总是被嵌入到一个activity之中**，并且fragment的生命周期直接受其宿主activity的生命周期的影响。可以认为fragment是activity的一个模块零件，它有自己的生命周期，接收它自己的输入事件，并且可以在activity运行时添加或者删除。
 
 　　应该将每一个fragment设计为模块化的和可复用化的activity组件。也就是说，你可以在多个activity中引用同一个fragment，因为fragment定义了它自己的布局，并且使用它本身生命周期回调的行为。
 
-
-#２．Fragment的生命周期
+# Fragment的生命周期
 
 先看fragment生命周期图：
 
-![这里写图片描述](http://img.blog.csdn.net/20160429134558410) 
+![image-20190318130446348](https://ws1.sinaimg.cn/large/006tKfTcgy1g16v654abfj30q619ctlr.jpg)
 
 　　fragment所生存的activity生命周期直接影响着fragment的生命周期，由此针对activity的每一个生命周期回调都会引发一个fragment类似的回调。例如，当activity接收到onPause()时，这个activity之中的每个fragment都会接收到onPause()。
-　　[这有Activity的详细说明](http://blog.csdn.net/amazing7/article/details/51244219)
 
 　　Fragment有一些额外的生命周期回调方法（创建和销毁fragment界面）．
 
@@ -25,7 +23,6 @@
  - onCreateView()
 
 　　将本身的布局构建到activity中去（fragment作为activity界面的一部分）
-　　
 
  -  onActivityCreated()
 
@@ -59,7 +56,7 @@ fragment会在　activity离开恢复状态时　再一次被activity推入它�
 
 　　fragment不可见。要么宿主activity已经停止，要么fragment已经从activity上移除，但已被添加到后台栈中。一个停止的fragment仍然活着（所有状态和成员信息仍然由系统保留着）。但是，它对用户来讲已经不再可见，并且如果activity被杀掉，它也将被杀掉。
 
-　　如果activity的进程被杀掉了，在activity被重新创建时，你需要恢复fragment状态。可以执行fragment的onSaveInstanceState()来保存状态（注意在fragment是在onCreate()，onCreateView()，或onActvityCreate()中进行恢复）。
+　　如果activity的进程被杀掉了，在activity被重新创建时，你需要恢复fragment状态。可以执行fragment的onSaveInstanceState()来保存状态（注意在fragment是在onCreate()，onCreateView()，或onActvityCreate()中进行恢复而不是像activity在onRestoreInstanceState中恢复）。
 
 　　在生命周期方面,activity与fragment之间一个**很重要的不同**，就是在各自的后台栈中是如何存储的。
 　　当activity停止时，**默认**情况下activity被安置在由系统管理的activity后台栈中；　
@@ -75,8 +72,8 @@ fragment会在　activity离开恢复状态时　再一次被activity推入它�
 
 　　在第一次为fragment绘制用户界面时系统会调用此方法。为fragment绘制用户界面，这个函数必须要返回所绘出的fragment的根View。如果fragment没有用户界面可以返回空。
 
-　　
-```
+
+```java
 @Override
 		public View onCreateView(LayoutInflater inflater, ViewGroup container,Bundle savedInstanceState) {　
 		
@@ -96,20 +93,16 @@ inflate()函数需要以下三个参数：
 
 　　系统回调用该函数作为用户离开fragment的第一个预兆（尽管这并不总意味着fragment被销毁）。在当前用户会话结束之前，通常要在这里提交任何应该持久化的变化（因为用户可能不再返回）。
 
-
-#3.将fragment添加到activity之中
+# 将fragment添加到activity之中
 
 　　可以通过在activity布局文件中声明fragment，用fragment标签把fragment插入到activity的布局中，或者是用应用程序源码将它添加到一个存在的ViewGroup中。　
-　　
-　　但fragment并不是一个定要作为activity布局的一部分，fragment也可以为activity隐身工作。
+但fragment并不是一个定要作为activity布局的一部分，fragment也可以为activity隐身工作。
 
-
-
-##3.1在activity的布局文件里声明fragment
+## 在activity的布局文件里声明fragment
 
 　　可以像为view一样为fragment指定布局属性。例如：
 
-```
+```xml
 <?xml version="1.0" encoding="utf-8"?>
 	<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
 		android:orientation="horizontal"
@@ -125,39 +118,36 @@ inflate()函数需要以下三个参数：
 ```
 　　fragment标签中的android:name 属性指定了布局中实例化的Fragment类。
 
-　　当系统创建activity布局时，它实例化了布局文件中指定的每一个fragment，并为它们调用onCreateView()函数，以获取每一个fragment的布局。系统直接在<fragment>元素的位置插入fragment返回的View。
+　　当系统创建activity布局时，它实例化了布局文件中指定的每一个fragment，并为它们调用onCreateView()函数，以获取每一个fragment的布局。系统直接在\<fragment\>元素的位置插入fragment返回的View。
 
-　　注意：每个fragment都需要一个唯一的标识，如果重启activity，系统可用来恢复fragment（并且可用来捕捉fragment的事务处理，例如移除）。为fragment提供ID有三种方法：
+　　注意：每个fragment都需要一个**唯一的标识**，如果重启activity，系统可用来恢复fragment（并且可用来捕捉fragment的事务处理，例如移除）。为fragment提供ID有三种方法：
 
- - 
-
-用android:id属性提供一个唯一的标识。　
+ - 用android:id属性提供一个唯一的标识。　
 
  - 用android:tag属性提供一个唯一的字符串。　
- 
+
  - 如果上述两个属性都没有，系统会使用其容器视图（view）的ID。　
 
-##3.2通过编码将fragment添加到已存在的ViewGroup中
+## 通过编码将fragment添加到已存在的ViewGroup中
 
 　　在activity运行的任何时候，你都可以将fragment添加到activity布局中。
-　　
 　　要管理activity中的fragment，可以使用FragmentManager。可以通过在activity中调用getFragmentManager()获得。使用FragmentManager 可以做如下事情，包括：
 
  - 使用findFragmentById()（用于在activity布局中提供有界面的fragment）或者findFragmentByTag()获取activity中存在的fragment（用于有界面或者没有界面的fragment）。　　
- 
+
  - 使用popBackStack()（模仿用户的BACK命令）从后台栈弹出fragment。　　
- 
- 
+
+
  - 使用addOnBackStackChangedListener()注册一个监听后台栈变化的监听器。
 
 在Android中，对Fragment的事务操作都是通过FragmentTransaction来执行。操作大致可以分为两类：
 
  - 显示：add() replace() show() attach()　　
- 
+
  - 隐藏：remove() hide() detach()　
 
 > 说明：
-　　调用show() & hide()方法时，Fragment的生命周期方法并不会被执行，仅仅是Fragment的View被显示或者​隐藏。
+　　调用show() & hide()方法时，Fragment的**生命周期方法并不会被执行**，仅仅是Fragment的View被显示或者​隐藏。
 
 >　　执行replace()时（至少两个Fragment），会执行第二个Fragment的onAttach()方法、执行第一个Fragment的onPause()-onDetach()方法，同时containerView会detach第一个Fragment的View。
 
@@ -166,20 +156,20 @@ inflate()函数需要以下三个参数：
 
 可以像下面这样从Activity中取得FragmentTransaction的实例：
 
-```
+```java
 FragmentManager fragmentManager = getFragmentManager()　
 FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
 ```
 
 可以用add()函数添加fragment，并指定要添加的fragment以及要将其插入到哪个视图（view）之中（注意commit事务）：
 
-```
+```java
 ExampleFragment fragment = new ExampleFragment();
-	fragmentTransaction.add(R.id.fragment_container, fragment);
-	fragmentTransaction.commit();
+fragmentTransaction.add(R.id.fragment_container, fragment);
+fragmentTransaction.commit();
 ```
 
-##3.3添加没有界面的fragment 
+## 添加没有界面的fragment 
 
 　　也可以使用fragment为activity提供后台动作，却不呈现多余的用户界面。
 
@@ -187,14 +177,13 @@ ExampleFragment fragment = new ExampleFragment();
 　　
 　　对于无界面fragment，字符串标签是**唯一识别**它的方法。如果之后想从activity中取到fragment，需要使用findFragmentByTag()。　
 
-
-#4.fragment事务后台栈
+# fragment事务后台栈
 
 　　在调用commit()之前，可以将事务添加到fragment事务后台栈中（通过调用addToBackStatck()）。这个后台栈由activity管理，并且允许用户通过按BACK键回退到前一个fragment状态。
 
 　　下面的代码中一个fragment代替另一个fragment，并且将之前的fragment状态保留在后台栈中：
 
-```
+```java
  Fragment newFragment = new ExampleFragment();
  FragmentTransaction transaction = getFragmentManager().beginTransaction();
  
@@ -214,29 +203,85 @@ ExampleFragment fragment = new ExampleFragment();
 > 
 > 　　只能在activity保存状态（当用户离开activity时）之前用commit()提交事务。如果你尝试在那时之后提交，会抛出一个异常。这是因为如果activity需要被恢复，提交后的状态会被丢失。对于这类丢失提交的情况，可使用commitAllowingStateLoss()
 
-
-#５.与Activity交互
-
-　　
+# 与Activity交互
 
  - Activity中已经有了该Fragment的引用，直接通过该引用进行交互。
- 
- -如果没引用可以通过调用fragment的函数findFragmentById()或者findFragmentByTag()，从FragmentManager中获取Fragment的索引，例如： 
 
-　
+- 如果没引用可以通过调用fragment的函数findFragmentById()或者findFragmentByTag()，从FragmentManager中获取Fragment的索引，例如： 
 
-```
+```java
 ExampleFragment fragment = (ExampleFragment) getFragmentManager().findFragmentById(R.id.example_fragment);
 ```
 
  - 在Fragment中可以通过getActivity得到当前绑定的Activity的实例。
- 
- 
- 
+
  - 创建activity事件回调函数，在fragment内部定义一个回调接口，宿主activity来实现它。
 
+ - Activity向Fragment传参：
+
+   > 很多人提到向Fragment传递参数会下意识想到重写Fragment的构造方法并传入自己的参数。事实上，这种方式时极不科学和极不安全的，因为Android在很多场景下都会出现Fragment的重建情况（比如横竖屏的切换），但是重建的时候系统并不会使用你编写的Fragment的构造方法而是调用Fragment默认的构造方法，这个时候你传的参数将会消失导致各种异常。那么如何更安全地向Fragment传递参数呢，这里建议大家使用Google官方推荐的setArguments方法：
+   >
+   > - 初始化Fragment实例并setArguments
+   >
+   >   ```java
+   >   DiscoverFragment discoverFragment = new DiscoverFragment();
+   >   Bundle bundle = new Bundle();
+   >   bundle.putString("email", email);
+   >   discoverFragment.setArguments(bundle);
+   >   ```
+   >
+   > - 在Fragment中拿到Arguments：
+   >
+   > ```java
+   > @Nullable
+   >   @Override
+   >   public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+   >       View view = inflater.inflate(R.layout.fragment_discover, null);
+   >       Bundle bundle = getArguments();
+   >       //这里就拿到了之前传递的参数
+   >       email = bundle.getString("email");
+   >       return view;
+   >   }
+   > ```
+
+# Fragment && Fragment 数据交互
+
+Fragment和Fragment间数据交互，应该也是会经常用到的。我们可以使用宿主Activity做传递媒介。原理其实也是通过使用onActivityResult回调，完成Fragment && Fragment 的数据交互，这其中有两个比较重要的方法：Fragment.setTargetFragment、getTargetFragment()。
+
+在 FirstFragment 中，通过setTargetFragment来连接需要交互的Fragment：
+
+```java
+secondFragment.setTargetFragment(FirstFragment.this, REQUEST_CODE);
+```
+
+接着实现onActivityResult,处理传递过来的数据：
+
+```java
+@Override  
+   public void onActivityResult(int requestCode, int resultCode, Intent data) {  
+       super.onActivityResult(requestCode, resultCode, data);  
+       if(resultCode != Activity.RESULT_OK){  
+           return;  
+       }else{  
+           Integer str = data.getIntExtra("key",-1);  
+           //处理数据...
+       }  
+   }
+```
+
+在 SecondFragment 中调用sendResult（）方法，回传数据给 FirstFragment:
+
+```java
+private void sendResult(int resultOk) {  
+        if(getTargetFragment() == null){  
+            return;  
+        }else{  
+            Intent intent = new Intent();  
+            intent.putExtra("key", 520);       			   			   getTargetFragment().onActivityResult(FirstFragment.REQUEST_CODE,resultOk,intent);  
+        }  
+    }
+```
 
 
- 
 
-	
+​	

@@ -1,6 +1,6 @@
 
 
-#面向对象的六大原则
+# 面向对象的六大原则
 
 
  - **单一职责原则** 
@@ -33,10 +33,9 @@
  - **迪米特原则**
 
 　　又叫作最少知识原则，就是说一个对象应当对其他对象有尽可能少的了解。
-　　通俗地讲，一个类应该对自己需要耦合或调用的类知道得最少，不关心被耦合或调用的类的内部实现，只负责调用你提供的方法。
+　　通俗地讲，一个类应该对自己需要耦合或调用的类知道得最少，不关心被耦合或调用的类的内部实现，只负责调用你提供的方法。　　
 
-　　下面开始设计模式学习．．．　　
-#1. Singleton（单例模式）
+##  Singleton（单例模式）
 
 作用：　　
 > 保证在Java应用程序中，一个类Class只有一个实例存在。
@@ -45,7 +44,7 @@
 >由于单例模式在内存中只有一个实例，减少了内存开销。
 >
 　单例模式可以避免对资源的多重占用，例如一个写文件时，由于只有一个实例存在内存中，避免对同一个资源文件的同时写操作。
-　　
+
 >单例模式可以再系统设置全局的访问点，优化和共享资源访问。
 
 使用情况：
@@ -53,68 +52,56 @@
 >
 >某个需要被频繁访问的实例对象　
 
-##1.1 使用方法
+### 使用方法
 
-**第一种形式：**
+**懒汉式，线程不安全**
+
+```java
+public class Singleton {  
+    private static Singleton instance;  
+    private Singleton (){}  
+
+    public static Singleton getInstance() {  
+    if (instance == null) {  
+        instance = new Singleton();  
+    }  
+    return instance;  
+    }  
+}  
 
 ```
-public class Singleton {
+**懒汉式，线程安全**　
 
-    /* 持有私有静态实例，防止被引用，此处赋值为null，目的是实现延迟加载 */
-    private static Singleton instance = null;
-
-    /* 私有构造方法，防止被实例化 */
-    private Singleton() {
-    }
-
-    /* 懒汉式：第一次调用时初始Singleton，以后就不用再生成了
-    静态方法，创建实例 */
-    public static Singleton getInstance() {
-        if (instance == null) {
-            instance = new Singleton();
-        }
-        return instance;
-    }
+```java
+public class Singleton {  
+    private static Singleton instance;  
+    private Singleton (){}  
+    public static synchronized Singleton getInstance() {  
+    if (instance == null) {  
+        instance = new Singleton();  
+    }  
+    return instance;  
+    }  
 }
 ```
-　　但是这有一个问题，不同步啊！在对据库对象进行的频繁读写操作时，不同步问题就大了。
+**饿汉式，线程安全**
 
-**第二种形式**：
-
-　　既然不同步那就给getInstance方法加个锁呗！我们知道使用synchronized关键字可以同步方法和同步代码块，所以：　　
-
-```
- public static synchronized Singleton getInstance() {  
-     if (instance == null) {  
-         instance = new Singleton();  
-     }  
-     return instance;  
- } 
-```
-或是
-
-```
-public static Singleton getInstance() {  
-     synchronized (Singleton.class) {  
-         if (instance == null) {  
-             instance = new Singleton();  
-         }  
-     }  
-     return instance;  
- } 
+```java
+public class Singleton {  
+    private static Singleton instance = new Singleton();  
+    private Singleton (){}  
+    public static Singleton getInstance() {  
+    return instance;  
+    }  
+}
 ```
 
-获取Singleton实例：
-
-```
-Singleton.getInstance().方法（）
-```
-##1.２android中的Singleton 
+### android中的Singleton 
 
 > 软键盘管理的 InputMethodManager
 
 源码(以下的源码都是5.1的)：
-```
+```java
 205 public final class InputMethodManager {
 //.........
 211     static InputMethodManager sInstance;
@@ -137,7 +124,7 @@ Singleton.getInstance().方法（）
 
 当然也有同步方法的单例实现，比如：CalendarDatabaseHelper
 
-```
+```java
 307     public static synchronized CalendarDatabaseHelper getInstance(Context context) {
 308         if (sSingleton == null) {
 309             sSingleton = new CalendarDatabaseHelper(context);
@@ -174,36 +161,28 @@ Singleton.getInstance().方法（）
 68         mBase = base;
 69     }
 ```
-ContextWrapper构造函数传入的base为null, 就算有多个Application实例，但是没有通过attach()绑定相关信息，没有上下文环境，三个字。
+ContextWrapper构造函数传入的base为null, 就算有多个Application实例，但是没有通过attach()绑定相关信息，没有上下文环境。
 
-  **然并卵**
-
-
-#２. Factory（工厂模式）
+## Factory（工厂模式）
 
 >　定义一个用于创建对象的接口，让子类决定实例化哪一个类。工厂方法使一个类的实例化延迟到其子类。 
 　**对同一个接口的实现类进行管理和实例化创建**
-
-![这里写图片描述](http://img.blog.csdn.net/20160620135007144)　
 
 假设我们有这样一个需求：
 
 　　动物Animal，它有行为move()。有两个实现类cat和dog。为了统一管理和创建我们设计一个工厂模式。
 　　同时两个子类有各自的行为，Cat有eatFish()，Dog有eatBone().
 
-结构图：
-![这里写图片描述](http://img.blog.csdn.net/20160620141023393)
-
 Animal接口：
 
-```
+```java
 interface animal {
 	void move();
 }
 ```
 Cat类:
 
-```
+```java
 public class Cat implements Animal{
 
 	@Override
@@ -218,7 +197,7 @@ public class Cat implements Animal{
 ```
 Dog类:
 
-```
+```java
 public class Dog implements Animal{
 
 	@Override
@@ -233,7 +212,7 @@ public class Dog implements Animal{
 ```
 那么现在就可以建一个工厂类（Factory.java）来对实例类进行管理和创建了.
 
-```
+```java
 public class Factory {
 	//静态工厂方法
 	//多处调用，不需要实例工厂类 
@@ -248,7 +227,7 @@ public class Factory {
 ```
 使用：
 
-```
+```java
 Animal cat = Factory.produceCat();
 cat.move();
 //-----------------------------
@@ -267,7 +246,7 @@ Animal cat = Factory.produceCat();
 
 　　一般来说，这样的普通工厂就可以满足基本需求。但是我们如果要新增一个Animal的实现类panda，那么必然要在工厂类里新增了一个生产panda的方法。就违背了 闭包的设计原则（对扩展要开放对修改要关闭） ，于是有了抽象工厂模式。
 
-##２.1 Abstract Factory(抽象工厂) 
+## Abstract Factory(抽象工厂) 
 
 　　抽象工厂模式提供一个创建一系列相关或相互依赖对象的接口，而无需指定它们具体的类。
 　　啥意思？就是把**生产抽象成一个接口，每个实例类都对应一个工厂类**（普通工厂只有一个工厂类），**同时所有工厂类都继承这个生产接口**。
@@ -313,13 +292,13 @@ cat.move();
 ```
 　　现在我们要加入panda，直接新建一个pandaFactory就行了，这样我们系统就非常灵活，具备了动态扩展功能。
 
-##２.1 Android中的Factory
+### Android中的Factory
 
 　　比如AsyncTask的抽象工厂实现：
 
 工厂的抽象：
 
-```
+```java
 59　public interface ThreadFactory {
 //省略为备注
 69    Thread newThread(Runnable r);
@@ -327,14 +306,14 @@ cat.move();
 ```
 产品的抽象（new Runnable就是其实现类）：
 
-```
+```java
 56   public interface Runnable {
 //省略为备注
 68    public abstract void run();
 69 }
 ```
 AsyncTask中工厂类的实现：
-```
+```java
 185    private static final ThreadFactory sThreadFactory = new ThreadFactory() {
 186        private final AtomicInteger mCount = new AtomicInteger(1);
 187
@@ -346,8 +325,8 @@ AsyncTask中工厂类的实现：
    我们可以创建另外类似的工厂，生产某种专门的线程（多线程），非常容易扩展。
 当然，android中的应用还有很多（比如BitmapFactory），有兴趣的小伙伴可以去扒一扒。
 
-#3. Adapter（适配器模式）
-   
+##  Adapter（适配器模式）
+
 **将一个类的接口转换成客户希望的另外一个接口**。
 
 　　我们经常碰到要将两个没有关系的类组合在一起使用，第一解决方案是：修改各自类的接口，但是如果我们没有源代码，或者，我们不愿意为了一个应用而修改各自的接口。 怎么办?
@@ -362,7 +341,6 @@ AsyncTask中工厂类的实现：
 
 >目标接口（Target）：客户所期待的接口。可以是**具体的或抽象的类，也可以是接口。**
 
-![这里写图片描述](http://img.blog.csdn.net/20160620135007144)　
 ```
 // 需要适配的类 
 class Adaptee {  
@@ -445,7 +423,7 @@ class Adapter extends Adaptee implements Target{
 
 > Adapter的继承结构
 
-![这里写图片描述](http://img.blog.csdn.net/20160621094155219)
+![image-20190318144401920](https://ws1.sinaimg.cn/large/006tKfTcgy1g16y1fb092j31380radpe.jpg)
 
 BaseAdapter的部分源码：
 ```
@@ -466,7 +444,7 @@ BaseAdapter的部分源码：
 ```
 ListAdapter, SpinnerAdapter都是Target ，数据是Adaptee ，采用对象组合方式。
 
-#4. Chain of Responsibility（责任链模式）
+## Chain of Responsibility（责任链模式）
 
 　　使多个对象都有机会处理请求，从而避免请求的发送者和接收者之间的耦合关系。将这些对象连成一条链，并沿着这条链传递该请求，直到有一个对象处理它为止。
 　　
@@ -499,15 +477,12 @@ else{
  　　不能保证请求一定被接收，且对于比较长的职责链，请求的处理可能涉及到多个处理对象，系统性能将受到一定影响，而且在进行代码调试时不太方便。
 　　每次都是从链头开始，这也正是链表的缺点。
 　　
-##４.1 Android中的Chain of Responsibility
+
+### Android中的Chain of Responsibility
 
 　　触摸、按键等各种事件的传递
-　　
-![这里写图片描述](http://img.blog.csdn.net/20160621101505594)  
 
-有兴趣的可以看一下这篇文章[View事件分发机制源码分析](http://blog.csdn.net/Amazing7/article/details/51274481)，我这就不多说了。
-
-#5. Observer（观察者模式）
+## Observer（观察者模式）
 
 　　有时被称作发布/订阅模式，观察者模式定义了一种**一对多**的依赖关系，让多个观察者对象同时监听某一个主题对象。这个主题对象在状态发生变化时，会通知所有观察者对象，使它们能够自动更新自己。
 
@@ -529,9 +504,7 @@ else{
 
 ④具体观察者（ConcreteObserver）
 
-　　实现抽象观察者角色所要求的更新接口，以便使本身的状态与主题状态协调。
-
-![这里写图片描述](http://img.blog.csdn.net/20160621104419553)　
+　　实现抽象观察者角色所要求的更新接口，以便使本身的状态与主题状态协调
 
 言语苍白，上代码：
 
@@ -618,7 +591,7 @@ public class Test {
 >“没有，都在代码里了”
 >“（⊙ｏ⊙）哦．．．．．”
 
-##５.1 Android中的Observer
+### Android中的Observer
 
 　　观察者模式在android中运用的也比较多，最熟悉的ContentObserver。
 
@@ -684,8 +657,8 @@ DataSetObserver 的源码：
 ```
 　　DataSetObserver就是一个观察者，它一旦发现BaseAdapter内部数据有变量，就会通过回调方法DataSetObserver.onChanged和DataSetObserver.onInvalidated来通知DataSetObserver的实现类。
 
-#６. Builder（建造者模式）
-　　
+## Builder（建造者模式）
+
 　　建造者模式：是将一个复杂的对象的构建与它的表示分离（同构建不同表示），使得同样的构建过程可以创建不同的表示。
 
 > 　　一个人活到70岁以上，都会经历这样的几个阶段：婴儿，少年，青年，中年，老年。并且每个人在各个阶段肯定是不一样的，世界上不存在两个人在人生的这5个阶段的生活完全一样，但是活到70岁以上的人，都经历了这几个阶段是肯定的。实际上这是一个比较经典的建造者模式的例子了。
@@ -703,8 +676,6 @@ DataSetObserver 的源码：
 ④　Product：要创建的复杂对象。
 
 > 与抽象工厂的区别：在建造者模式里，有个指导者，由指导者来管理建造者，用户是与指导者联系的，指导者联系建造者最后得到产品。即建造模式可以强制实行一种分步骤进行的建造过程。
-
-![这里写图片描述](http://img.blog.csdn.net/20160621134142566)　
 
 
 Product和产品的部分Part接口 
@@ -781,7 +752,7 @@ Product product = builder.getResult();
 
 要创建的复杂对象的算法，独立于该对象的组成部分，也独立于组成部分的装配方法时。
 
-##６.1 Android中的Builder
+### Android中的Builder
 
 　android中的Dialog就使用了Builder Pattern，下面来看看AlertDialog的部分源码。
 
@@ -862,7 +833,7 @@ new AlertDialog.Builder(context)
  .setPositiveButton("确定", null)
  .show();
 ```
-#７. Memento（备忘录模式）
+##  Memento（备忘录模式）
 
 　　备忘录模式又叫做快照模式(Snapshot Pattern)或Token模式，是对象的行为模式。
 
@@ -875,8 +846,6 @@ new AlertDialog.Builder(context)
 ②　Memento(备忘录):　负责存储Originnator对象的内部状态，并可防止Originator以外的其他对象访问备忘录Memento，备忘录有两个接口，Caretaker只能看到备忘录的窄接口，它只能将备忘录传递给其他对象。
 
 ③、　Caretaker(管理者):负责保存好备忘录Memento，不能对备忘录的内容进行操作或检查。
-
-　![这里写图片描述](http://img.blog.csdn.net/20160621134142566)　
 
 ```
 public class Originator {
@@ -962,7 +931,7 @@ o.setState("Off");
 ```
 不需要了解对象的内部结构的情况下备份对象的状态，方便以后恢复。
 
-##７.1 Android中的Memento
+### Android中的Memento
 
 　　Activity的onSaveInstanceState和onRestoreInstanceState就是通过Bundle（相当于备忘录对象）这种序列化的数据结构来存储Activity的状态，至于其中存储的数据结构，这两个方法不用关心。
 
@@ -989,7 +958,7 @@ o.setState("Off");
 1025        }
 1026    }
 ```
-##８. Prototype（原型模式）
+## Prototype（原型模式）
 
 　　原型模式，能快速克隆出一个与已经存在对象类似的另外一个我们想要的新对象。
 　　工作原理是：通过将一个原型对象传给那个要发动创建的对象，这个要发动创建的对象通过请求原型对象拷贝它们自己来实施创建。
@@ -1007,8 +976,8 @@ o.setState("Off");
 ```
 这里Intent通过实现Cloneable接口来实现原型拷贝。
 
-##９. Strategy（策略模式）
-　　
+##  Strategy（策略模式）
+
 　　定义：有一系列的算法，将每个算法封装起来（每个算法可以封装到不同的类中），各个算法之间可以替换，策略模式让算法独立于使用它的客户而独立变化。
 
 　　举例：

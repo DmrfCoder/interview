@@ -2056,16 +2056,17 @@ String、StringBuffer是线程安全的，StringBuilder是线程不安全的（�
 
 3.StringBuilder与StringBuffer有公共父类AbstractStringBuilder(抽象类)
 
+## Java中的注解
 
+同 classs 和 interface 一样，注解也属于一种类型。它是在 Java SE 5.0 版本中开始引入的概念。
 
-  Integer A=1 
+### 注解的定义
 
-​       Integer B=1 
+注解通过 @interface关键字进行定义。
 
-​       Integer C=new Integer(1); 
+```
+public @interface TestAnnotation {
+}
+```
 
-​       Integer D=129 
-
-​       Integer E=129 
-
-D==E的返回结果
+它的形式跟接口很类似，不过前面多了一个 @ 符号。上面的代码就创建了一个名字为 TestAnnotaion 的注解。

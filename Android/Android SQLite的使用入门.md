@@ -20,7 +20,12 @@
 　　
 
 >ACID：
-> 　　指数据库事务正确执行的四个基本要素的缩写。包含：原子性（Atomicity）、一致性（Consistency）、隔离性（Isolation）、持久性（Durability）。一个支持事务（Transaction）的数据库，必需要具有这四种特性，否则在事务过程（Transaction processing）当中无法保证数据的正确性，交易过程极可能达不到交易方的要求。
+>　　指数据库事务正确执行的四个基本要素的缩写。包含：原子性（Atomicity，对于其数据修改，要么全都执行，要么全都不执行，一套事务下来，如果有一个失败，那整体失败）、一致性（Consistency，事务是按照预期生效的）、隔离性（Isolation，一个事务的影响在该事务提交前对其他事务都不可见）、持久性（Durability，事务完成之后，它对于系统的影响是永久性的。该修改即使出现致命的系统故障也将一直保持）。一个支持事务（Transaction）的数据库，必需要具有这四种特性，否则在事务过程（Transaction processing）当中无法保证数据的正确性，交易过程极可能达不到交易方的要求。
+>
+>转账：张三给李四转账100元。那数据库假设需要 张三扣100，李四加100，记录一条流水。
+>如果流水没记录成功，那整体回滚，张三也没转账成功，李四也没多钱。这就是原子性的体现。
+>
+>而张三必须扣100，李四必须加100，这个就是一致性了，如果因为某些逻辑原因，导致张三扣了100，流水记录100转账，而李四只加了60。然后这3条操作都成功了，那原子性就符合了，但是一致性就不符合了~~~
 
 2、 零配置 – 无需安装和管理配置 　
 
@@ -113,45 +118,43 @@ DatabaseHelper database = new DatabaseHelper(context);//传入一个上下文参
 SQLiteDatabase db = null;
 db = database.getWritableDatabase();
 ```
-　　上面这段代码会返回一个 SQLiteDatabase 类的实例，使用这个对象，你就可以查询或者修改数据库。　
+　　上面这段代码会返回一个 SQLiteDatabase 类的实例，使用这个对象，就可以查询或者修改数据库。　
 
 SQLiteDatabase类为我们提供了很多种方法，而较常用的方法如下：
 
-- 删除数据行：(int) delete(String table,String whereClause,String[] whereArgs)
-
-　　
+- 删除数据行：(int) delete(String table,String whereClause,String[] whereArgs)　　
 
 - 添加数据行：(long) insert(String table,String nullColumnHack,ContentValues values)
 
-　　	
-
 - 更新数据行：(int) update(String table, ContentValues values, String whereClause, String[] whereArgs)
 
-　　
+- 执行一个SQL语句，可以是一个select或其他的sql语句：(void) execSQL(String sql)　	
 
-- 执行一个SQL语句，可以是一个select或其他的sql语句：(void) execSQL(String sql)
-
-　　	
-
-- 关闭数据库：(void) close()
-
-　　	
+- 关闭数据库：(void) close()	
 
 - 查询指定的数据表返回一个带游标的数据集：(Cursor) query(String table, String[] columns, String selection, String[] selectionArgs, String groupBy, String having, String orderBy, String limit)
 
-　　>  各参数说明：
+　　>  ​	各参数说明：
 　　>
 　　>  - table：表名称
+　　>
 　　>  - colums：列名称数组
+　　>
 　　>  - selection：条件子句，相当于where
+　　>
 　　>  - selectionArgs：条件语句的参数数组
+　　>
 　　>  - groupBy：分组
+　　>
 　　>  - having：分组条件
+　　>
 　　>  - orderBy：排序类
+　　>
 　　>  - limit：分页查询的限制
+　　>
 　　>  - Cursor：返回值，相当于结果集ResultSet
 
-- 运行一个预置的SQL语句，返回带游标的数据集（与上面的语句最大的区别就是防止SQL注入）：(Cursor) rawQuery(String sql, String[] selectionArgs)
+- 运行一个预置的SQL语句，返回带游标的数据集（与上面的语句最大的区别就是**防止SQL注入**）：(Cursor) rawQuery(String sql, String[] selectionArgs)
 
 当你完成了对数据库的操作（例如你的 Activity 已经关闭），需要调用 SQLiteDatabase 的 Close() 方法来释放掉数据库连接。
 
@@ -161,8 +164,7 @@ SQLiteDatabase类为我们提供了很多种方法，而较常用的方法如下
 　　例如，你可以执行如下代码：
 
 ```java
- db.execSQL("CREATE TABLE user(_id INTEGER PRIMARY KEY   
-        AUTOINCREMENT, username TEXT, password TEXT);");
+ db.execSQL("CREATE TABLE user(_id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, password TEXT);");
 ```
 
 　　这条语句会创建一个名为 user的表，表有一个列名为 _id，并且是主键，这列的值是会自动增长的整数。另外还有两列：username( 字符 ) 和 password( 字符  )。 SQLite 会自动为主键列创建索引。

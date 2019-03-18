@@ -2329,8 +2329,6 @@ String[]也是Object的子类，如果调用b.getClass().getSuperclass()会打�
 
 ### 自定义View的流程？
 
-
-
 ### 屏幕上有view1 view2 view3，其绘制流程？
 
 ### 如何实现一个圆，其下四分之一加上蒙层的效果？（path）
@@ -2359,136 +2357,7 @@ String[]也是Object的子类，如果调用b.getClass().getSuperclass()会打�
 
 关于Android：NDK、音频播放与收集、深度学习模型在移动端的部署与优化
 
-### NDK
 
-#### JNI介绍
-
-##### 简介
-
-定义：Java Native Interface，即 Java本地接口
-作用： 使得Java 与 本地其他类型语言（如C、C++）交互
-
-即在 Java代码 里调用 C、C++等语言的代码 或 C、C++代码调用 Java 代码
-
-特别注意：
-
-JNI是 Java 调用 Native 语言的一种特性
-JNI 是属于 Java 的，与 Android 无直接关系
-
-##### 为什么要有 JNI
-
-背景：实际使用中，Java 需要与 本地代码 进行交互
-问题：因为 Java 具备跨平台的特点，所以Java 与 本地代码交互的能力非常弱
-解决方案： 采用 JNI特性 增强 Java 与 本地代码交互的能力
-
-##### 实现步骤
-
-在Java中声明Native方法（即需要调用的本地方法）
-编译上述 Java源文件javac（得到 .class文件）
-通过 javah 命令导出JNI的头文件（.h文件）
-使用 Java需要交互的本地代码 实现在 Java中声明的Native方法 
-如 Java 需要与 C++ 交互，那么就用C++实现 Java的Native方法
-
-编译.so库文件
-通过Java命令执行 Java程序，最终实现Java调用本地代码
-
-##### NDK介绍
-
-简介
-定义：Native Development Kit，是 Android的一个工具开发包 
-NDK是属于 Android 的，与Java并无直接关系
-
-作用：快速开发C、 C++的动态库，并自动将so和应用一起打包成 APK 
-即可通过 NDK在 Android中 使用 JNI与本地代码（如C、C++）交互
-应用场景：在Android的场景下 使用JNI
-
-即 Android开发的功能需要本地代码（C/C++）实现
-
-![1](https://ws2.sinaimg.cn/large/006tKfTcgy1g0n6bgtomlj30yg0g877o.jpg)
-
-额外注意：
-
-![2](https://ws2.sinaimg.cn/large/006tKfTcgy1g0n6buo2gnj30wk0gu75h.jpg)
-
-JNI与NDK的关系：
-
-![3](https://ws1.sinaimg.cn/large/006tKfTcgy1g0n6cedcb7j30yg0g0gnz.jpg)
-
-简单的使用流程：
-
-首先在java层编写需要调用的native方法，一般格式是：
-
-```java
-public class SignalProcess {
-    public native void DemoNew();
-
-    public native int DemoL(short[] Record, double[] DIST, double[] tempII, double[] tempQQ);
-
-    static {
-        System.loadLibrary("signalprocess");
-    }
-
-}
-
-```
-
-然后在cpp文件夹下编写与java中声明的native方法对应的c代码，基本格式如下：
-
-```c
-
-extern "C"
-JNIEXPORT jdouble
-Java_cn_dmrf_nuaa_gesturewithtf_JniClass_SignalProcess_DemoL(
-        JNIEnv *env,
-        jobject /* this */,
-        jshortArray BUFF,
-        jdoubleArray REDist,
-        jdoubleArray tII,
-        jdoubleArray tQQ
-) {
-    jshort *Buff = (env)->GetShortArrayElements(BUFF, 0);
-    jdouble *O_dist = (env)->GetDoubleArrayElements(REDist, 0);
-    jdouble *tempII = (env)->GetDoubleArrayElements(tII, 0);
-    jdouble *tempQQ = (env)->GetDoubleArrayElements(tQQ, 0);
-    
-    ...
-
-    (env)->ReleaseDoubleArrayElements(tQQ, tempQQ, 0);
-    (env)->ReleaseDoubleArrayElements(tII, tempII, 0);
-    (env)->ReleaseShortArrayElements(BUFF, Buff, 0);
-    (env)->ReleaseDoubleArrayElements(REDist, O_dist, 0);
-
-    return RE;
-
-}
-```
-
-然后需要编辑cmakeLists文件，主要就两部分：
-
-```c
-add_library( MyCic
-             SHARED
-             src/main/cpp/mycic/MyCic.cpp )
-```
-
-三个参数：库名，库类型，cpp文件的路径
-
-和：
-
-```c
-target_link_libraries( # Specifies the target library.
-                       signalprocess
-
-                       # Links the target library to the log library
-                       # included in the NDK.
-                       ${log-lib}
-                       MyCic
-                       ADist
-                       support
-                       )
-```
-
-添加链接，添加之后链接的文件中可以include被链接的库对应的cpp文件。
 
 ### 音频模块
 
