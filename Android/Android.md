@@ -2008,7 +2008,7 @@ next：是一个无限循环的方法，如果没有消息，next方法就一直
 
 ```
 
-该方法会调用Looper构造函数同时实例化出MessageQueue和当前thread:
+注意Looper是用ThreadLocal\<Looper\> sThreadLocal来存储Looper的，ThreadLocal底层是ThreadLocalMap，以此来保证一个Thread只有一个Looper。该方法会调用Looper构造函数同时实例化出MessageQueue和当前thread:
 
 ```java
 private Looper(boolean quitAllowed) {

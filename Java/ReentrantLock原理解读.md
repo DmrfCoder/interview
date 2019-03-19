@@ -1,13 +1,3 @@
-ReentrantLock主要利用CAS+AQS队列来实现。它支持公平锁和非公平锁，两者的实现类似。
-
-**CAS**：Compare and Swap，比较并交换。CAS有3个操作数：内存值V、预期值A、要修改的新值B。当且仅当预期值A和内存值V相同时，将内存值V修改为B，否则什么都不做。该操作是一个原子操作，被广泛的应用在Java的底层实现中。在Java中，CAS主要是由sun.misc.Unsafe这个类通过JNI调用CPU底层指令实现
-
-ReentrantLock主要利用CAS+AQS队列来实现。它支持公平锁和非公平锁，两者的实现类似。
-
-CAS：Compare and Swap，比较并交换。CAS有3个操作数：内存值V、预期值A、要修改的新值B。当且仅当预期值A和内存值V相同时，将内存值V修改为B，否则什么都不做。该操作是一个原子操作，被广泛的应用在Java的底层实现中。在Java中，CAS主要是由sun.misc.Unsafe这个类通过JNI调用CPU底层指令实现
-
-AbstractQueuedSynchronizer简称AQS
-
 **【ReentrantLock使用示例】**
 
 ```java
@@ -26,19 +16,25 @@ public void test(){
 
 ```
 
+ReentrantLock主要利用CAS+AQS队列来实现。它支持公平锁和非公平锁，两者的实现类似。
+
+**CAS**：Compare and Swap，比较并交换。CAS有3个操作数：内存值V、预期值A、要修改的新值B。当且仅当预期值A和内存值V相同时，将内存值V修改为B，否则什么都不做。该操作是一个**原子操作**，被广泛的应用在Java的底层实现中。在Java中，CAS主要是由sun.misc.Unsafe这个类**通过JNI调用CPU底层指令实现**
+
+Abstract Queued Synchronizer简称AQS
+
 **【AQS】**
 
 是一个用于构建锁和同步容器的框架。事实上concurrent包内许多类都是基于AQS构建，例如ReentrantLock，Semaphore，CountDownLatch，ReentrantReadWriteLock，FutureTask等。AQS解决了在实现同步容器时设计的大量细节问题。
 
 ![image-20190319140846163](https://ws2.sinaimg.cn/large/006tKfTcgy1g182n1fiqfj316s0cqtbi.jpg)
 
-AQS使用一个FIFO的队列表示排队等待锁的线程，队列头节点称作“哨兵节点”或者“哑节点”，它不与任何线程关联。其他的节点与等待线程关联，每个节点维护一个等待状态waitStatus
+AQS使用一个**FIFO的队列**表示排队等待锁的线程，队列**头节点称作“哨兵节点”或者“哑节点”**，它不与任何线程关联。其他的节点与等待线程关联，每个节点维护一个等待状态waitStatus
 
-ReentrantLock的基本实现可以概括为：先通过CAS尝试获取锁。如果此时已经有线程占据了锁，那就加入AQS队列并且被挂起。当锁被释放之后，排在CLH队列队首的线程会被唤醒，然后CAS再次尝试获取锁。在这个时候，如果：
+ReentrantLock的基本实现可以概括为：**先通过CAS尝试获取锁。如果此时已经有线程占据了锁，那就加入AQS队列并且被挂起。当锁被释放之后，排在CLH队列队首的线程会被唤醒，然后CAS再次尝试获取锁。在这个时候，如果：**
 
-非公平锁：如果同时还有另一个线程进来尝试获取，那么有可能会让这个线程抢先获取；
+**非公平锁：如果同时还有另一个线程进来尝试获取，那么有可能会让这个线程抢先获取；**
 
-公平锁：如果同时还有另一个线程进来尝试获取，当它发现自己不是在队首的话，就会排到队尾，由队首的线程获取到锁。
+**公平锁：如果同时还有另一个线程进来尝试获取，当它发现自己不是在队首的话，就会排到队尾，由队首的线程获取到锁。**
 
 **【lock()与unlock()实现原理】**
 
