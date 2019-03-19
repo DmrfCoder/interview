@@ -46,7 +46,7 @@
 
 ## DataBase
 
-[DataBase常见知识点汇总](./DataBaseDataBase.md)
+[DataBase常见知识点汇总](./DataBase.md)
 
 [DataBase常见面试题](./DataBase常见面试题.md)
 
