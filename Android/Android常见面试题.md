@@ -2343,6 +2343,27 @@ String[]也是Object的子类，如果调用b.getClass().getSuperclass()会打�
 
 ### 20亿个qq号码，如何判断其中是否存在某一个？
 
+假设qq号码10位：
+
+1. 建立10叉数
+
+2. 数据节点有两个数据，一个存数字，一个存是否为结束位(解释：如"1234", (1, false) - (2, false) - (3, false) (4, true))  
+
+```
+root
+
+1(F)
+
+  2(F)
+
+    3(F)
+
+      4(T)
+
+```
+
+以此类推，构建出一个十叉树，判断一个数是否存在过，时间复杂度是O(1).
+
 ### ndk中的external c有什么用？
 
 ### ndk中的attachCurrentThread有什么用？

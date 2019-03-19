@@ -2,11 +2,25 @@
 
 ### 事务的概念
 
-事务的概念来自于两个独立的需求：**并发数据库访问**，**系统错误恢复**。
+数据库事务通常包含了一个序列的对数据库的读/写操作（一个单元的一系列SQL语句的集合）。包含有以下两个目的：
 
-一个事务是可以被看作一个单元的一系列SQL语句的集合。
+1. 为数据库操作序列提供了一个从失败中恢复到正常状态的方法，同时提供了数据库即使在异常状态下仍能保持一致性的方法。（系统错误恢复）
+2. 当多个应用程序在并发访问数据库时，可以在这些应用程序之间提供一个隔离方法，以防止彼此的操作互相干扰。（并发数据库访问）
+
+当事务被提交给了数据库管理系统（DataBaseManagerService，DBMS），则DBMS需要确保该事务中的所有操作都成功完成且其结果被永久保存在数据库中，如果事务中有的操作没有成功完成，则事务中的所有操作都需要回滚，回到事务执行前的状态；同时，该事务对数据库或者其他事务的执行无影响，所有的事务都好像在独立的运行。
+
+#### 例子
+
+某人要在商店使用电子货币购买100元的东西，当中至少包括两个操作：
+
+1. 该人账户减少100元
+2. 商店账户增加100元
+
+支持事务的数据库管理系统（transactional DBMS）就是要确保以上两个操作（整个“事务”）都能完成，或一起取消；否则就会出现100元平白消失或出现的情况
 
 ### 事务的特性（ACID）
+
+并非任意的对数据库的操作序列都是数据库事务。数据库事务拥有以下四个特性，习惯上被称之为**ACID特性**。
 
 - A, **atomacity** 原子性 事务必须是原子工作单元；对于其数据修改，要么全都执行，要么全都不执行。通常，与某个事务关联的操作具有共同的目标，并且是相互依赖的。如果系统只执行这些操作的一个子集，则可能会破坏事务的总体目标。原子性消除了系统处理操作子集的可能性。
 
@@ -19,6 +33,13 @@
 - D, **durability** 持久性
 
   事务完成之后，它对于系统的影响是永久性的。该修改即使出现致命的系统故障也将一直保持。
+
+原子性和一致性的区别：
+
+转账：张三给李四转账100元。那数据库假设需要 张三扣100，李四加100，记录一条流水。
+如果流水没记录成功，那整体回滚，张三也没转账成功，李四也没多钱。这就是原子性的体现。
+
+而张三必须扣100，李四必须加100，这个就是一致性了，如果因为某些逻辑原因，导致张三扣了100，流水记录100转账，而李四只加了60。然后这3条操作都成功了，那原子性就符合了，但是一致性就不符合了
 
 ### 并发控制
 
@@ -95,7 +116,7 @@
 
 ### 基本概念
 
-在数据库中，索引的含义与日常意义上的“索引”一词并无多大区别（想想小时候查字典），它是用于提高数据库表数据访问速度的数据库对象。
+在数据库中，索引的含义与日常意义上的“索引”一词并无多大区别（想想小时候查字典），它是用于**提高数据库表数据访问速度的数据库对象**。
 
 - 索引可以避免全表扫描。多数查询可以仅扫描少量索引页及数据页，而不是遍历所有数据页。
 - 对于非聚集索引，有些查询甚至可以不访问数据页。
@@ -172,6 +193,18 @@
 在MySQL中`InnoDB`按照主键进行聚集，如果没有定义主键，`InnoDB`会试着使用唯一的非空索引来代替。如果没有这种索引，`InnoDB`就会定义隐藏的主键然后在上面进行聚集，但是主键和聚集索引是不等价的。在`InnoDB`中`Normal`索引即非聚集索引。
 
 ## SQL语句
+
+SQL语言由一些简单句子构成基本的语法，所有的SQL语句均有自己的格式，典型的SQL语句（查询语句）结构如图所示：
+
+![23](https://ws2.sinaimg.cn/large/006tKfTcgy1g177rjpd4yj308b04kq2w.jpg)
+
+QL语法的基础是子句（clause），子句中会包括一些关键词（keyword）。每条SQL语句均由一个关键词开始，该关键词描述这条语句要产生的动作。SQL中常用的关键词及其功能如表所示：
+
+![image-20190318202147011](https://ws1.sinaimg.cn/large/006tKfTcgy1g177suo2ssj30n40vun07.jpg)
+
+![image-20190318202203656](https://ws4.sinaimg.cn/large/006tKfTcgy1g177t4zfoxj30n40ii404.jpg)
+
+![image-20190318202221064](https://ws2.sinaimg.cn/large/006tKfTcgy1g177tftgktj30qo0wajub.jpg)
 
 ### CRUD
 
@@ -405,3 +438,142 @@ WHERE A.id IS NULL;
 ... FROM table1 CROSS JOIN table2
 ... FROM table1 JOIN table2
 ```
+
+## 主键与外键
+
+SQL 的主键和外键的作用：
+
+```
+外键取值规则：空值或参照的主键值
+(1)插入非空值时，如果主键值中没有这个值，则不能插入。
+(2)更新时，不能改为主键表中没有的值。
+(3)删除主键表记录时，可以在建外键时选定外键记录一起联删除还是拒绝删除。
+(4)更新主键记录时，同样有级联更新和拒绝执行的选择。
+```
+
+简而言之，SQL的主键和外键就是起约束作用。
+ 关系型数据库中一条记录中有若干个属性，若其中某一个属性组（注意是组）能唯一标识一条记录，该属性就可以成为一个主键。例如：
+
+```
+学生表(学号，姓名，性别，班级)
+```
+
+其中每个学生的学号是唯一的，学号就是一个主键；
+
+```
+课程表(课程编号，课程名，学分)
+```
+
+其中课程编号是唯一的，课程编号就是一个主键；
+
+```
+成绩表(学号，课程号，成绩)
+```
+
+成绩表中单一一个属性无法唯一标识一条记录，学号和课程编号的组合才可以唯一标识一条记录，所以学号和课程编号的属性组是一个主键。
+ 成绩表中的学号不是成绩表中的主键，但它和学生表中的学号相对应，并且学生表中的学号是学生表的主键，则称成绩表中的学号是学生表的外键；同理，成绩表中的课程号是课程表的外键。
+
+定义主键和外键主要是为了维护关系数据库的完整性，总结一下：
+
+1.主键是能确定一条记录的唯一标识。比如，一条记录包括身份证号码，姓名，年龄。身份证号码是唯一确认你这个人的，其他的都可能有重复，所以身份证号码是主键。
+ 外键用于与另一张表相关联。是能确认另一张表记录的字段，用于保持数据的一致性。比如，A表中的一个字段，是B表的主键，那它就可以是A表的外键。
+
+2.主键、外键和索引的区别
+
+```
+定义：
+主键：唯一标识一条记录，不能有重复，不允许为空。
+外键：表的外键是另一表的主键，外键是可以有重复的，可以是空值。
+索引：该字段没有重复值，但可以有一个空值。
+作用：
+主键：用来保证数据完整性
+外键：用来和其他表建立联系用
+索引：用来提高查询排序的速度
+个数：
+主键：主键只能有一个。
+外键：一个表可以有多个外键。
+索引：一个表可以有多个唯一索引。
+```
+
+创建SQL的主键和外键约束的方法：
+
+```
+--如果在表创建好了以后再加约束，则格式分别为
+
+--主键
+ALTER TABLE 表名
+--"PK"为主键的缩写，字段名为要在其上创建主键的字段名，"PK_字段名"就为约束名
+ADD CONSTRAINT PK_字段名   
+--同上
+PRIMARY KEY(字段名)
+
+--唯一约束
+ALTER TABLE 表名
+ADD CONSTRAINT UQ_字段名
+UNIQUE(字段名)
+
+--外键约束
+ALTER TABLE 表名
+--"FK"为外键的缩写
+ADD CONSTRAINT FK_字段名
+FOREIGN KEY(字段名) REFERENCES 关联的表名(关联的字段名)
+
+--举个例子
+ALTER TABLE 表A
+ADD CONSTRAINT FK_B 
+FOREIGN KEY(TicketNo) REFERENCES 表B(TicketNo)
+
+--级联更新，级联删除，这样在删除主表Student时，成绩表中该学生的所有成绩都会删除
+ALTER TABLE 成绩表 
+ADD CONSTRAINT FK_StudentNo 
+FOREIGN KEY(StudentNo) REFERENCES Student(StudentNo)
+ON UPDATE CASCADE ON DELETE CASCADE
+
+--检查约束
+ALTER TABLE 表名
+ADD CONSTRAINT CK_字段名
+--括号中的"CK_字段名>0"为条件表达式，用关系运算符连接
+CHECK(字段名>0)
+
+--默认值约束
+ALTER TABLE 表名
+ADD CONSTRAINT DF_字段名
+--其中的'默认值'为想要设置的默认值，注意'FOR'
+DEFAULT '默认值' FOR 字段名
+
+--删除创建的约束
+ALTER TABLE 表名
+--约束名为前面创建的如：FK_字段名这样的约束名
+DROP CONSTRAINT 约束名
+--注意：如果约束是在创建表的时候创建的，则不能用命令删除
+--只能在'企业管理器'里面删除
+
+
+--获取SqlServer中的表结构
+SELECT syscolumns.name,systypes.name,syscolumns.isnullable,syscolumns.length
+FROM syscolumns,systypes
+WHERE syscolumns.xusertype = systypes.xusertype
+AND syscolumns.id = OBJECT_ID('Student')
+
+--单独查询表递增字段
+SELECT [NAME] FROM syscolumns 
+WHERE 
+id = OBJECT_ID(N'Student') AND COLUMNPROPERTY(id,name,'IsIdentity')=1
+
+--获取表主外键约束
+EXEC sp_helpconstraint 'Student'
+
+--查询表主键外键信息
+SELECT 
+sysobjects.id AS objectId,
+OBJECT_NAME(sysobjects.parent_obj) AS TableName,
+sysobjects.name AS constraintName,
+sysobjects.xtype AS constraintType,
+syscolumns.name AS columnName
+FROM sysobjects INNER JOIN sysconstraints
+ON sysobjects.xtype IN('C','F','PK','UQ','D')
+AND sysobjects.id = sysconstraints.constid
+LEFT OUTER JOIN syscolumns ON sysconstraints.id = syscolumns.id
+WHERE OBJECT_NAME(sysobjects.parent_obj) = 'Student' 
+```
+
