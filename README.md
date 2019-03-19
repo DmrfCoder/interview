@@ -26,6 +26,8 @@
 
 [Java常见知识点汇总](./Java/Java.md)
 
+[ReentrantLock原理解读](./Java/ReentrantLock原理解读.md)
+
 [从源码分析String&StringBuffer&StringBuilder区别和联系](./Java/从源码分析String&StringBuffer&StringBuilder区别和联系.md)
 
 [多线程下生产者消费者问题的五种同步方法实现](./Java/多线程下生产者消费者问题的五种同步方法实现.md)
