@@ -297,8 +297,17 @@ standard，singleTop，singleTask，singleInstance，如果要使用这四种启
 TaskAffinity属性主要和singleTask启动模式和allowTaskReparenting属性配对使用，在其他情况下使用没有意义
 
 - 当TaskAffinity和singleTask启动模式配对使用的时候，它是具有该模式的Activity的目前任务栈的名字，待启动的Activity会运行在名字和TaskAffinity相同的任务栈中
-
 - 当TaskAffinity和allowTaskReparenting结合的时候，当一个应用A启动了应用B的某个Activity C后，如果Activity C的allowTaskReparenting属性设置为true的话，那么当应用B被启动后，系统会发现Activity C所需的任务栈存在了，就将Activity C从A的任务栈中转移到B的任务栈中。
+
+#### 清空栈
+
+当用户长时间离开Task（当前Task被转移到后台）时，系统会清除Task中栈底Activity外的所有Activity 。这样，当用户返回到Task时，只留下那个Task最初始的Activity了。我们可以通过修改下面这些属性来改变这种行为：
+
+android:alwaysRetainTaskState： 如果栈底Activity的这个属性被设置为true，上述的情况就不会发生。 Task中的所有Activity将被长时间保存。
+
+android:clearTaskOnLaunch：如果栈底Activity的这个属性被设置为true，一旦用户离开Task， 则 Task栈中的Activity将被清空到只剩下栈底Activity。这种情况刚好与 android:alwaysRetainTaskState相反。即使用户只是短暂地离开，Task也会返回到初始状态 （只剩下栈底Acitivty）。
+
+android:finishOnTaskLaunch 与android:clearTaskOnLaunch相似，但它只对单独的Activity操 作，而不是整个Task。它可以结束任何Activity，包括栈底的Activity。 当它设置为true时，当前的Activity只在当前会话期间作为Task的一部分存在， 当用户退出Activity再返回时，它将不存在。
 
 #### 当前应用有两个Activity A和B，B的 android:launchMode 设置了singleTask模式，A是默认的standard，那么A startActivity启动B，B会新启一个Task吗？如果不会，那么startActivity的Intent加上FLAG_ACTIVITY_NEW_TASK这个参数会不会呢？
 
@@ -401,6 +410,37 @@ fragment所生存的activity生命周期直接影响着fragment的生命周期�
 1. replace 先删除容器中的内容，再添加
 2. add直接添加，可以配合hide适用
 
+##### Fragment的启动和回退栈
+
+如果在一个activity中先后启动了两个Fragment，分别是A、B，当在B Fragment按返回按钮时默认不会返回A Fragment，而是会直接退出当前Activity，Activity有任务栈，对应的Fragment也有类似的栈机制，称为回退栈（Back Stack），回退栈是由FragmentManager管理的。如果没有加入回退栈，则用户点击返回按钮会直接将Activity出栈；如果加入了回退栈，则用户点击返回按钮会回滚Fragment事务。
+
+​    默认情况下，Fragment事务是不会加入回退栈的，如果想将Fragment加入回退栈并实现事物回滚，首先需要在commit()方法之前调用事务的以下方法将其添加到回退栈中：
+
+- addToBackStack(String tag)：标记本次的回滚操作。
+
+#####     弹出回退栈
+
+Fragment的回退非常简单，然而这里又会出现一个新的问题，就是在修改后的案例每次只能回退到上一步操作，而并不能一次性回退到我们想要的位置，这样才更满足实际开发需要。
+
+​    这就需要我们来多了解事物回滚的相关原理，其实在Fragment回退时，默认调用FragmentManager的popBackStack()方法将最上层的操作弹出回退栈。当**栈中有多层时，我们可以根据id或TAG标识来指定弹出到的操作所在层。**
+
+- popBackStack(int id, int flags)：其中id表示提交变更时commit()的返回值。
+- popBackStack(String name, int flags)：其中name是addToBackStack(String tag)中的tag值。
+
+​    在上面2个方法里面，都用到了flags，其实flags有两个取值：0或FragmentManager.POP_BACK_STACK_INCLUSIVE（inclusive）。当取值0时，表示除了参数指定这一层之上的所有层都退出栈，指定的这一层为栈顶层；当取值POP_BACK_STACK_INCLUSIVE时，表示连着参数指定的这一层一起退出栈。
+
+​    如果想要了解回退栈中Fragment的情况，可以通过以下2个方法来实现：
+
+- getBackStackEntryCount()：获取回退栈中Fragment的个数。
+- getBackStackEntryAt(int index)：获取回退栈中该索引值下的Fragment。
+
+​    使用popBackStack()来弹出栈内容的话，调用该方法后会将事物操作插入到FragmentManager的操作队列，只有当轮询到该事物时才能执行。如果想立即执行事物的话，可以使用下面这几个方法：
+
+- popBackStackImmediate()
+- popBackStackImmediate(String tag)
+- popBackStackImmediate(String tag, int flag)
+- popBackStackImmediate(int id, int flag)
+
 ### Service
 
 可以将 Service 在 `AndroidMenifest.xml` 文件中配置成私有的，不允许其他应用访问，即将 `android:exported` 属性设为 false，表示不允许其他应用程序启动本应用的组件，即便是显式 Intent 也不行（even when using an explicit intent）。这可以防止其他应用程序启动您的 Service 组件。
@@ -415,10 +455,20 @@ Service 运行在主线程中，它并不是一个新的线程，也不是新的
 
 ![2](https://ws2.sinaimg.cn/large/006tKfTcly1g0ahvy80hwj30ir0fcdh6.jpg)
 
-- Start Service：通过`context.startService()`启动，这种service可以无限制的运行，除非调用`stopSelf()`或者其他组件调用`context.stopService()`。
-- Bind Service：通过`context.bindService()`启动，客户可以通过IBinder接口和service通信，客户可以通过`context.unBindService()`取消绑定。一个service可以和多个客户绑定，当所有客户都解除绑定后，service将终止运行。
+- Start Service：通过`context.startService(Intent service)`启动，这种service可以无限制的运行，除非调用`stopSelf()`或者其他组件调用`context.stopService()`。没有和Activity进行绑定，所以可以在后台长期运行，但是不能调用服务里的方法，用这种方式启动Service的生命周期为  onCreate() onStartCommand(),onDestroy();在第一次启动之后如果没有运行stopService()方法，则再次调用startService()方法的时候，不会再走onCreate()方法，而是直接就进行运行onStartCommand()的方法.
+- Bind Service：通过`context.bindService(Intent service, ServiceConnection conn,int flags)`启动，客户可以通过IBinder接口和service通信，客户可以通过`context.unBindService()`取消绑定。一个service可以和多个客户绑定，当所有客户都解除绑定后，service将终止运行。该启动模式是与Activity进行绑定的，所以它不可以长期在后台运行，因为当Activity进行销毁的时候，就会停止服务，但是能调用服务力的方法。它的生命周期为，onCreate(),onBind(),onUnbind(),onDestroy()，而一个服务可以被多个客户调用（指的是Activity），当所有客户都调用onUnbind()方法的时候，才会销毁服务。否者不会销毁。
 
 一个通过`context.startService()`方法启动的service，其他组件也可以通过`context.bindService()`与它绑定，在这种情况下，不能使用`stopSelf()`或者`context.stopService()`停止service，只能当所有客户解除绑定在调用`context.stopService()`才会终止。
+
+#### 如何保活service
+
+由于服务(Service)是在后台运行的，所以是不可见的，所以有可能会被系统杀死。那么怎样可以让服务不被系统杀死呢。
+
+1）可以把服务变成前台进程，在我们启动服务的时候，可以先运行`service.startForeground(int id, Notification notification)`方法让它变成前台进程。在这种情况下确实可以减少被kill，但是还是不能保证完全不被杀死。
+
+（2）可以通过广播的形式，在onDestroy()方法里设置一条广播，当服务被杀死的时候，通过广播的形式再次唤醒服务。但是可能在使用第三方应用的时候强制了kill服务的话，onDestroy()方法还没有运行，可能就被杀死。所以这个方法还是不能完全保证不能被杀死。
+
+（3）可以通过双Service()的方式来保护服务不被杀死。两个服务相互之间进行判断对方是否被杀死，如果杀死了就再次激活运行。
 
 #### [为什么有时需要在Service中创建子线程而不是Activity中](https://link.juejin.im/?target=http%3A%2F%2Fwww.cnblogs.com%2Fyejiurui%2Farchive%2F2013%2F11%2F18%2F3429451.html)
 
@@ -1834,7 +1884,7 @@ Android消息机制主要是指Handler的运行机制及Handler所附带的Messa
 
 ### Handler的构造方法
 
-> ①　public　Handler() ②　public　Handler(Callbackcallback) ③　public　Handler(Looperlooper) ④　public　Handler(Looperlooper, Callbackcallback) 　
+> ①　public　Handler() ②　public　Handler(Callback callback) ③　public　Handler(Looper looper) ④　public　Handler(Looper looper, Callback callback) 　
 
  第①个和第②个构造函数都没有传递Looper，这两个构造函数都将通过调用Looper.myLooper()获取当前线程绑定的Looper对象，然后将该Looper对象保存到名为mLooper的成员字段中。 　 　　下面来看①②个函数源码： 
 
@@ -1856,7 +1906,7 @@ public Handler(Callback callback, boolean async) {
             }
         }
 /************************************重点：
-        mLooper = Looper.myLooper();
+        mLooper = Looper.myLooper();//myLooper里面调用的是sThreadLocal.get()，保证每个线程只有一个Looper
         if (mLooper == null) {
             throw new RuntimeException(
                 "Can't create handler inside thread " + Thread.currentThread()
@@ -1870,7 +1920,7 @@ public Handler(Callback callback, boolean async) {
 
 通过Looper.myLooper()获取了当前线程保存的Looper实例，又通过这个Looper实例获取了其中保存的MessageQueue（消息队列）。**每个Handler 对应一个Looper对象，产生一个MessageQueue** 　　
 
-- 第③个和第④个构造函数传递了Looper对象，这两个构造函数会将该Looper保存到名为mLooper的成员字段中。 　　下面来看③④个函数源码：
+- 第③个和第④个构造函数传递了Looper对象，这两个构造函数会将该Looper保存到名为mLooper的成员字段中。 　下面来看③④个函数源码：
 
   ```java
    public Handler(Looper looper, Callback callback) {
@@ -1942,54 +1992,6 @@ private boolean enqueueMessage(MessageQueue queue, Message msg, long uptimeMilli
 - **msg.target = this，该代码将Message的target绑定为当前的Handler**
 - queue.enqueueMessage ，变量queue表示的是Handler所绑定的消息队列MessageQueue，通过调用queue.enqueueMessage(msg, uptimeMillis)我们将Message放入到消息队列中。
 
-
-
-### Handler的工作过程
-
-![image-20190218141417443](https://ws2.sinaimg.cn/large/006tKfTcly1g0ajtuk4euj31300ki43r.jpg)
-
-Handler的send方法被调用时，它会调用MessageQueue的enqueueMessage方法，将消息放入消息队列中，当Looper发现有新消息来时，就会处理这个消息，最终Handler的handleMessage方法就会被调用。
-
-#### ThreadLocal的工作原理
-
-ThreadLocal是Java提供的用于保存同一进程中不同线程数据的一种机制。
-
-ThreadLocal是一个线程内部的数据存储类，通过它可以在指定线程中存储数据，数据存储以后，只有在指定的线程中获取到存储数据，对于其他线程来说则无法获取到数据，即通过ThreadLocal，每个线程都能获取自己线程内部的私有变量。
-
-示例代码：
-
-![image-20190218141548694](https://ws2.sinaimg.cn/large/006tKfTcly1g0ajvkfefkj31300s2nh1.jpg)
-
-运行结果截图： 
-
-![image-20190218141617749](https://ws3.sinaimg.cn/large/006tKfTcly1g0ajvy3m5xj313003owl4.jpg)
-
-可以看出不同线程访问的是同一个ThreadLocal，但是它们通过ThreadLocal获取的值却不一样。 
-主线程设置的是true，所以获取到的是true 
-第一个子线程设置的是false，所以获取到的是false 
-第二个子线程没有设置，所以获取到的是null
-
-![1](https://ws4.sinaimg.cn/large/006tKfTcly1g0dwfti2lyj31dk0towgy.jpg)
-
-在上图中我们可以发现，整个ThreadLocal的使用都涉及到线程中ThreadLocalMap,虽然我们在外部调用的是ThreadLocal.set(value)方法，但本质是通过线程中的ThreadLocalMap中的set(key,value)方法，其中**key为当前ThreadLocal对象**，value为当前赋的值，那么通过该情况我们大致也能猜出get方法也是通过ThreadLocalMap。那么接下来我们一起来看看ThreadLocal中set与get方法的具体实现与ThreadLocalMap的具体结构。
-
-- ThreadLocal本质是操作线程中ThreadLocalMap来实现本地线程变量的存储的
-- ThreadLocalMap是采用数组的方式来存储数据，其中key(弱引用)指向当前ThreadLocal对象，value为设的值
-- ThreadLocal为内存泄漏采取了处理措施，在调用ThreadLocal的get(),set(),remove()方法的时候都会清除线程ThreadLocalMap里所有key为null的Entry
-- 在使用ThreadLocal的时候，我们仍然需要注意，避免使用static的ThreadLocal，分配使用了ThreadLocal后，一定要根据当前线程的生命周期来判断是否需要手动的去清理ThreadLocalMap中清key==null的Entry。
-
-
-
-#### 消息队列MessageQueue的工作原理
-
-![image-20190218141738158](https://ws2.sinaimg.cn/large/006tKfTcly1g0ajxckrscj312c06y42s.jpg)
-
-MessageQueue：消息队列，内部实现是通过一个单链表的数据结构来维护消息列表
-
-eqeueMessage：就是向单链表中插入数据。 
-next：是一个无限循环的方法，如果没有消息，next方法就一直阻塞在这了 
-如果有消息，next方法就返回这条消息并将消息从单列表中移除。
-
 #### Looper的工作原理
 
 ##### Looper.prepare()
@@ -2008,7 +2010,7 @@ next：是一个无限循环的方法，如果没有消息，next方法就一直
 
 ```
 
-注意Looper是用ThreadLocal\<Looper\> sThreadLocal来存储Looper的，ThreadLocal底层是ThreadLocalMap，以此来保证一个Thread只有一个Looper。该方法会调用Looper构造函数同时实例化出MessageQueue和当前thread:
+**注意Looper是用ThreadLocal\<Looper\> sThreadLocal来存储Looper的，ThreadLocal底层是ThreadLocalMap，以此来保证一个Thread只有一个Looper。**该方法会调用Looper构造函数同时实例化出MessageQueue和当前thread:
 
 ```java
 private Looper(boolean quitAllowed) {
@@ -2073,7 +2075,7 @@ public void dispatchMessage(Message msg) {
     }
 ```
 
-我们可以看到Handler提供了三种途径处理Message，而且处理有前后优先级之分：首先尝试让postXXX中传递的Runnable执行，其次尝试让Handler构造函数中传入的Callback的handleMessage方法处理，最后才是让Handler自身的handleMessage方法处理Message。
+我们可以看到Handler提供了三种途径处理Message，而且处理有前后优先级之分：**如果Message中有Runnable callback，就让Message中传入的Runable执行，否则尝试让Handler构造函数中传入的Callback的handleMessage方法处理，最后才是让Handler自身的handleMessage方法处理Message。**
 
 ### 如何在子线程使用Handler
 
@@ -2120,6 +2122,52 @@ class Rub implements Runnable {
 
 
 
+### Handler的工作过程
+
+![image-20190218141417443](https://ws2.sinaimg.cn/large/006tKfTcly1g0ajtuk4euj31300ki43r.jpg)
+
+Handler的send方法被调用时，它会调用MessageQueue的enqueueMessage方法，将消息放入消息队列中，当Looper发现有新消息来时，就会处理这个消息，最终Handler的handleMessage方法就会被调用。
+
+#### ThreadLocal的工作原理
+
+ThreadLocal是Java提供的用于保存同一进程中不同线程数据的一种机制。
+
+ThreadLocal是一个线程内部的数据存储类，通过它可以在指定线程中存储数据，数据存储以后，只有在指定的线程中获取到存储数据，对于其他线程来说则无法获取到数据，即通过ThreadLocal，每个线程都能获取自己线程内部的私有变量。
+
+示例代码：
+
+![image-20190218141548694](https://ws2.sinaimg.cn/large/006tKfTcly1g0ajvkfefkj31300s2nh1.jpg)
+
+运行结果截图： 
+
+![image-20190218141617749](https://ws3.sinaimg.cn/large/006tKfTcly1g0ajvy3m5xj313003owl4.jpg)
+
+可以看出不同线程访问的是同一个ThreadLocal，但是它们通过ThreadLocal获取的值却不一样。 
+主线程设置的是true，所以获取到的是true 
+第一个子线程设置的是false，所以获取到的是false 
+第二个子线程没有设置，所以获取到的是null
+
+![1](https://ws4.sinaimg.cn/large/006tKfTcly1g0dwfti2lyj31dk0towgy.jpg)
+
+在上图中我们可以发现，整个ThreadLocal的使用都涉及到线程中ThreadLocalMap,虽然我们在外部调用的是ThreadLocal.set(value)方法，但本质是通过线程中的ThreadLocalMap中的set(key,value)方法，其中**key为当前ThreadLocal对象**，value为当前赋的值，那么通过该情况我们大致也能猜出get方法也是通过ThreadLocalMap。那么接下来我们一起来看看ThreadLocal中set与get方法的具体实现与ThreadLocalMap的具体结构。
+
+- ThreadLocal本质是操作线程中ThreadLocalMap来实现本地线程变量的存储的
+- ThreadLocalMap是采用数组的方式来存储数据，其中key(弱引用)指向当前ThreadLocal对象，value为设的值
+- ThreadLocal为内存泄漏采取了处理措施，在调用ThreadLocal的get(),set(),remove()方法的时候都会清除线程ThreadLocalMap里所有key为null的Entry
+- 在使用ThreadLocal的时候，我们仍然需要注意，避免使用static的ThreadLocal，分配使用了ThreadLocal后，一定要根据当前线程的生命周期来判断是否需要手动的去清理ThreadLocalMap中清key==null的Entry。
+
+
+
+#### 消息队列MessageQueue的工作原理
+
+![image-20190218141738158](https://ws2.sinaimg.cn/large/006tKfTcly1g0ajxckrscj312c06y42s.jpg)
+
+MessageQueue：消息队列，内部实现是通过一个单链表的数据结构来维护消息列表
+
+eqeueMessage：就是向单链表中插入数据。 
+next：是一个无限循环的方法，如果没有消息，next方法就一直阻塞在这了 
+如果有消息，next方法就返回这条消息并将消息从单列表中移除。
+
 ### Handler的使用套路
 
 主线程中声明一个Handler，重写其handleMessage(Message msg)方法，通过msg.what属性的值对应到其他线程发送的Message并利用该Message拿到其他线程传过来的数据。
@@ -2147,6 +2195,64 @@ MessageQueue：由Looper负责管理，它采用先进先出的方式来管理Me
 Handler的构造方法，会首先得到当前线程中保存的Looper实例，进而与Looper实例中的MessageQueue想关联。　 　　 　　
 
 Handler的sendMessage方法，会给msg的target赋值为handler自身，然后加入MessageQueue中。
+
+## HandlerThread
+
+我们知道Handler是用来异步更新UI的，更详细的说是用来做线程间的通信的，更新UI时是子线程与UI主线程之间的通信。那么现在我们要是想子线程与子线程之间的通信要怎么做呢？当然说到底也是用Handler+Thread来完成（不推荐，需要自己操作Looper），Google官方很贴心的帮我们封装好了一个类，那就是HandlerThread。（类似的封装对于多线程的场景还有AsyncTask）
+
+HandlerThread的使用方法还是比较简单的，但是我们要明白一点的是：**如果一个线程要处理消息，那么它必须拥有自己的Looper，并不是Handler在哪里创建，就可以在哪里处理消息的**。
+
+**如果不用HandlerThread的话，需要手动去调用Looper.prepare()和Looper.loop()这些方法。**
+
+来看看HandlerThread的使用方法： 
+首先新建HandlerThread并且执行start()
+
+```java
+private HandlerThread mHandlerThread;
+......
+mHandlerThread = new HandlerThread("HandlerThread");
+handlerThread.start();
+
+```
+
+创建Handler，使用mHandlerThread.getLooper()生成Looper：
+
+```java
+    final Handler handler = new Handler(mHandlerThread.getLooper()){
+        @Override
+        public void handleMessage(Message msg) {
+            System.out.println("收到消息");
+        }
+    };
+```
+
+然后再新建一个子线程来发送消息：
+
+```java
+    new Thread(new Runnable() {
+        @Override
+        public void run() {
+            try {
+                Thread.sleep(1000);//模拟耗时操作
+                handler.sendEmptyMessage(0);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }).start();
+```
+
+最后一定不要忘了在onDestroy释放,避免内存泄漏：
+
+```java
+@Override
+protected void onDestroy() {
+    super.onDestroy();
+    mHandlerThread.quit();
+}
+```
+
+执行结果很简单，就是在控制台打印字符串：收到消息
 
 ## Zygote
 
@@ -3043,63 +3149,7 @@ View Animation（Tween Animation）：补间动画，给出两个关键帧，通
 
 　　Frame动画，传统的动画方法，通过顺序的播放排列好的图片来实现，类似电影补间动画和帧动画。 补间动画和Frame动画的定义： 　　所谓补间动画，是指通过指定View的初末状态和变化时间、方式，对View的内容完成一系列的图形变换来实现动画效果。主要包括四种效果：Alpha、Scale、Translate和Rotate。 帧动画就是Frame动画，即指定每一帧的内容和停留时间，然后播放动画
 
-## HandlerThread和Tread的区别
 
-我们知道Handler是用来异步更新UI的，更详细的说是用来做线程间的通信的，更新UI时是子线程与UI主线程之间的通信。那么现在我们要是想子线程与子线程之间的通信要怎么做呢？当然说到底也是用Handler+Thread来完成（不推荐，需要自己操作Looper），Google官方很贴心的帮我们封装好了一个类，那就是HandlerThread。（类似的封装对于多线程的场景还有AsyncTask）
-
-HandlerThread的使用方法还是比较简单的，但是我们要明白一点的是：**如果一个线程要处理消息，那么它必须拥有自己的Looper，并不是Handler在哪里创建，就可以在哪里处理消息的**。
-
-**如果不用HandlerThread的话，需要手动去调用Looper.prepare()和Looper.loop()这些方法。**
-
-来看看HandlerThread的使用方法： 
-首先新建HandlerThread并且执行start()
-
-```java
-private HandlerThread mHandlerThread;
-......
-mHandlerThread = new HandlerThread("HandlerThread");
-handlerThread.start();
-
-```
-
-创建Handler，使用mHandlerThread.getLooper()生成Looper：
-
-```java
-    final Handler handler = new Handler(mHandlerThread.getLooper()){
-        @Override
-        public void handleMessage(Message msg) {
-            System.out.println("收到消息");
-        }
-    };
-```
-
-然后再新建一个子线程来发送消息：
-
-```java
-    new Thread(new Runnable() {
-        @Override
-        public void run() {
-            try {
-                Thread.sleep(1000);//模拟耗时操作
-                handler.sendEmptyMessage(0);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-    }).start();
-```
-
-最后一定不要忘了在onDestroy释放,避免内存泄漏：
-
-```java
-@Override
-protected void onDestroy() {
-    super.onDestroy();
-    mHandlerThread.quit();
-}
-```
-
-执行结果很简单，就是在控制台打印字符串：收到消息
 
 ## AsyncTask
 
