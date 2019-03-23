@@ -30,7 +30,7 @@ Android手机开机执行过程图：
 
 ### Bootloader
 
-　　当电源按下，引导芯片代码开始从预定义的地方（固化在ROM）开始执行。加载引导程序到RAM，然后执行。
+　　当电源按下，**引导芯片代码开始从预定义的地方（固化在ROM）开始执行**。加载引导程序到RAM，然后执行。
 BootLoader是在操作系统内核运行之前运行。可以初始化硬件设备、建立内存空间映射图，从而将系统的软硬件环境带到一个合适状态，以便为最终调用操作系统内核准备好正确的环境。
 
 ###  Kernel
@@ -156,13 +156,15 @@ BootLoader是在操作系统内核运行之前运行。可以初始化硬件设�
 
 - 使用ActivityManager
 
-- ```
+- ```java
   ActivityManager am= (ActivityManager) this .getSystemService(Context.ACTIVITY_SERVICE); am.killBackgroundProcesses(this.getPackageName());
   ```
 
--  Dalvik VM的本地方法 android.os.Process.killProcess(android.os.Process.myPid()) //获取PID System.exit(0); //常规java、c#的标准退出法，返回值为0代表正常退出
+- Dalvik VM的本地方法 `android.os.Process.killProcess(android.os.Process.myPid()) `//获取PID - -
 
-- Android的窗口类提供了历史栈，我们可以通过stack的原理来巧妙的实现，这里我们在A窗口打开B窗口时在Intent中直接加入标 志 Intent.FLAG_ACTIVITY_CLEAR_TOP，这样开启B时将会清除该进程空间的所有Activity，即在A窗口中使用下面的代码调用B窗口：`Intent intent = new Intent(); intent.setClass(this, B.class); intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);` //注意本行的FLAG设置 startActivity(intent); 接下来在B窗口中需要退出时直接使用finish方法即可全部退出。
+- System.exit(0); //常规java、c#的标准退出法，返回值为0代表正常退出
+
+- Android的窗口类提供了历史栈，我们可以通过stack的原理来巧妙的实现，这里我们在A窗口打开B窗口时在Intent中直接加入标 志` Intent.FLAG_ACTIVITY_CLEAR_TOP`，这样开启B时将会清除该进程空间的所有Activity，即在A窗口中使用下面的代码调用B窗口：`Intent intent = new Intent(); intent.setClass(this, B.class); intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);` //注意本行的FLAG设置 startActivity(intent); 接下来在B窗口中需要退出时直接使用finish方法即可全部退出。
 
   
 
@@ -202,7 +204,7 @@ Android四大组件分别是`Activity`，`Service`服务,`Content Provider`内�
 
 #### 关于Android屏幕旋转时Activity的生命周期
 
-如果配置了`android:configChanges="keyboardHidden|orientation|screenSize"`，  这句话意思就是配置双引号里面参数意义，软键盘隐藏，方向，屏幕大小，则屏幕旋转时只会调用Activity的configChanges方法，我们可以重写该方法，达到不调用其他的生命周期的方法的目的。
+如果配置了`android:configChanges="keyboardHidden|orientation|screenSize"`，  这句话意思就是配置双引号里面参数意义，软键盘隐藏，方向，屏幕大小，则屏幕旋转时只会调用Activity的`configChanges`方法，我们可以重写该方法，达到不调用其他的生命周期的方法的目的。
 
 如果没有配置`configChanges`，则生命周期如下：
 
@@ -233,13 +235,11 @@ Android四大组件分别是`Activity`，`Service`服务,`Content Provider`内�
 2. B返回A：B.onPause()→A.onRestart()→A.onStart()→A.onResume()→B.onStop()
 3. 再按Back键：A.onpause()→A.onStop()→A.onDestroy()
 
-#### Activity执行finish后的生命周期
+#### Activity执行finish后对应activity的生命周期
 
-> 1. 在onCreate中执行：onCreate -> onDestroy
-> 2. 在onStart中执行：onCreate -> onStart -> onStop -> onDestroy
-> 3. 在onResume中执行：onCreate -> onStart -> onResume -> onpause -> onStop -> onDestroy
-
-
+> 1. 在onCreate中执行：onCreate -> **onDestroy**
+> 2. 在onStart中执行：onCreate -> onStart -> **onStop -> onDestroy**
+> 3. 在onResume中执行：onCreate -> onStart -> onResume -> **onpause -> onStop -> onDestroy**
 
 #### [Activity之间的通信方式](https://juejin.im/post/5a9509ef6fb9a06337575d4b)
 
@@ -297,17 +297,17 @@ standard，singleTop，singleTask，singleInstance，如果要使用这四种启
 TaskAffinity属性主要和singleTask启动模式和allowTaskReparenting属性配对使用，在其他情况下使用没有意义
 
 - 当TaskAffinity和singleTask启动模式配对使用的时候，它是具有该模式的Activity的目前任务栈的名字，待启动的Activity会运行在名字和TaskAffinity相同的任务栈中
-- 当TaskAffinity和allowTaskReparenting结合的时候，当一个应用A启动了应用B的某个Activity C后，如果Activity C的allowTaskReparenting属性设置为true的话，那么当应用B被启动后，系统会发现Activity C所需的任务栈存在了，就将Activity C从A的任务栈中转移到B的任务栈中。
+- 当TaskAffinity和`allowTaskReparenting`结合的时候，当一个应用A启动了应用B的某个Activity C后，如果Activity C的`allowTaskReparenting`属性设置为true的话，那么当应用B被启动后，系统会发现Activity C所需的任务栈存在了，就将Activity C从A的任务栈中转移到B的任务栈中。
 
 #### 清空栈
 
 当用户长时间离开Task（当前Task被转移到后台）时，系统会清除Task中栈底Activity外的所有Activity 。这样，当用户返回到Task时，只留下那个Task最初始的Activity了。我们可以通过修改下面这些属性来改变这种行为：
 
-android:alwaysRetainTaskState： 如果栈底Activity的这个属性被设置为true，上述的情况就不会发生。 Task中的所有Activity将被长时间保存。
+`android:alwaysRetainTaskState`： 如果栈底Activity的这个属性被设置为true，上述的情况就不会发生。 Task中的所有Activity将被长时间保存。
 
-android:clearTaskOnLaunch：如果栈底Activity的这个属性被设置为true，一旦用户离开Task， 则 Task栈中的Activity将被清空到只剩下栈底Activity。这种情况刚好与 android:alwaysRetainTaskState相反。即使用户只是短暂地离开，Task也会返回到初始状态 （只剩下栈底Acitivty）。
+`android:clearTaskOnLaunch`：如果栈底Activity的这个属性被设置为true，一旦用户离开Task， 则 Task栈中的Activity将被清空到**只剩下栈底Activity**。这种情况刚好与 android:alwaysRetainTaskState相反。即使用户只是短暂地离开，Task也会返回到初始状态 （只剩下栈底Acitivty）。
 
-android:finishOnTaskLaunch 与android:clearTaskOnLaunch相似，但它只对单独的Activity操 作，而不是整个Task。它可以结束任何Activity，包括栈底的Activity。 当它设置为true时，当前的Activity只在当前会话期间作为Task的一部分存在， 当用户退出Activity再返回时，它将不存在。
+`android:finishOnTaskLaunch` :与android:clearTaskOnLaunch相似，但它只对单独的Activity操 作，而不是整个Task。它可以结束任何Activity，包括栈底的Activity。 当它设置为true时，当前的Activity只在当前会话期间作为Task的一部分存在， 当用户退出Activity再返回时，它将不存在。
 
 #### 当前应用有两个Activity A和B，B的 android:launchMode 设置了singleTask模式，A是默认的standard，那么A startActivity启动B，B会新启一个Task吗？如果不会，那么startActivity的Intent加上FLAG_ACTIVITY_NEW_TASK这个参数会不会呢？
 
