@@ -1,40 +1,34 @@
 # AsyncTask源码解析
 
+AsyncTask是Android中常用的异步任务解决方案，在面试中面试官经常会问到有关AsyncTask相关的点，很多人只知道如何去用AsyncTask，没有深入过源码理解其原理，这在面试的时候往往对自己不利，本文从源码角度解读AsyncTask的原理及使用，相信读完本文你就可以很好地应对Android面试中有关AsyncTask的问题。
+
 首先，AsyncTask是一个抽象类，我们使用的时候需要自定义一个类去继承AsyncTask，在继承时我们可以为AsyncTask类指定三个泛型参数，这三个参数的用途如下：
-
 1. `Params`
-
-在执行AsyncTask时需要传入的参数，可用于在后台任务中使用。
-
+  在执行AsyncTask时需要传入的参数，可用于在后台任务中使用。
 2. `Progress`
-
-后台任务执行时，如果需要在界面上显示当前的进度，则使用这里指定的泛型作为进度单位。
-
+  后台任务执行时，如果需要在界面上显示当前的进度，则使用这里指定的泛型作为进度单位。
 3. `Result`
-
-当任务执行完毕后，如果需要对结果进行返回，则使用这里指定的泛型作为返回值类型。
+  当任务执行完毕后，如果需要对结果进行返回，则使用这里指定的泛型作为返回值类型。
 
 在`AsyncTask`这个抽象类中有一个抽象方法`protected abstract Result doInBackground(Params... params)`，所以如果要自定义一个自己的`AsyncTask`必须实现该抽象方法，在`doInBackground`中做自己的耗时操作的逻辑。
 
 几个回调方法：
-
 1. `onPreExecute()`
-
-这个方法会在后台任务开始执行之间调用，用于进行一些界面上的初始化操作，比如显示一个进度条对话框等。
-
+  这个方法会在后台任务开始执行之间调用，用于进行一些界面上的初始化操作，比如显示一个进度条对话框等。
 2. `doInBackground(Params…)`
-
-这个方法中的所有代码都会在子线程中运行，我们应该在这里去处理所有的耗时任务。任务一旦完成就可以通过`return`语句来将任务的执行结果进行返回，如果`AsyncTask`的第三个泛型参数指定的是`Void`，就可以不返回任务执行结果。注意，在这个方法中是不可以进行`UI操作`的，如果需要更新UI元素，比如说反馈当前任务的执行进度，可以调用`publishProgress(Progress…)`方法来完成。
+  这个方法中的所有代码都会在子线程中运行，我们应该在这里去处理所有的耗时任务。任务一旦完成就可以通过`return`语句来将任务的执行结果进行返回，如果`AsyncTask`的第三个泛型参数指定的是`Void`，就可以不返回任务执行结果。注意，在这个方法中是不可以进行`UI操作`的，如果需要更新UI元素，比如说反馈当前任务的执行进度，可以调用`publishProgress(Progress…)`方法来完成。
 
 3. `onProgressUpdate(Progress…)`
-
-当在后台任务中调用了`publishProgress(Progress…)`方法后，这个方法就很快会被调用，方法中携带的参数就是在后台任务中传递过来的。在这个方法中可以对UI进行操作，利用参数中的数值就可以对界面元素进行相应的更新。
+  当在后台任务中调用了`publishProgress(Progress…)`方法后，这个方法就很快会被调用，方法中携带的参数就是在后台任务中传递过来的。在这个方法中可以对UI进行操作，利用参数中的数值就可以对界面元素进行相应的更新。
 
 4. `onPostExecute(Result)`
+  当后台任务执行完毕并通过`return`语句进行返回时，这个方法就很快会被调用。返回的数据会作为参数传递到此方法中，可以利用返回的数据来进行一些UI操作，比如说提醒任务执行的结果，以及关闭掉进度条对话框等。
 
-当后台任务执行完毕并通过`return`语句进行返回时，这个方法就很快会被调用。返回的数据会作为参数传递到此方法中，可以利用返回的数据来进行一些UI操作，比如说提醒任务执行的结果，以及关闭掉进度条对话框等。
+------
 
----------------------
+放一张AsyncTask的核心逻辑图，大家可以先看图再看后面的具体介绍，读完介绍之后再回过头来看一下这张图，理解会更深刻(建议查看大图)：
+![AsyncTask](https://ws1.sinaimg.cn/large/006tKfTcgy1g1pi13a9p8j31y70u0tp2.jpg)
+
 ## 构造方法
 
 ```java
@@ -100,7 +94,6 @@ public final AsyncTask<Params, Progress, Result> execute(Params... params) {
 ## excuteOnExcutor（）
 
 ```java
-
 public final AsyncTask<Params, Progress, Result> executeOnExecutor(Executor exec,
 		Params... params) {
 	if (mStatus != Status.PENDING) {
@@ -138,7 +131,6 @@ private static volatile Executor sDefaultExecutor = SERIAL_EXECUTOR;
 ## SerialExecutor
 
 ```java
-
 private static class SerialExecutor implements Executor {
 	final ArrayDeque<Runnable> mTasks = new ArrayDeque<Runnable>();
 	Runnable mActive;
@@ -234,7 +226,6 @@ private static class InternalHandler extends Handler {
 可以看到在该`InternalHander`的`handleMessage`方法中接收到了刚才发送的消息，并根据`msg.what`的不同调用了不同的逻辑，如果这是一条`MESSAGE_POST_RESULT`消息，就会去执行`finish()`方法，如果这是一条`MESSAGE_POST_PROGRESS`消息，就会去执行`onProgressUpdate()`方法。那么`finish()`方法的源码如下所示：
 
 ```java
-
 private void finish(Result result) {
 	if (isCancelled()) {
 		onCancelled(result);
@@ -251,7 +242,6 @@ private void finish(Result result) {
 我们注意到，在刚才`InternalHandler`的`handleMessage()`方法里，还有一种`MESSAGE_POST_PROGRESS`的消息类型，这种消息是用于当前进度的，调用的正是`onProgressUpdate()`方法，那么什么时候才会发出这样一条消息呢？相信你已经猜到了，查看`publishProgress()`方法的源码，如下所示：
 
 ```java
-
 protected final void publishProgress(Progress... values) {
 	if (!isCancelled()) {
 		sHandler.obtainMessage(MESSAGE_POST_PROGRESS,
@@ -262,7 +252,7 @@ protected final void publishProgress(Progress... values) {
 
 正因如此，在`doInBackground()`方法中调用`publishProgress()`方法才可以从子线程切换到UI线程，从而完成对UI元素的更新操作。其实也没有什么神秘的，因为说到底，`AsyncTask`也是使用的异步消息处理机制，只是做了非常好的封装而已。
 
-## 关于AsyncTask更深层次的解析
+## 关于THREAD_POOL_EXECUTOR
 
 刚才提到的`THREAD_POOL_EXECUTOR`:
 
@@ -283,22 +273,31 @@ static {
     }
 ```
 
-可以看到，AsyncTask实际上是对线程池`ThreadPoolExcutor`的封装，在实例化`ThreadPoolExcotor`的时候传入的核心线程数是在`2-4`个之间，最大线程数是`cpu count*2+1`个，我们在`SerialExecutor`的`scheduleNext`方法中使用该线程池去执行当前队头的任务，刚才提到了，`AsyncTask`的`SerialExecutor`线程池中做的调度是串行的，也就是说同时只会有一个线程被执行，那这里的`ThreadPoolExcutor`为什么没有初始化成`singleThreadPool`?这是一个疑问。
+可以看到，AsyncTask实际上是对线程池`ThreadPoolExcutor`的封装，在实例化`ThreadPoolExcotor`的时候传入的核心线程数是在`2-4`个之间，最大线程数是`cpu count*2+1`个，我们在`SerialExecutor`的`scheduleNext`方法中使用该线程池去真正执行任务。
 
-同时，`AsyncTas`k默认是串行执行任务的，如果想要并行，从`Android 3.0`开始`AsyncTask`增加了`executeOnExecutor`方法，用该方法可以让`AsyncTask`并行处理任务。方法签名如下： 
+`AsyncTas`k默认是串行执行任务的，如果想要并行，从`Android 3.0`开始`AsyncTask`增加了`executeOnExecutor`方法，用该方法可以让`AsyncTask`并行处理任务。方法签名如下： 
 
 ```java
 public final AsyncTask<Params, Progress, Result> executeOnExecutor(Executor exec,
             Params... params)
 ```
 
-`exec`是一个`Executor`对象，为了让`AsyncTask`并行处理任务，通常情况下我们此处传入`AsyncTask.THREAD_POOL_EXECUTOR`即可。 `AsyncTask.THREAD_POOL_EXECUTOR`是`AsyncTask`中内置的一个线程池对象，当然我们也可以传入我们自己实例化的线程池对象。第二个参数`params`表示的是要执行的任务的参数：
+`exec`是一个`Executor`对象，为了让`AsyncTask`并行处理任务，第一个参数传入一个线程池对象。第二个参数`params`表示的是要执行的任务的参数
 
-```java
+## 一个疑问
+刚才提到了，`AsyncTask`的`SerialExecutor`线程池中做的调度是串行的，也就是说同时只会有一个线程被执行，那这里的`ThreadPoolExcutor THREAD_POOL_EXECUTOR`为什么没有初始化成`singleThreadPool`?这点我个人也不是很理解，之前面试的时候有请教过面试官，面试官说是起到调度作用，我个人猜测可能和AsyncTask并行执行任务有关，如上所述，如果想要让AsyncTask并行执行任务需要调用executeOnExecutor并传入线程池，而这里我们可以直接传入AsyncTask帮我们实例化好的线程池对象
+ `AsyncTask.THREAD_POOL_EXECUTOR`，这样就不用我们自己创建线程池了，比如：
+ ```java
 Executor exec = new ThreadPoolExecutor(15, 200, 10,
 		TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
 new DownloadTask().executeOnExecutor(exec);
-```
+ ```
+ 当然这只是我个人的理解，欢迎大家在评论区留言发表自己的看法。
+## 总结
+以上就是关于AsyncTask源码的入门分析，希望大家再看一遍这张图：
+![AsyncTask](https://ws1.sinaimg.cn/large/006tKfTcgy1g1pi13a9p8j31y70u0tp2.jpg)
+
+
 
 ## 讲解流程
 
