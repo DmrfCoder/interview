@@ -132,29 +132,23 @@ SQLiteDatabase类为我们提供了很多种方法，而较常用的方法如下
 
 - 关闭数据库：(void) close()	
 
-- 查询指定的数据表返回一个带游标的数据集：(Cursor) query(String table, String[] columns, String selection, String[] selectionArgs, String groupBy, String having, String orderBy, String limit)
+- 查询指定的数据表返回一个带游标的数据集：(Cursor) query(String table, String[] columns, String selection, String[] selectionArgs, String groupBy, String having, String orderBy, String limit)	
 
-　　>  ​	各参数说明：
-　　>
-　　>  - table：表名称
-　　>
-　　>  - colums：列名称数组
-　　>
-　　>  - selection：条件子句，相当于where
-　　>
-　　>  - selectionArgs：条件语句的参数数组
-　　>
-　　>  - groupBy：分组
-　　>
-　　>  - having：分组条件
-　　>
-　　>  - orderBy：排序类
-　　>
-　　>  - limit：分页查询的限制
-　　>
-　　>  - Cursor：返回值，相当于结果集ResultSet
-
-- 运行一个预置的SQL语句，返回带游标的数据集（与上面的语句最大的区别就是**防止SQL注入**）：(Cursor) rawQuery(String sql, String[] selectionArgs)
+  > 各参数说明：
+  >
+  > - table：表名称
+  >
+  > - colums：列名称数组
+  >
+  > - selection：条件子句，相当于where
+  > - selectionArgs：条件语句的参数数组
+  > - groupBy：分组
+  > - having：分组条件
+  > - orderBy：排序类
+  > - limit：分页查询的限制
+  > - Cursor：返回值，相当于结果集ResultSet
+  >
+  > - 运行一个预置的SQL语句，返回带游标的数据集（与上面的语句最大的区别就是**防止SQL注入**）：(Cursor) rawQuery(String sql, String[] selectionArgs)
 
 当你完成了对数据库的操作（例如你的 Activity 已经关闭），需要调用 SQLiteDatabase 的 Close() 方法来释放掉数据库连接。
 
