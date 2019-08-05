@@ -52,17 +52,31 @@
 
 [计算机网络第六弹——应用层](./ComputerNetwork/计算机网络第六弹——应用层.md)
 
-
-
 ## Operating System
 
 [Operating System常见知识点汇总](./OperatingSystem/OperatingSystem.md)
+
+[图解操作系统之虚拟存储器](./OperatingSystem/图解操作系统之虚拟存储器.md)
+
+[图解操作系统之存储器管理](./OperatingSystem/图解操作系统之存储器管理.md)
+
+[图解操作系统之处理机调度与死锁](./OperatingSystem/图解操作系统之处理机调度与死锁.md)
+
+[进程常见知识点总结](./OperatingSystem/进程常见知识点总结.md)
 
 ## DataBase
 
 [DataBase常见知识点汇总](./DataBase/DataBase.md)
 
-[DataBase常见面试题](./DataBase常见面试题.md)
+[DataBase常见面试题](./DataBase/DataBase常见面试题.md)
+
+[数据库实战入门——SQL全方位学习](./DataBase/数据库实战入门——SQL全方位学习.md)
+
+[数据库并发控制综述](./DataBase/数据库并发控制综述)
+
+[关系数据理论必备知识点](./DataBase/关系数据理论必备知识点.md)
+
+[关系操作及alpha语言学习](./DataBase/关系操作及alpha语言学习.md)
 
 ## 算法
 
